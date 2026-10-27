@@ -28,7 +28,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 | 3D models, meshes, textures, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
 | Toolbox, free models, images, sounds, any imported asset; uploads and API keys | [references/assets.md](references/assets.md) |
-| Rigging, skinning, Blender animation, import to Roblox (R15/R6: looks for `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
+| Rigging, skinning, Blender animation, import, inspection and publishing to Roblox (R15/R6: looks for `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
 | Onboarding, tutorials, guidance pointers, analytics funnels | [references/onboarding.md](references/onboarding.md) |
 
 A task can span several rows (a skill ability = coding + vfx + animation); load each reference once, when you reach that part.
@@ -36,6 +36,7 @@ A task can span several rows (a skill ability = coding + vfx + animation); load 
 ## Scripts
 - [ParticlePlayer](scripts/ParticlePlayer.luau): fallback particle player; use the project's own first.
 - [VFXInspector](scripts/VFXInspector.luau): mandatory effect check, vfx.md section 8.
+- [AnimationInspector](scripts/AnimationInspector.luau): mandatory clip audit and contact sheet, animation.md section 4.
 - [UIBounds](scripts/UIBounds.luau): mandatory bounds audit, phone size first, ui.md.
 - [TutorialGuide](scripts/TutorialGuide.luau): tutorial pointers and UI lock, onboarding.md.
 - [AssetAudit](scripts/AssetAudit.luau): mandatory audit of every imported asset, assets.md.

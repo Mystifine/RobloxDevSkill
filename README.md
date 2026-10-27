@@ -17,7 +17,8 @@ references/
   onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields)
 scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
-  VFXInspector.luau      VFX inspection: exit lint, sphere/cube stage, vanish watcher, frozen-frame captures
+  VFXInspector.luau      VFX inspection: exit lint, sphere/cube or real-rig stage, vanish watcher, frozen-frame captures
+  AnimationInspector.luau  animation inspection: exact-time audit (pops, seams, feet, hyperextension, markers) and contact sheet
   UIBounds.luau          UI bounds audit: nothing leaks out of its box, rim or rounded corner
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   AssetAudit.luau        Toolbox safety audit: report first, then strip

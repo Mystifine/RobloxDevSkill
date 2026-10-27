@@ -2,23 +2,51 @@
 
 ## Roblox characters (R15 / R6): check for the skill first
 
-When the task animates a Roblox character, first look for the **`animate-roblox-characters`** skill (check the available-skills list; use `find-skills` if unsure) and load it for the R15/R6 details: rig import, joint names, export format and Studio validation. If it is not available, proceed normally with the rest of this reference and the Blender rigging/animation skills.
+When the task animates a Roblox character, first look for the **`animate-roblox-characters`** skill (check the available-skills list; use `find-skills` if unsure) and load it for the R15/R6 details: rig import, joint names, export format and Blender-side audits. If it is not available, proceed with the rest of this reference and the Blender rigging/animation skills. Either way, section 4 is the check on the real Roblox rig.
 
-## Non-negotiables
+## 1. Non-negotiables
 
-- **Author at 60 FPS.** Set the Blender scene to 60 fps before keying, keep keys on whole frames, and export/import at 60 so playback is smooth.
-- **Proper weighted joints.** Skin with normalized weights, at most 4 influences per vertex, no stray weights on distant bones, and clean falloff at joints. Test deformation in extreme poses before animating. Use `blender-character-rigging` (heat/proxy skinning, weight rules, deformation stress tests); if no skill helps, build and verify it yourself to the same standard.
-- **Clean animation.** Readable silhouette, anticipation/overshoot/settle, easing via curves (Graph Editor), no foot sliding, no jitter or gimbal flips, loops that match first and last frames, sparse keys (delete redundant keys rather than baking every frame unless needed).
+- **Author at 60 FPS** (unless the project sets another rate for a rig): scene at that rate before keying, keys on whole frames, export/import at the same rate.
+- **Proper weighted joints.** Normalized weights, at most 4 influences per vertex, no stray weights on distant bones, clean falloff. Test deformation in extreme poses before animating (`blender-character-rigging`).
+- **Clean animation.** Readable silhouette, anticipation/overshoot/settle, eased curves, no foot sliding, no jitter or flips, loops whose last frame meets the first, sparse keys rather than a bake of every frame unless needed.
 
-## Route
+## 2. Route
 
-- Roblox R6/R15 character actions (walk, run, idle, attacks, emotes): `animate-roblox-characters` when available (Studio-derived rigs, `.rbxanim`/FBX export, optional Studio playback validation).
+- Roblox R6/R15 actions (walk, run, idle, attacks, emotes): `animate-roblox-characters` when available.
 - Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
 - Nothing fitting installed: search `find-skills`, then do it yourself.
 
-## Export and verify
+## 3. Export, set up, publish
 
-1. Keep the deform skeleton separate from controls; bake to it for export.
-2. Import into Studio and play the animation in Edit mode on the actual rig; compare against the Blender preview.
-3. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and add `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) rather than hardcoding times.
-4. Check for foot sliding, pops at loop points, and mesh stretching at extremes. Report anything unverified.
+1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig.
+2. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) instead of hardcoded times.
+3. Pass section 4, then publish to the **group that owns the experience** (the group key, or Studio publishing to that group; [assets.md](assets.md), Uploading). An animation plays only in experiences owned by its creator. Republishing makes a new id.
+
+## 4. Inspect (a clip is not done until it passes)
+
+**Not yet run in Studio (2026-10-27):** on first use, confirm a known-good clip gives 0 errors and the sheet reads, and retune any threshold that misfires before trusting it.
+
+[scripts/AnimationInspector.luau](../scripts/AnimationInspector.luau) poses a scriptless copy of the rig at exact times in **Edit** mode and measures it by forward kinematics (Motor6D, AnimationConstraint or Bones), so results do not depend on frame rate or capture latency, and the rig itself is never changed. Load it with `loadstring(game:GetService("HttpService"):GetAsync(url, true))()` from a local static server on the skill's `scripts/` folder (for example `python -m http.server 8394 --bind 127.0.0.1 --directory <skill>/scripts`; Studio must allow HTTP requests), or from a temporary ModuleScript.
+
+1. **Audit (instant, text):** `return Anim.audit(rig, clip, { Markers = { "Hit" } }).Text`. `clip` is the editable KeyframeSequence (preferred: keys and markers are readable), an Animation or an id. Options: `Fps` (key grid, default 60), `Feet`, `Tip` (default `RightGripAttachment`), `Markers` (required; the first is synced to the tip), `Ignore` (rule names), `Looped`, `Hinges` (custom knees `Bend = "back"`, elbows `"front"`; the upper part's X axis is the hinge). Fix every ERROR; judge each WARN. The `Motion` sparkline shows timing: wind-up, peak, holds, with `^` under markers.
+
+   | Rule | Means | Fix |
+   |---|---|---|
+   | `rest-only` | the rig never left its rest pose: the clip did not apply, so every other result is void (cannot be ignored) | check the id and joint names; park the camera near the subject |
+   | `unmatched` | pose names with no part or bone of that name: their motion is dropped | rename the poses to the rig's parts |
+   | `pop` | a joint turns 15°+ in one frame, 4x what it does around it (or jumps 0.4+ studs) | an Euler flip or a missing key: re-key with quaternions or add a key |
+   | `seam`, `seam-speed` | a loop's last frame misses the first (over 1° / 0.05 studs), or its speed changes across the seam | `closeLoop(sequence)`; match the curve tangents |
+   | `slide` | a planted foot drifts over 0.05 studs in a stationary clip | lock planted feet (IK) |
+   | `stride` | in-place locomotion: a planted foot's backward speed varies over 25% | keep contact speed even; play the clip at `WalkSpeed / GroundSpeed` (in the report) |
+   | `floor`, `float` | a foot sinks over 0.2 studs, or none ever reaches the floor | the root height or HipHeight is wrong |
+   | `end-offset` | a one-shot ends with the body over 0.5 studs from its start; the root does not follow, so it snaps back | move the character in code, or `Ignore` it for death and knockback clips |
+   | `hyperextend` | a knee or elbow bends over 5° the wrong way | fix the pole target or IK |
+   | `grid` | keys between frames | `snapKeys(sequence, fps)` |
+   | `easing` | keys over 3 frames apart and mostly Linear: mechanical | Cubic/CubicV2 on key poses, add breakdowns |
+   | `marker`, `hit-sync` | a required marker is missing, or sits over 0.1 s from the tip's fastest moment, so the effect and damage land early or late | `setMarker(sequence, "Hit", report.Tip.Fastest)` |
+
+2. **Look (one capture):** `return Anim.sheet(rig, clip, options).Legend`, then `screen_capture` with **no camera arguments** (the sheet parked the camera with a narrow lens; if the capture misses the sheet, pass the returned `Camera` and `LookAt` instead). The rows show the side view (line of action, lean, arcs in depth) and the front view (balance, symmetry, width). The columns are the start, end, markers, peak and stillest key poses, and the last column is the peak pose with paths from blue (start) to red (end). A planted foot is a black dot that stays one dot; a smear means it slides. The legend maps each column to its time. Options: `Times`, `Count` (8), `Views` (`side`, `front`, `back`, `three`), `Trails`, `Dark`, `Fov`. Judge whether the poses read as silhouettes, the action has anticipation, the arcs are smooth, and nothing clips through the body.
+3. **Repair and repeat:** `closeLoop`, `snapKeys` and `setMarker` edit the KeyframeSequence in place; bigger fixes go back to Blender. Audit again until there are 0 errors and look again, then publish.
+4. **Clean up:** `Anim.clear()` removes the sheet and restores the camera's field of view.
+
+A clip that passes can drive VFX timing: stage it on the real rig in place of the caster sphere ([vfx.md](vfx.md) section 8).

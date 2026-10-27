@@ -2,8 +2,9 @@
 -- Visual-effect inspection for Studio MCP. Three tools, cheapest first:
 --
 --   lint(root)         static, instant, works in Edit: every particle must leave by Transparency, Size or Squash
---   stage() + watch()  Play: a caster sphere and a target cube to play the effect between; flags anything destroyed
---                      while still visible and emitters cut off with particles alive
+--   stage() + watch()  Play: a caster sphere and a target cube to play the effect between (or a real rig playing a
+--                      passed animation, and a dummy target); flags anything destroyed while still visible and
+--                      emitters cut off with particles alive
 --   hold()/release()   Play: snapshots and freezes the effect at a chosen second so a screenshot shows that exact
 --                      frame however long the capture takes (the project's Debris cannot remove it)
 --
@@ -20,7 +21,10 @@ export type Stage = {
 	Folder: Folder,
 	Caster: Part, -- the sphere effects start from
 	Target: Part, -- the cube effects aim at
-	Frame: CFrame, -- at the caster, looking at the target (play effects with this)
+	Frame: CFrame, -- at the caster (or the rig's root), looking at the target (play effects with this)
+	Rig: Model?, -- the caster rig, when staged with one
+	Victim: Model?, -- the target rig, when staged with one
+	Play: (self: Stage, clip: any?, speed: number?) -> AnimationTrack?, -- plays a clip on the caster rig
 	Camera: (self: Stage, kind: string?, options: { Zoom: number?, Focus: Vector3?, Fov: number? }?) -> CFrame,
 	Show: (self: Stage, options: { Target: boolean?, Caster: boolean?, Floor: boolean? }) -> (),
 	Clear: (self: Stage) -> (),
@@ -184,6 +188,8 @@ function Inspector.preload(root: Instance)
 	game:GetService("ContentProvider"):PreloadAsync({ root })
 end
 
+local staged: { AnimationTrack } = {} -- clips playing on stage rigs: hold() freezes them in the effect's frame
+
 -- A held frame lives in this folder, outside the effect: the project's own cleanup (Debris, tweens, Destroy) cannot reach it.
 local function holder(): Folder
 	local folder = workspace:FindFirstChild("__VFXHold") :: Folder?
@@ -200,6 +206,11 @@ end
 -- The frame then stays on screen, however long the next tool call takes, until release(). Call right after playing.
 function Inspector.hold(root: Instance, seconds: number)
 	task.wait(seconds)
+	for _, track in staged do
+		if track.IsPlaying then
+			track:AdjustSpeed(0) -- the staged rig keeps the pose of this exact frame
+		end
+	end
 	local folder = holder()
 	local parts: { Instance } = {}
 	for _, item in root:GetDescendants() do
@@ -231,12 +242,66 @@ function Inspector.hold(root: Instance, seconds: number)
 	end
 end
 
--- Clear every held frame.
+-- Clear every held frame and stop the stage rigs' clips.
 function Inspector.release()
 	local folder = workspace:FindFirstChild("__VFXHold")
 	if folder then
 		folder:Destroy()
 	end
+	for _, track in staged do
+		track:Stop(0)
+	end
+	table.clear(staged)
+end
+
+local function animatorOf(model: Model): Animator
+	local controller: Instance? = model:FindFirstChildOfClass("Humanoid") or model:FindFirstChildOfClass("AnimationController")
+	if not controller then
+		local made = Instance.new("AnimationController")
+		made.Parent = model
+		controller = made
+	end
+	local animator = (controller :: Instance):FindFirstChildOfClass("Animator")
+	if not animator then
+		local made = Instance.new("Animator")
+		made.Parent = controller
+		animator = made
+	end
+	return animator :: Animator
+end
+
+-- A scriptless copy of `rig` with its feet on the floor at `spot`, facing `toward`, its root anchored.
+local function standIn(rig: Model, spot: Vector3, toward: Vector3, parent: Instance): Model
+	local archivable = rig.Archivable
+	rig.Archivable = true
+	local copy = rig:Clone()
+	rig.Archivable = archivable
+	for _, item in copy:GetDescendants() do
+		if item:IsA("LuaSourceContainer") then
+			item:Destroy()
+		end
+	end
+	local root = (copy:FindFirstChild("HumanoidRootPart") or copy.PrimaryPart or copy:FindFirstChildWhichIsA("BasePart", true)) :: BasePart
+	local look = root.CFrame.LookVector
+	local current = CFrame.new(root.Position) * CFrame.Angles(0, math.atan2(-look.X, -look.Z), 0)
+	copy:PivotTo(CFrame.lookAt(spot, Vector3.new(toward.X, spot.Y, toward.Z)) * current:Inverse() * copy:GetPivot())
+	local lowest = math.huge
+	for _, part in copy:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			local cf, half = part.CFrame, part.Size / 2
+			lowest = math.min(lowest, cf.Position.Y - math.abs(cf.RightVector.Y) * half.X - math.abs(cf.UpVector.Y) * half.Y - math.abs(cf.LookVector.Y) * half.Z)
+		end
+	end
+	if lowest < math.huge then
+		copy:PivotTo(copy:GetPivot() + Vector3.yAxis * (spot.Y - lowest))
+	end
+	root.Anchored = true
+	local humanoid = copy:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+	copy.Parent = parent
+	return copy
 end
 
 -- One emitter's particle at `fraction` of its life (0.97 by default), shown large beside the target: what its last frame
@@ -326,7 +391,10 @@ end
 Inspector.views = { { "side", 1 }, { "iso", 1 }, { "top", 1 }, { "close", 0.6 } }
 
 -- A dark plate with a caster sphere and a target cube `distance` studs apart, high above the map so nothing else is in view.
-function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright: boolean? }?): Stage
+-- options.Rig (a character or monster Model) stands a copy at the caster instead of the sphere, so stage:Play(clip) can
+-- drive it with an animation that passed AnimationInspector and the effect can be timed to its markers; options.Victim
+-- stands a copy at the target instead of the cube (scale, hit height, in-body checks). options.Animation is the default clip.
+function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright: boolean?, Rig: Model?, Victim: Model?, Animation: any? }?): Stage
 	local settings = options or {}
 	local distance = settings.Distance or 30
 	local origin = settings.Origin or Vector3.new(0, 1000, 0)
@@ -352,6 +420,47 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 		Folder = folder, Caster = caster, Target = target,
 		Frame = CFrame.lookAt(caster.Position, Vector3.new(target.Position.X, caster.Position.Y, target.Position.Z)),
 	} :: any
+	if settings.Rig then
+		local rig = standIn(settings.Rig, Vector3.new(caster.Position.X, origin.Y, caster.Position.Z), target.Position, folder)
+		local root = (rig:FindFirstChild("HumanoidRootPart") or rig.PrimaryPart) :: BasePart?
+		caster.Transparency = 1
+		stage.Rig = rig
+		if root then
+			stage.Frame = CFrame.lookAt(root.Position, Vector3.new(target.Position.X, root.Position.Y, target.Position.Z))
+		end
+	end
+	if settings.Victim then
+		stage.Victim = standIn(settings.Victim, Vector3.new(target.Position.X, origin.Y, target.Position.Z), caster.Position, folder)
+		target.Transparency = 1
+	end
+	-- Plays `clip` (an Animation, an asset id, or a KeyframeSequence where it can be registered; default options.Animation)
+	-- on the caster rig and returns the track. Time the effect to the clip: track:GetMarkerReachedSignal("Hit"):Wait(),
+	-- then play the effect; Inspector.hold freezes the rig in the same frame as the effect.
+	function stage.Play(_: Stage, clip: any?, speed: number?): AnimationTrack?
+		local rig = stage.Rig :: Model?
+		local source = if clip ~= nil then clip else settings.Animation
+		if not rig or source == nil then
+			return nil
+		end
+		local animation = Instance.new("Animation")
+		if typeof(source) == "Instance" and source:IsA("Animation") then
+			animation.AnimationId = source.AnimationId
+		elseif typeof(source) == "Instance" and source:IsA("KeyframeSequence") then
+			animation.AnimationId = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(source)
+		else
+			local text = tostring(source)
+			animation.AnimationId = if string.find(text, "://", 1, true) then text else "rbxassetid://" .. text
+		end
+		local animator = animatorOf(rig)
+		for _, playing in animator:GetPlayingAnimationTracks() do
+			playing:Stop(0)
+		end
+		local track = animator:LoadAnimation(animation)
+		track.Priority = Enum.AnimationPriority.Action
+		track:Play(0, 1, speed or 1)
+		table.insert(staged, track)
+		return track
+	end
 	-- Scriptable camera. kind: "side" (default, both ends in view), "iso" (high three-quarter), "top" (straight down: ground
 	-- shapes), "front" (from beyond the target, looking back at the caster), "behind" (over the caster's shoulder, down
 	-- the effect's path), "close" (the target, three-quarter). options.Zoom scales the distance (0.5 is twice as close, 2
@@ -405,6 +514,7 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 	end
 	function stage.Clear(_: Stage)
 		RunService:UnbindFromRenderStep("__VFXStageCamera")
+		table.clear(staged)
 		folder:Destroy()
 		local camera = workspace.CurrentCamera
 		if camera then
