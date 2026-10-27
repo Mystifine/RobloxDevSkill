@@ -1,6 +1,6 @@
 ---
 name: roblox-dev
-description: Dispatcher for Roblox game development. Use for any Roblox work - Luau scripting, services, modules, networking, DataStores, performance; UI/GUI/HUD, icons, ImageLabels; VFX, particles, ParticleEmitter, skill/ability effects, beams, trails; 3D models, meshes, tris budget, PBR, SurfaceAppearance; Toolbox, free models, asset or sound sourcing and safety audits; Blender-to-Roblox animation, rigging, skinning, .rbxanim. Loads only the reference needed.
+description: Dispatcher for Roblox game development. Use for any Roblox work - Luau scripting, services, modules, networking, DataStores, performance; UI/GUI/HUD, icons, ImageLabels; VFX, particles, ParticleEmitter, skill/ability effects, beams, trails; 3D models, meshes, tris budget, PBR, SurfaceAppearance; Toolbox, free models, asset or sound sourcing and safety audits; Blender-to-Roblox animation, rigging, skinning, .rbxanim; onboarding/tutorial guidance and AnalyticsService funnels. Loads only the reference needed.
 ---
 
 # Roblox Dev (dispatcher)
@@ -16,6 +16,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 5. **No Toolbox code, ever.** Models, VFX and images may come from the Toolbox (audited, preferably temporary); Scripts, LocalScripts and ModuleScripts never. Sounds are the exception that may be kept.
 6. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
 7. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Design and check the phone first; nothing leaks out of its box, rim or rounded corner; ground effects land on the floor (never at a character's hip, head or in the air). See `references/ui.md` and `references/vfx.md` section 5.
+8. **Images are all-ages safe.** Visible bust never larger than an A cup, and with any cleavage no skin curves may show (chest fully wrapped, flat edges). Check every generated or supplied character image at full size before uploading (rule in `references/ui.md`, Icons and images).
 
 ## Route
 
@@ -27,6 +28,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 | 3D models, meshes, textures, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Toolbox, free models, images, sounds, any imported asset | [references/assets.md](references/assets.md) |
 | Rigging, skinning, Blender animation, import to Roblox (R15/R6: looks for `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
+| Onboarding, tutorials, guidance pointers, analytics funnels | [references/onboarding.md](references/onboarding.md) |
 
 A task can span several rows (a skill ability = coding + vfx + animation); load each reference once, when you reach that part.
 
@@ -35,6 +37,7 @@ A task can span several rows (a skill ability = coding + vfx + animation); load 
 - [scripts/ParticlePlayer.luau](scripts/ParticlePlayer.luau): fallback attribute-driven particle player. Use the project's own player if it has one.
 - [scripts/VFXInspector.luau](scripts/VFXInspector.luau): VFX inspection (lint and repair particle exits, caster-sphere/target-cube stage with multi-angle cameras, vanish watcher, frozen frames for screenshots). Run it on every effect before calling it done; steps in [references/vfx.md](references/vfx.md) section 8.
 - [scripts/UIBounds.luau](scripts/UIBounds.luau): UI bounds audit (children and outlines inside their boxes and rounded corners, clear of rims). Run it on every UI at the phone size first; steps in [references/ui.md](references/ui.md).
+- [scripts/TutorialGuide.luau](scripts/TutorialGuide.luau): tutorial pointer templates (spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock). Steps in [references/onboarding.md](references/onboarding.md).
 - [scripts/AssetAudit.luau](scripts/AssetAudit.luau): Toolbox asset safety audit. Run it on every imported asset before keeping anything.
 
 ## Handoffs (use if installed; otherwise follow the reference)

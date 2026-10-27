@@ -2,7 +2,7 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: seven always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
+`SKILL.md` is a short dispatcher: eight always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
 
 ```
 SKILL.md                 dispatcher (always loaded, ~50 lines)
@@ -13,10 +13,12 @@ references/
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow
   assets.md              Toolbox policy (no code), safe intake, sounds
   animation.md           60 FPS, weighted joints, clean curves, export and verify
+  onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields)
 scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
   VFXInspector.luau      VFX inspection: exit lint, sphere/cube stage, vanish watcher, frozen-frame captures
   UIBounds.luau          UI bounds audit: nothing leaks out of its box, rim or rounded corner
+  TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   AssetAudit.luau        Toolbox safety audit: report first, then strip
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
