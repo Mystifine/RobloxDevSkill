@@ -26,7 +26,13 @@ Nothing leaks out of its box unless the design says so. **A stroke is drawn outs
 
 - **Center anchor.** Set `AnchorPoint = (0.5, 0.5)` and position by the element's center, so tweens of `Size`, `Rotation` and `Position` (pop-ins, scale-ups, shakes) grow from the middle. Use another anchor only when asked or when an edge must stay pinned (for example a bar that fills from the left).
 - Scale-based `Size`/`Position` with `UIAspectRatioConstraint`, `UISizeConstraint`, `UITextSizeConstraint` and `UIScale` for device scaling. Lay out with `UIListLayout`/`UIGridLayout`/`UIPadding` rather than hand-placed offsets.
-- `ScreenGui`: `ResetOnSpawn = false` for persistent HUD, `ZIndexBehavior = Sibling`, set `IgnoreGuiInset` deliberately. Respect safe areas on phones.
+- `ScreenGui`: `ZIndexBehavior = Sibling`, set `IgnoreGuiInset` deliberately. Respect safe areas on phones. `ResetOnSpawn` is covered under State.
+
+## State
+
+- **`ResetOnSpawn = false` on nearly every ScreenGui** (HUD, menus, shop, tutorial, offers). Build once at join and keep it across respawns; with the default `true` the whole UI is destroyed and rebuilt on every death, losing open windows, scroll positions, tweens and connections. Only UI that truly belongs to one character (an overhead billboard) lives and dies with it.
+- **State lives outside the instances.** Keep one source of truth per fact (a store, a Pulse/signal value or the replicated save), and have the UI render from it and write back through it: never read a TextLabel's text or a Frame's `Visible` to decide logic. Views subscribe, update only when the value changes, and are safe to show, hide and re-show.
+- **Survive respawn, rejoin and teleport:** derive what is open or selected from the store, re-bind to the new character (`CharacterAdded`) instead of rebuilding the UI, and restore on join from the saved or replicated state. Disconnect every listener when a view closes or is destroyed, and keep temporary state (a hover, a draft) out of the save.
 
 ## Performance
 
