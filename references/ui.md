@@ -1,5 +1,7 @@
 # UI
 
+Everything here applies to every GUI container, **ScreenGui, BillboardGui and SurfaceGui** alike (bounds, touch size, state, performance), not only ScreenGui; the BillboardGui and SurfaceGui specifics are under World-space GUIs.
+
 ## Match first
 
 Read the project's existing UI controllers/components, theme or style constants (colors, fonts, corner radius, stroke, padding, tween styles), and its image-asset table. New UI reuses those; do not introduce a second visual language unless the user asks for one. Reuse existing components before building new ones.
@@ -30,9 +32,14 @@ Nothing leaks out of its box unless the design says so. **A stroke is drawn outs
 
 ## State
 
-- **`ResetOnSpawn = false` on nearly every ScreenGui** (HUD, menus, shop, tutorial, offers). Build once at join and keep it across respawns; with the default `true` the whole UI is destroyed and rebuilt on every death, losing open windows, scroll positions, tweens and connections. Only UI that truly belongs to one character (an overhead billboard) lives and dies with it.
+- **`ResetOnSpawn = false` on nearly every GUI container** (ScreenGui, and any BillboardGui or SurfaceGui parented under PlayerGui: HUD, menus, shop, tutorial, offers). Build once at join and keep it across respawns; with the default `true` the whole UI is destroyed and rebuilt on every death, losing open windows, scroll positions, tweens and connections. Only UI that truly belongs to one character (an overhead billboard) lives and dies with it.
 - **State lives outside the instances.** Keep one source of truth per fact (a store, a Pulse/signal value or the replicated save), and have the UI render from it and write back through it: never read a TextLabel's text or a Frame's `Visible` to decide logic. Views subscribe, update only when the value changes, and are safe to show, hide and re-show.
 - **Survive respawn, rejoin and teleport:** derive what is open or selected from the store, re-bind to the new character (`CharacterAdded`) instead of rebuilding the UI, and restore on join from the saved or replicated state. Disconnect every listener when a view closes or is destroyed, and keep temporary state (a hover, a draft) out of the save.
+
+## World-space GUIs (BillboardGui, SurfaceGui)
+- **BillboardGui defaults: scaled size, studs offset.** Size with Scale (`UDim2.fromScale`, so it is measured in studs and shrinks with distance like the world) and offset with `StudsOffsetWorldSpace` (a world-space lift above the adornee, which stays above the head however the camera turns). Use pixel `Size` offsets, `StudsOffset` or `ExtentsOffset` only when the design asks (a tag that must stay a fixed on-screen size, for example). Set `Adornee`, `MaxDistance` and `AlwaysOnTop` deliberately (always-on-top only for pointers that must show through walls), `LightInfluence = 0` for UI, and keep it small and cheap: one per target, not per frame.
+- **SurfaceGui:** fix its `Face`, set `SizingMode` and `PixelsPerStud` deliberately (a legible density at the distance it is read), `LightInfluence` and `AlwaysOnTop` on purpose, and keep text large enough to read at that distance.
+- The same rules still apply inside them: bounds and rounded corners, readable text, the project's theme, build once and show or hide, state outside the instances.
 
 ## Performance
 
