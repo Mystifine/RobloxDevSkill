@@ -21,7 +21,8 @@ export type Stage = {
 	Caster: Part, -- the sphere effects start from
 	Target: Part, -- the cube effects aim at
 	Frame: CFrame, -- at the caster, looking at the target (play effects with this)
-	Camera: (self: Stage, kind: string?) -> CFrame,
+	Camera: (self: Stage, kind: string?, options: { Zoom: number?, Focus: Vector3?, Fov: number? }?) -> CFrame,
+	Show: (self: Stage, options: { Target: boolean?, Caster: boolean?, Floor: boolean? }) -> (),
 	Clear: (self: Stage) -> (),
 }
 
@@ -121,6 +122,36 @@ function Inspector.lint(root: Instance): ({ Finding }, string)
 	return findings, table.concat(lines, "\n")
 end
 
+-- Repairs what lint flags: every emitter without an exit gets a Transparency that holds its own curve until the last
+-- `tail` (0.22) of the particle's life and then fades to 1. Edit-time, on a template; returns the paths it changed.
+-- Check the result with lint() and a held frame, and write the template back to the project's source file.
+function Inspector.fixExit(root: Instance, tail: number?): { string }
+	local start = 1 - (tail or 0.22)
+	local changed = {}
+	local items = root:GetDescendants()
+	table.insert(items, root)
+	for _, item in items do
+		if item:IsA("ParticleEmitter") and not item:GetAttribute(SKIP) and not gone(item, 1) then
+			local keys = {}
+			for _, key in item.Transparency.Keypoints do
+				if key.Time < start - 1e-4 then
+					table.insert(keys, NumberSequenceKeypoint.new(key.Time, key.Value, key.Envelope))
+				end
+			end
+			if #keys == 0 then
+				local first, spread = at(item.Transparency, 0)
+				table.insert(keys, NumberSequenceKeypoint.new(0, first, spread))
+			end
+			local held, spread = at(item.Transparency, start)
+			table.insert(keys, NumberSequenceKeypoint.new(start, held, spread))
+			table.insert(keys, NumberSequenceKeypoint.new(1, 1, 0))
+			item.Transparency = NumberSequence.new(keys)
+			table.insert(changed, relative(root, item))
+		end
+	end
+	return changed
+end
+
 -- Seconds until every emitter under `root` has stopped emitting and its last particle has died.
 function Inspector.duration(root: Instance): number
 	local longest = 0
@@ -145,6 +176,12 @@ function Inspector.keyTimes(root: Instance): { number }
 		table.insert(times, math.floor(total * fraction * 20 + 0.5) / 20)
 	end
 	return times
+end
+
+-- Load every texture under `root` (a template or a folder of them) before the effect is first played. A cold effect can
+-- be frozen before its textures arrive and photograph as empty; preload first, or play it once to warm it.
+function Inspector.preload(root: Instance)
+	game:GetService("ContentProvider"):PreloadAsync({ root })
 end
 
 -- A held frame lives in this folder, outside the effect: the project's own cleanup (Debris, tweens, Destroy) cannot reach it.
@@ -235,6 +272,9 @@ function Inspector.hideUI(hide: boolean)
 	end
 end
 
+-- A sensible sweep for a general read of an effect: whole path, high angle, ground plan, particle detail.
+Inspector.views = { { "side", 1 }, { "iso", 1 }, { "top", 1 }, { "close", 0.6 } }
+
 -- A dark plate with a caster sphere and a target cube `distance` studs apart, high above the map so nothing else is in view.
 function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright: boolean? }?): Stage
 	local settings = options or {}
@@ -253,7 +293,8 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 		p.Parent = folder
 		return p
 	end
-	part("Floor", Vector3.new(260, 1, 260), origin - Vector3.yAxis * 0.5, if settings.Bright then Color3.fromRGB(200, 200, 205) else Color3.fromRGB(28, 28, 34))
+	local floor = part("Floor", Vector3.new(260, 1, 260), origin - Vector3.yAxis * 0.5, if settings.Bright then Color3.fromRGB(200, 200, 205) else Color3.fromRGB(28, 28, 34))
+	floor.CanQuery = true -- effects ray down to find the ground
 	local caster = part("Caster", Vector3.one * 4, origin + Vector3.yAxis * 2, Color3.fromRGB(80, 170, 255), Enum.PartType.Ball)
 	local target = part("Target", Vector3.one * 4, origin + Vector3.new(0, 2, -distance), Color3.fromRGB(235, 70, 70))
 	folder.Parent = workspace
@@ -261,12 +302,36 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 		Folder = folder, Caster = caster, Target = target,
 		Frame = CFrame.lookAt(caster.Position, Vector3.new(target.Position.X, caster.Position.Y, target.Position.Z)),
 	} :: any
-	-- Scriptable camera presets: "side" (default, both ends in view), "behind" (over the caster), "close" (on the target).
-	function stage.Camera(_: Stage, kind: string?): CFrame
+	-- Scriptable camera. kind: "side" (default, both ends in view), "iso" (high three-quarter), "top" (straight down: ground
+	-- shapes), "front" (from beyond the target, looking back at the caster), "behind" (over the caster's shoulder, down
+	-- the effect's path), "close" (the target, three-quarter). options.Zoom scales the distance (0.5 is twice as close, 2
+	-- twice as far), options.Focus replaces the look-at point (an impact spot, a flying projectile), options.Fov the lens.
+	function stage.Camera(_: Stage, kind: string?, options: { Zoom: number?, Focus: Vector3?, Fov: number? }?): CFrame
+		local settings = options or {}
 		local middle = (caster.Position + target.Position) / 2
-		local look = if kind == "behind" then CFrame.lookAt(caster.Position + Vector3.new(0, 7, 18), target.Position)
-			elseif kind == "close" then CFrame.lookAt(target.Position + Vector3.new(12, 6, 12), target.Position)
-			else CFrame.lookAt(middle + Vector3.new(distance * 1.1, 8, 0), middle)
+		local wide = math.max(distance * 1.1, 26)
+		local look: CFrame
+		if kind == "iso" then
+			look = CFrame.lookAt(middle + Vector3.new(1, 0.8, 0.9).Unit * wide * 1.25, middle)
+		elseif kind == "top" then
+			look = CFrame.lookAt(middle + Vector3.new(0, wide * 1.15, 0.001), middle)
+		elseif kind == "front" then
+			look = CFrame.lookAt(target.Position + Vector3.new(0, 7, -distance * 0.5), middle)
+		elseif kind == "behind" then
+			look = CFrame.lookAt(caster.Position + Vector3.new(0, 7, 18), target.Position)
+		elseif kind == "close" then
+			look = CFrame.lookAt(target.Position + Vector3.new(12, 6, 12), target.Position)
+		else
+			look = CFrame.lookAt(middle + Vector3.new(wide, 8, 0), middle)
+		end
+		local zoom = settings.Zoom or 1
+		local focus = settings.Focus or (if kind == "close" then target.Position elseif kind == "behind" then target.Position else middle)
+		if settings.Focus or zoom ~= 1 then
+			-- keep the preset's direction, move along it toward or away from the focus
+			local from = if settings.Focus then focus + (look.Position - (if kind == "close" then target.Position else middle)) else look.Position
+			local away = (from - focus)
+			look = CFrame.lookAt(focus + away * zoom, focus)
+		end
 		-- re-asserted every frame: a game's own camera controller would otherwise take the view back
 		RunService:UnbindFromRenderStep("__VFXStageCamera")
 		RunService:BindToRenderStep("__VFXStageCamera", Enum.RenderPriority.Camera.Value + 1, function()
@@ -274,10 +339,19 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 			if camera then
 				camera.CameraType = Enum.CameraType.Scriptable
 				camera.CFrame = look
-				camera.FieldOfView = 60
+				camera.FieldOfView = settings.Fov or 60
 			end
 		end)
 		return look
+	end
+	-- Hide or show the stage props, say `stage:Show({ Target = false })` for an unobstructed view of the effect.
+	function stage.Show(_: Stage, options: { Target: boolean?, Caster: boolean?, Floor: boolean? })
+		for name, part in { Target = target, Caster = caster, Floor = folder:FindFirstChild("Floor") } do
+			local visible = (options :: any)[name]
+			if visible ~= nil and part then
+				(part :: Part).Transparency = if visible then 0 else 1
+			end
+		end
 	end
 	function stage.Clear(_: Stage)
 		RunService:UnbindFromRenderStep("__VFXStageCamera")

@@ -32,7 +32,7 @@ A task can span several rows (a skill ability = coding + vfx + animation); load 
 ## Scripts
 
 - [scripts/ParticlePlayer.luau](scripts/ParticlePlayer.luau): fallback attribute-driven particle player. Use the project's own player if it has one.
-- [scripts/VFXInspector.luau](scripts/VFXInspector.luau): VFX inspection (lint particle exits, caster-sphere/target-cube stage, vanish watcher, frozen frames for screenshots). Run it on every effect before calling it done; steps in [references/vfx.md](references/vfx.md) section 7.
+- [scripts/VFXInspector.luau](scripts/VFXInspector.luau): VFX inspection (lint and repair particle exits, caster-sphere/target-cube stage with multi-angle cameras, vanish watcher, frozen frames for screenshots). Run it on every effect before calling it done; steps in [references/vfx.md](references/vfx.md) section 7.
 - [scripts/AssetAudit.luau](scripts/AssetAudit.luau): Toolbox asset safety audit. Run it on every imported asset before keeping anything.
 
 ## Handoffs (use if installed; otherwise follow the reference)
