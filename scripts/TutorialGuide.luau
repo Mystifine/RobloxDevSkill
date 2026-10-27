@@ -17,6 +17,7 @@
 
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
@@ -198,8 +199,9 @@ function Guide.lookAt(point: Vector3, hold: number?): () -> ()
 	return release
 end
 
--- Hides every GuiObject/ScreenGui in `hide` and sinks `keys` while a lesson runs; the returned function restores both.
--- Call it again on skip, rejoin and respawn paths, and keep the lock state out of the save.
+-- Hides every GuiObject/ScreenGui in `hide`, sinks `keys` and disables the reset button while a lesson runs; the returned
+-- function restores all three. The server must still refuse out-of-order requests and keep the player alive: this is the
+-- client half of an enforced tutorial. Keep the lock state out of the save (leaving mid-tutorial resets the run).
 function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
 	local restore = {}
 	for _, item in hide do
@@ -211,6 +213,7 @@ function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
 			item.Visible = false
 		end
 	end
+	pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", false)
 	if keys and #keys > 0 then
 		ContextActionService:BindActionAtPriority("TutorialLock", function()
 			return Enum.ContextActionResult.Sink
@@ -218,6 +221,7 @@ function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
 	end
 	return function()
 		ContextActionService:UnbindAction("TutorialLock")
+		pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", true)
 		for _, entry in restore do
 			if (entry[1] :: Instance).Parent then
 				(entry[1] :: any)[entry[2] :: string] = entry[3]
