@@ -9,6 +9,7 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 - **Author at 60 FPS** (unless the project sets another rate for a rig): scene at that rate before keying, keys on whole frames, export/import at the same rate.
 - **Proper weighted joints.** Normalized weights, at most 4 influences per vertex, no stray weights on distant bones, clean falloff. Test deformation in extreme poses before animating (`blender-character-rigging`).
 - **Clean animation.** Readable silhouette, anticipation/overshoot/settle, eased curves, no foot sliding, no jitter or flips, loops whose last frame meets the first, sparse keys rather than a bake of every frame unless needed.
+- **Feet meet the ground exactly.** A foot that is meant to touch the ground (stance, landing, stomp, idle) sits on the in-game floor, where the HumanoidRootPart's bottom minus HipHeight puts it, within 0.05 studs while planted. It never hovers above the floor, and no heel or toe sinks through it. Pose against that floor height, not by eye.
 
 ## 2. Route
 
@@ -38,7 +39,8 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
    | `seam`, `seam-speed` | a loop's last frame misses the first (over 1° / 0.05 studs), or its speed changes across the seam | `closeLoop(sequence)`; match the curve tangents |
    | `slide` | a planted foot drifts over 0.05 studs in a stationary clip | lock planted feet (IK) |
    | `stride` | in-place locomotion: a planted foot's backward speed varies over 25% | keep contact speed even; play the clip at `WalkSpeed / GroundSpeed` (in the report) |
-   | `floor`, `float` | a foot sinks over 0.2 studs, or none ever reaches the floor | the root height or HipHeight is wrong |
+   | `float` | a planted foot hovers over 0.05 studs above the floor, a still foot rests 0.15 to 0.6 studs up without touching, or no foot reaches the floor | lower the root or the leg onto the floor; `Ignore` it only for a foot lifted on purpose |
+   | `clip` | a planted foot sinks over 0.05 studs into the floor, or a heel or toe dips over 0.1 | raise it; pivot rolls on the toe or heel, not the ankle |
    | `end-offset` | a one-shot ends with the body over 0.5 studs from its start; the root does not follow, so it snaps back | move the character in code, or `Ignore` it for death and knockback clips |
    | `hyperextend` | a knee or elbow bends over 5° the wrong way | fix the pole target or IK |
    | `grid` | keys between frames | `snapKeys(sequence, fps)` |

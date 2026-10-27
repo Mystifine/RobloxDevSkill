@@ -617,28 +617,39 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		end
 	end
 
-	-- feet: planted drift (in place) or travel speed (in-place locomotion), floor penetration
+	-- feet: a planted foot sits on the floor (no float, no clip); planted drift (in place) or travel speed (locomotion)
 	local feet = feetOf(rig, settings)
 	local planted: { [string]: { boolean } } = {}
-	local stanceSpeeds, drifts, lowest, everPlanted = {}, {}, math.huge, false
+	local stanceSpeeds, drifts, levels, rests = {}, {}, {}, {}
+	local lowest, lowestName, lowestTime, everPlanted, measured = math.huge, "", 0, false, 0
 	for _, name in feet do
 		local find = locator(rig, name)
 		local item = rig.ByName[name]
 		if find and item then
-			local flags, heights, flat = {}, {}, {}
+			measured += 1
+			local flags, heights, flat, centre = {}, {}, {}, {}
 			for index, frame in frames do
 				local cf = find(frame) or rig.Rest
 				heights[index] = (if item:IsA("BasePart") then bottom(cf, item.Size) else cf.Position.Y) - rig.Ground
 				flat[index] = Vector3.new(cf.Position.X, 0, cf.Position.Z)
+				centre[index] = cf.Position
 				flags[index] = heights[index] <= CONTACT
-				lowest = math.min(lowest, heights[index])
+				if heights[index] < lowest then
+					lowest, lowestName, lowestTime = heights[index], name, frame.T
+				end
 				everPlanted = everPlanted or flags[index]
 			end
 			planted[name] = flags
+			-- a still foot a little above the floor: meant to stand on it, or lifted on purpose
+			local function resting(k: number): boolean
+				return k > 1 and heights[k] > CONTACT and heights[k] <= 0.6
+					and (centre[k] - centre[k - 1]).Magnitude / math.max(frames[k].T - frames[k - 1].T, 1e-4) < 2
+			end
+			local rested = false
 			local index = 1
 			while index <= #frames do
+				local stop = index
 				if flags[index] then
-					local stop = index
 					while stop < #frames and flags[stop + 1] do
 						stop += 1
 					end
@@ -646,21 +657,42 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 						local span = frames[stop].T - frames[index].T
 						local travel = flat[stop] - flat[index]
 						table.insert(stanceSpeeds, { Name = name, Speed = travel.Z / math.max(span, 1e-4), From = index, To = stop, Flat = flat, Span = span })
-						local drift = 0
+						local drift, sorted = 0, {}
 						for k = index, stop do
 							drift = math.max(drift, (flat[k] - flat[index]).Magnitude)
+							table.insert(sorted, heights[k])
 						end
+						table.sort(sorted)
 						table.insert(drifts, { Name = name, Drift = drift, Time = frames[index].T })
+						table.insert(levels, { Name = name, Level = sorted[math.ceil(#sorted / 2)], Time = frames[index].T })
 					end
-					index = stop + 1
-				else
-					index += 1
+				elseif resting(index) then
+					while stop < #frames and resting(stop + 1) do
+						stop += 1
+					end
+					if not rested and frames[stop].T - frames[index].T >= 0.15 then
+						rested = true
+						table.insert(rests, { Name = name, Height = heights[index], Time = frames[index].T })
+					end
 				end
+				index = stop + 1
 			end
 		end
 	end
+	local high, low = nil, nil -- the planted contacts furthest above and below the floor
+	for _, level in levels do
+		if not high or level.Level > high.Level then
+			high = level
+		end
+		if not low or level.Level < low.Level then
+			low = level
+		end
+	end
+	local levelText = if high and low then string.format("; planted %+.2f to %+.2f from the floor", low.Level, high.Level) else ""
 	local groundSpeed = nil
-	if #feet > 0 then
+	if measured == 0 then
+		table.insert(lines, "Feet: none found" .. (if #feet > 0 then " (" .. table.concat(feet, ", ") .. " are not on the rig)" else "") .. "; pass Feet = { ... } to check ground contact")
+	else
 		local back, total = 0, 0
 		for _, stance in stanceSpeeds do
 			total += 1
@@ -694,7 +726,8 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 				end
 			end
 			groundSpeed = sum / total
-			table.insert(lines, string.format("Feet: in-place locomotion, planted feet travel back %.1f studs/s (play at WalkSpeed / %.1f to stop sliding)", groundSpeed, groundSpeed))
+			table.insert(lines, string.format("Feet: in-place locomotion, planted feet travel back %.1f studs/s (play at WalkSpeed / %.1f to stop sliding)%s",
+				groundSpeed, groundSpeed, levelText))
 		else
 			local worst, worstName, worstTime = 0, "", 0
 			for _, drift in drifts do
@@ -702,17 +735,30 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 					worst, worstName, worstTime = drift.Drift, drift.Name, drift.Time
 				end
 			end
-			table.insert(lines, string.format("Feet: %s, planted drift %.2f studs%s; lowest %+.2f from the floor", if total > 0 then "planted" else "never planted",
-				worst, if worst > 0 then " (" .. worstName .. ")" else "", if lowest == math.huge then 0 else lowest))
+			table.insert(lines, string.format("Feet: %s, planted drift %.2f studs%s%s; lowest %+.2f", if total > 0 then "planted" else "never planted",
+				worst, if worst > 0 then " (" .. worstName .. ")" else "", levelText, if lowest == math.huge then 0 else lowest))
 			if worst > 0.05 then
 				add(if worst > 0.15 then "error" else "warn", worstName, "slide", string.format("planted foot slides %.2f studs from %s: keep planted feet still (IK lock in Blender)", worst, seconds(worstTime)))
 			end
-			if not everPlanted and #feet > 0 then
-				add("warn", table.concat(feet, ", "), "float", string.format("no foot comes within %.2f studs of the floor (lowest %+.2f): check the root offset or HipHeight", CONTACT, lowest))
-			end
 		end
-		if lowest < -0.2 then
-			add(if lowest < -0.5 then "error" else "warn", table.concat(feet, ", "), "floor", string.format("a foot sinks %.2f studs into the floor", -lowest))
+		-- a foot meant to meet the floor sits on it: within 0.05 studs while planted, never through it
+		if high and high.Level > 0.05 then
+			add(if high.Level > 0.12 then "error" else "warn", high.Name, "float", string.format("planted from %s but hovers %.2f studs above the floor: lower it onto the floor (root height or leg)",
+				seconds(high.Time), high.Level))
+		end
+		if low and low.Level < -0.05 then
+			add(if low.Level < -0.12 then "error" else "warn", low.Name, "clip", string.format("planted from %s but sunk %.2f studs into the floor: raise it onto the floor",
+				seconds(low.Time), -low.Level))
+		end
+		if lowest < -0.1 and (not low or lowest < low.Level - 0.05) then
+			add(if lowest < -0.3 then "error" else "warn", lowestName, "clip", string.format("dips %.2f studs into the floor at %s: a toe or heel goes through the ground", -lowest, seconds(lowestTime)))
+		end
+		for _, rest in rests do
+			add("warn", rest.Name, "float", string.format("rests %.2f studs above the floor from %s without touching it: lower it if it should stand there (Ignore 'float' if it is lifted on purpose)",
+				rest.Height, seconds(rest.Time)))
+		end
+		if not everPlanted and #rests == 0 then
+			add("warn", table.concat(feet, ", "), "float", string.format("no foot reaches the floor (lowest %+.2f): check the root offset or HipHeight", lowest))
 		end
 	end
 
