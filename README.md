@@ -11,6 +11,7 @@ references/
   ui.md                  mobile first, stay in bounds, centered anchors, project style, 512x512 icons
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow
+  characters.md          all-ages character rules (2D and 3D): flat chest, 70% cover, contrasting color, review
   assets.md              Toolbox policy (no code), safe intake, sounds
   animation.md           60 FPS, weighted joints, clean curves, export and verify
   onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields)

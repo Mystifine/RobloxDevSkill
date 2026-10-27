@@ -17,6 +17,7 @@ Use Blender skills when installed: `blender-director` (plan) -> `blender-modeler
 Rules:
 - Real-world scale, applied transforms, sensible origin/pivot, clear naming.
 - No hidden or interior faces that never render; no coplanar overlaps (z-fighting); consistent normals; no n-gons left unintended.
+- Characters that could read as female follow [characters.md](characters.md), renders included.
 - Run `blender-asset-qa` before calling a model done. Verify triangle count, UVs, normals and materials after export.
 - After import in Studio: set `CollisionFidelity` (`Box`/`Hull` for most; precise only when needed), `CanCollide/CanTouch/CanQuery` off for decor, `Anchored` as appropriate, `RenderFidelity` as fits, and confirm textures applied. Remove leftover empty Models or Folders.
 

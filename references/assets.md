@@ -10,7 +10,7 @@
 | Images / decals | Yes, temporary preferred | check content; swap when the user supplies final art |
 | Sounds | Yes, may be kept | see below |
 
-**Character art** (portraits, thumbnails, icons) must also pass the all-ages check in [ui.md](ui.md) (Icons and images) before any upload.
+**Character art and models** (portraits, thumbnails, icons, avatars) must also pass [characters.md](characters.md) before use or upload.
 
 ## Safe intake (every asset, no exceptions)
 
