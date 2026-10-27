@@ -28,7 +28,7 @@ Count scaling: scale `EmitCount` by the player's graphics quality on the client 
 
 ## 4. Smooth in, smooth out
 
-- Size and Transparency sequences start and end invisible (size 0 or transparency 1 at both ends unless the layer is a hard-edged slash); no pops.
+- Every particle exits by `Transparency` -> 1, `Size` -> 0 or `Squash` at the end of its life, and enters the same way; a layer that only ends because its lifetime ran out pops out midair (checked by `Inspector.lint`, section 7).
 - Fade lights (`Brightness` tween), decals, beams (`Transparency`/`Width`), trails and meshes (scale + transparency) rather than destroying them while visible.
 - Teardown order: stop emitting (`Enabled = false`) -> let existing particles and tweens finish -> destroy. Do not destroy before `EmitDelay + EmitDuration + Lifetime.Max` (plus a small buffer) has passed for every emitter, and the longest fade for everything else. Compute this from the emitters rather than guessing; sustained effects expose a `Stop()` that does the same.
 - Clean up on interrupt (death, unequip, cancel, player leave) with the same fade path.
@@ -45,6 +45,14 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 - Additive emission (`LightEmission = 1`) can show rectangular texture backgrounds; check the texture's alpha before trusting it.
 - Only the local client draws its own predicted effects; do not also replay them for that player.
 
-## 7. Review
+## 7. Inspect (an effect is not done until it passes)
 
-Capture the effect from the gameplay camera and close up. Studio Edit-mode captures may omit particles and in-world GUI text; Play-mode captures show them. Park the camera near the effect (far cameras cull VFX) and time beats by waiting inside the client call. After the effect ends, confirm no instances, tweens or connections remain.
+A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the end of its life, never by lifetime alone (it pops out midair), and nothing may be destroyed while still visible. [scripts/VFXInspector.luau](../scripts/VFXInspector.luau) checks both. Studio Edit captures omit particles, so **lint in Edit, look in Play** (Client DataModel). The client has no `loadstring`: put the module in a temporary `ReplicatedStorage.__VFXInspector` ModuleScript and delete it when done.
+
+1. **Lint, Edit, instant:** `local findings, text = Inspector.lint(templateOrFolder)`. Fix every `ERROR` (`no-exit`, `trail-tail`): the end of life must be transparent (>= 0.95), tiny, or squashed (`|Squash|` >= 1 and 0.5 above its start; calibrate that threshold against a held frame). `flipbook-exit` is a warning: a one-shot flipbook ends on its own last frame, so confirm it in step 4 or fade it anyway. A deliberately hard-edged layer opts out with the boolean attribute `InspectIgnore` and a comment saying why.
+2. **Stage, Play client:** `Inspector.hideUI(true)`, `local stage = Inspector.stage()` (a **sphere caster** and a **cube target** on a dark plate high above the map), `stage:Camera("side")` (or `"behind"`, `"close"`). Play the effect from `stage.Caster` toward `stage.Target` through the project's player (`stage.Frame` sits at the caster, facing the target).
+3. **Watch:** `local watch = Inspector.watch(container)` before playing; after the container is gone, `watch.Stop()` (it yields a frame) lists `popped` (part, decal or light removed while visible) and `cut-off` (emitter, beam or trail removed with particles alive). Fix by fading first and destroying after `EmitDelay + EmitDuration + Lifetime.Max`.
+4. **Look:** take `times = Inspector.keyTimes(container)` right after playing. For each time: play a fresh copy, `Inspector.hold(container, t)`, `screen_capture`, `Inspector.release()`. `hold` snapshots the effect into a holder the project's `Debris`, tweens and `Destroy` cannot reach, so capture latency no longer matters. For one emitter's last frame: `Inspector.endFrame(stage, emitter)` then capture; particles still clearly visible there vanish midair.
+5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.
+
+Notes: layers whose `EmitDelay` is later than the held time fire into the frozen frame as fresh births; compute `keyTimes` before `hold` (it empties the container).

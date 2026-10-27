@@ -9,12 +9,13 @@ SKILL.md                 dispatcher (always loaded, ~50 lines)
 references/
   coding.md              dependencies, structure, backend performance, pitfalls, verification
   ui.md                  centered anchors, matching project style, 512x512 icons, placeholders
-  vfx.md                 research, property tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out
+  vfx.md                 research, property tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, inspection
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow
   assets.md              Toolbox policy (no code), safe intake, sounds
   animation.md           60 FPS, weighted joints, clean curves, export and verify
 scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
+  VFXInspector.luau      VFX inspection: exit lint, sphere/cube stage, vanish watcher, frozen-frame captures
   AssetAudit.luau        Toolbox safety audit: report first, then strip
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
@@ -41,7 +42,7 @@ It hands off to Blender and animation skills when they are installed (`blender-d
 
 ## Using the scripts
 
-Both are plain Luau modules. `AssetAudit` runs in Studio (Edit) on an inserted asset; `ParticlePlayer` runs on the client and mirrors the `EmitDelay` / `EmitCount` / `EmitDuration` attribute contract documented in `references/vfx.md`. Prefer the project's own particle player when it has one.
+All are plain Luau modules. `AssetAudit` runs in Studio (Edit) on an inserted asset; `VFXInspector` lints in Edit and photographs in Play (see `references/vfx.md` section 7); `ParticlePlayer` runs on the client and mirrors the `EmitDelay` / `EmitCount` / `EmitDuration` attribute contract documented in `references/vfx.md`. Prefer the project's own particle player when it has one.
 
 ## License
 
