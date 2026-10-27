@@ -11,7 +11,7 @@ references/
   ui.md                  mobile first, stay in bounds, centered anchors, project style, 512x512 icons
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow
-  characters.md          all-ages character rules (2D and 3D): flat chest, 70% cover, contrasting color, review
+  characters.md          all-ages character rules (2D and 3D): flat chest, no cleavage, 70% in-character cover, review
   assets.md              Toolbox policy (no code), safe intake, sounds, uploads (asset key, public)
   animation.md           60 FPS, weighted joints, clean curves, export and verify
   onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields)
@@ -19,6 +19,7 @@ scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
   VFXInspector.luau      VFX inspection: exit lint, sphere/cube or real-rig stage, vanish watcher, frozen-frame captures
   AnimationInspector.luau  animation inspection: exact-time audit (pops, seams, feet, hyperextension, markers) and contact sheet
+  icon_outlines.py       icon set outline style (white sticker border or not) and the icons that break it
   UIBounds.luau          UI bounds audit: nothing leaks out of its box, rim or rounded corner
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   AssetAudit.luau        Toolbox safety audit: report first, then strip

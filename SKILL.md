@@ -16,7 +16,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 5. **No Toolbox code, ever.** Models, VFX and images may come from the Toolbox (audited, preferably temporary); Scripts, LocalScripts and ModuleScripts never. Sounds are the exception that may be kept.
 6. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
 7. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Design and check the phone first; nothing leaks out of its box, rim or rounded corner; ground effects land on the floor (never at a character's hip, head or in the air). See `references/ui.md` and `references/vfx.md` section 5.
-8. **Characters are all-ages safe, 2D and 3D.** Female designs are fine with a flat chest and an opaque cover, in a color unlike the skin, over the chest and at least 70% of the torso. Read `references/characters.md` before generating, modeling or uploading any character.
+8. **Characters are all-ages safe, 2D and 3D.** Female designs are fine with a flat chest, no cleavage, and in-character armor or clothing over the chest and at least 70% of the torso, the chest piece unlike the skin. Read `references/characters.md` before generating, modeling or uploading any character.
 
 ## Route
 
@@ -37,6 +37,7 @@ A task can span several rows (a skill ability = coding + vfx + animation); load 
 - [ParticlePlayer](scripts/ParticlePlayer.luau): fallback particle player; use the project's own first.
 - [VFXInspector](scripts/VFXInspector.luau): mandatory effect check, vfx.md section 8.
 - [AnimationInspector](scripts/AnimationInspector.luau): mandatory clip audit and contact sheet, animation.md section 4.
+- [icon_outlines.py](scripts/icon_outlines.py): an icon set's outline style and the icons that break it, ui.md.
 - [UIBounds](scripts/UIBounds.luau): mandatory bounds audit, phone size first, ui.md.
 - [TutorialGuide](scripts/TutorialGuide.luau): tutorial pointers and UI lock, onboarding.md.
 - [AssetAudit](scripts/AssetAudit.luau): mandatory audit of every imported asset, assets.md.

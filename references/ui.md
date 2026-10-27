@@ -50,6 +50,7 @@ Nothing leaks out of its box unless the design says so. **A stroke is drawn outs
 ## Icons and images
 
 - Generate icons as **512x512, 1:1 (square), transparent-background PNG** by default (smaller memory on clients). If a generator cannot output transparency, remove the background and confirm the alpha channel before upload. Use a different size or aspect only for non-icon art (banners, hero art), with the user's agreement.
+- **Outlines match the set.** Before generating, measure the siblings' edge with [scripts/icon_outlines.py](../scripts/icon_outlines.py): a viewer shows transparency as white, which hides a white sticker border. Give every new or edited icon the same edge (a dark ink line, a white sticker border of the same width, or none). An edit never adds or drops a border, and a brief states the measured style, never one remembered.
 - **Character art** follows [characters.md](characters.md): put its garment line in the prompt and review at full size before upload.
 - **Uploads** use the project's asset key and must end public: [assets.md](assets.md), Uploading.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
