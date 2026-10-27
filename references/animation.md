@@ -1,5 +1,9 @@
 # Animation (Blender to Roblox)
 
+## Roblox characters (R15 / R6): check for the skill first
+
+When the task animates a Roblox character, first look for the **`animate-roblox-characters`** skill (check the available-skills list; use `find-skills` if unsure) and load it for the R15/R6 details: rig import, joint names, export format and Studio validation. If it is not available, proceed normally with the rest of this reference and the Blender rigging/animation skills.
+
 ## Non-negotiables
 
 - **Author at 60 FPS.** Set the Blender scene to 60 fps before keying, keep keys on whole frames, and export/import at 60 so playback is smooth.
@@ -8,7 +12,7 @@
 
 ## Route
 
-- Roblox R6/R15 character actions (walk, run, idle, attacks, emotes): use `animate-roblox-characters`, which handles Studio-derived rigs, `.rbxanim`/FBX export and optional Studio playback validation.
+- Roblox R6/R15 character actions (walk, run, idle, attacks, emotes): `animate-roblox-characters` when available (Studio-derived rigs, `.rbxanim`/FBX export, optional Studio playback validation).
 - Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
 - Nothing fitting installed: search `find-skills`, then do it yourself.
 

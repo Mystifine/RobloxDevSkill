@@ -25,7 +25,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
 | 3D models, meshes, textures, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Toolbox, free models, images, sounds, any imported asset | [references/assets.md](references/assets.md) |
-| Rigging, skinning, Blender animation, import to Roblox | [references/animation.md](references/animation.md) |
+| Rigging, skinning, Blender animation, import to Roblox (R15/R6: looks for `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
 
 A task can span several rows (a skill ability = coding + vfx + animation); load each reference once, when you reach that part.
 

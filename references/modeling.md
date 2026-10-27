@@ -8,7 +8,7 @@
 
 ## Quality target
 
-Default to highly detailed, **full PBR**: color, normal, metalness and roughness maps (`SurfaceAppearance`) on clean, non-overlapping UVs with consistent texel density. Bake high-poly detail to normals. Maps are capped near 1024x1024 on Roblox; spend resolution on what is visible. Use a different style (stylized, flat color, hand-painted) only when the user or the project says so.
+Default to highly detailed, **full PBR**: color, normal, metalness and roughness maps (`SurfaceAppearance`) on clean, non-overlapping UVs with consistent texel density. Bake high-poly detail to normals. Roblox caps texture maps at 1024x1024, so bake at 1024 and spend the texel budget on what is visible. Use a different style (stylized, flat color, hand-painted) only when the user or the project says so.
 
 ## Workflow
 

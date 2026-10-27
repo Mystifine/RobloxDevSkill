@@ -16,17 +16,24 @@ references/
 scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
   AssetAudit.luau        Toolbox safety audit: report first, then strip
+install/
+  install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
+INSTALL.md               placement rules, options, manual steps
 ```
 
 ## Install
 
-Claude Code (project or user skills folder) or any agent skills directory:
+The skill installs to `~/.agents/skills/roblox-dev`. If `~/.claude` exists, Claude gets a link to that copy (never a second copy); if only `~/.claude` exists, it installs there. Add `-Local` / `--local` to install into the current project instead.
 
 ```powershell
-git clone https://github.com/Mystifine/RobloxDevSkill.git "$HOME\.agents\skills\roblox-dev"
+irm https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.ps1 -OutFile install.ps1; ./install.ps1
 ```
 
-The folder name should match the skill name, `roblox-dev`. For Claude Code, link it into `~\.claude\skills\roblox-dev` (a directory junction or a copy).
+```sh
+curl -fsSLO https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.sh && sh install.sh
+```
+
+Full rules, options and manual steps: [INSTALL.md](INSTALL.md).
 
 ## Companion skills
 

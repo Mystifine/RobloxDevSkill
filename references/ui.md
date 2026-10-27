@@ -19,7 +19,7 @@ Read the project's existing UI controllers/components, theme or style constants 
 
 ## Icons and images
 
-- Generate icons at **512x512** by default (smaller memory on clients). Use higher resolution only for large hero art, with the user's agreement.
+- Generate icons as **512x512, 1:1 (square), transparent-background PNG** by default (smaller memory on clients). If a generator cannot output transparency, remove the background and confirm the alpha channel before upload. Use a different size or aspect only for non-icon art (banners, hero art), with the user's agreement.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
 - When an image is needed and not supplied: look in the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; images are normally supplied later to upload and swap in.
 - Preload important images (`ContentProvider:PreloadAsync`) before showing a screen that depends on them.
