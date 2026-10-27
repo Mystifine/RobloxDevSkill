@@ -2,7 +2,7 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: eight always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
+`SKILL.md` is a short dispatcher: nine always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
 
 ```
 SKILL.md                 dispatcher (always loaded, ~50 lines)
@@ -10,7 +10,7 @@ references/
   coding.md              dependencies, structure, backend performance, pitfalls, verification
   ui.md                  mobile first, stay in bounds, centered anchors, project style, 512x512 icons
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
-  modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow
+  modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow, no z-fighting
   characters.md          all-ages character rules (2D and 3D): flat chest, no cleavage, 70% in-character cover, review
   assets.md              Toolbox policy (no code), safe intake, sounds, uploads (asset key, public)
   animation.md           60 FPS, weighted joints, clean curves, export and verify
@@ -20,6 +20,7 @@ scripts/
   VFXInspector.luau      VFX inspection: exit lint, sphere/cube or real-rig stage, vanish watcher, frozen-frame captures
   AnimationInspector.luau  animation inspection: exact-time audit (pops, seams, feet, hyperextension, markers) and contact sheet
   icon_outlines.py       icon set outline style (white sticker border or not) and the icons that break it
+  ZFight.luau            z-fighting audit and fix: coplanar overlapping faces and decal ZIndex ties
   UIBounds.luau          UI bounds audit: nothing leaks out of its box, rim or rounded corner
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   AssetAudit.luau        Toolbox safety audit: report first, then strip
