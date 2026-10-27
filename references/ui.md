@@ -4,6 +4,24 @@
 
 Read the project's existing UI controllers/components, theme or style constants (colors, fonts, corner radius, stroke, padding, tween styles), and its image-asset table. New UI reuses those; do not introduce a second visual language unless the user asks for one. Reuse existing components before building new ones.
 
+## Mobile first
+
+Roblox is a phone platform: **design, build and verify for the phone first**, then scale up to tablet and desktop, unless the user says otherwise. The smallest case is the case.
+
+- Start from the phone's landscape size (about 844 x 390) and its safe area; add layout for larger screens with constraints, not the reverse. Reserve the thumbstick and jump/action zones; never put a control under them.
+- Touch first: every button at least 44 px in both directions (after the device scale), no hover-only information, no tiny close buttons, text no smaller than about 11 px after scaling.
+- Verify at phone, then tablet, then desktop; with the Studio device emulator on, mouse input becomes touch. A layout that only works on desktop is unfinished.
+- Unless the project says portrait is unsupported, check both orientations; if it is unsupported, say so and do not add portrait layouts.
+
+## Stay in bounds
+
+Nothing leaks out of its box unless the design says so. **A stroke is drawn outside its frame**, so an element's outline adds its thickness on every side: a bar 1 px inside a rim still touches the rim once its own outline is counted.
+
+- Children stay inside the parent with their outlines, keep **at least 2 px clear** of any border, rim or outline band, and stay clear of **rounded corners** (a child near a corner of a `UICorner` parent can poke out of the arc).
+- Size content from the container's inner edge (rim inset plus stroke thickness), with a margin, not from its outer edge.
+- A deliberate overlap (a badge breaking a card's corner, a glow, a shine sweep) is marked with the boolean attribute `AllowBleed` and a comment that says why.
+- Check with [scripts/UIBounds.luau](../scripts/UIBounds.luau) on the mounted UI at the phone size first: `UIBounds.audit(frame)` reports `outside-parent`, `on-border`, `corner` and `outside-root` with pixel amounts. Fix the layout, not the audit.
+
 ## Layout rules
 
 - **Center anchor.** Set `AnchorPoint = (0.5, 0.5)` and position by the element's center, so tweens of `Size`, `Rotation` and `Position` (pop-ins, scale-ups, shakes) grow from the middle. Use another anchor only when asked or when an edge must stay pinned (for example a bar that fills from the left).

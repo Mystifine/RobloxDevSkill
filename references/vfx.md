@@ -28,16 +28,27 @@ Count scaling: scale `EmitCount` by the player's graphics quality on the client 
 
 ## 4. Smooth in, smooth out
 
-- Every particle exits by `Transparency` -> 1, `Size` -> 0 or `Squash` at the end of its life, and enters the same way; a layer that only ends because its lifetime ran out pops out midair (checked by `Inspector.lint`, section 7).
+- Every particle exits by `Transparency` -> 1, `Size` -> 0 or `Squash` at the end of its life, and enters the same way; a layer that only ends because its lifetime ran out pops out midair (checked by `Inspector.lint`, section 8).
 - Fade lights (`Brightness` tween), decals, beams (`Transparency`/`Width`), trails and meshes (scale + transparency) rather than destroying them while visible.
 - Teardown order: stop emitting (`Enabled = false`) -> let existing particles and tweens finish -> destroy. Do not destroy before `EmitDelay + EmitDuration + Lifetime.Max` (plus a small buffer) has passed for every emitter, and the longest fade for everything else. Compute this from the emitters rather than guessing; sustained effects expose a `Stop()` that does the same.
 - Clean up on interrupt (death, unequip, cancel, player leave) with the same fade path.
 
-## 5. Meshes
+## 5. Placement (where an effect spawns)
+
+An effect that appears in the air, on a head or inside a body is a placement bug, not a style choice.
+
+- **Never use a character's root position as a ground point.** `HumanoidRootPart` is about 3 studs above the floor and the head about 2.6 above that. A locked target position is a hip, not a floor.
+- **Ground effects** (rings, cracks, pools, telegraphs): ray straight down from just above the point (4 studs, not 8 or more, so a ceiling is not hit), 40 studs long, **ignoring every character, monster, shadow, other effect and non-collidable prop** (`RaycastParams.RespectCanCollide = true`, plus an exclude list built from all of them; reuse the project's helper, for example `SkillMath.params` + `ground`). The ray must not start inside what it ignores and must not stop on a head, a drop of VFX or a decal. On a **miss, drop to the feet (point minus the hip offset), never leave it at hip height**. Lift 0.1-0.5 studs over the floor's flat dressing, and use `hit.Normal` for slopes.
+- **Body effects** attach to the right part by an Attachment (a crown on the Head, a foot ring on the foot or root's floor point, a hand glow on the hand), never by a world offset from the root that drifts.
+- **Air effects** (meteors, auras at chest height) declare their height from a named constant and are marked `Airborne` for the inspector.
+- **Derive spawn points on the server from authoritative facts** (the target's floor point, the boss's feet) and send those; clients should not guess heights from hip positions.
+- Check with `Inspector.placement(container)` (section 8): it flags `floating` parts and parts `in-body`, run with a real character standing on the stage.
+
+## 6. Meshes
 
 Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones) or as a flipbook carrier. Keep it low-poly, one material, `CanCollide/CanTouch/CanQuery = false`, `Massless`, and fade it like any other layer.
 
-## 6. Budget and gotchas
+## 7. Budget and gotchas
 
 - Set and respect a budget per cast (particles, parts, beams, lights) and per-viewer limits (distance cull, concurrent effects). Preload textures. Avoid big stacked transparent quads (overdraw). Never create instances per frame.
 - `Orientation = VelocityParallel` lays the texture's width along motion, so tip-up textures go sideways; pick or rotate textures accordingly.
@@ -45,7 +56,7 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 - Additive emission (`LightEmission = 1`) can show rectangular texture backgrounds; check the texture's alpha before trusting it.
 - Only the local client draws its own predicted effects; do not also replay them for that player.
 
-## 7. Inspect (an effect is not done until it passes)
+## 8. Inspect (an effect is not done until it passes)
 
 A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the end of its life, never by lifetime alone (it pops out midair), and nothing may be destroyed while still visible. [scripts/VFXInspector.luau](../scripts/VFXInspector.luau) checks both. Studio Edit captures omit particles, so **lint in Edit, look in Play** (Client DataModel). The client has no `loadstring`: put the module in a temporary `ReplicatedStorage.__VFXInspector` ModuleScript and delete it when done.
 
@@ -56,6 +67,7 @@ A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the
    - `stage:Camera(kind, { Zoom = n, Focus = point, Fov = n })`, kinds `"side"` (default, whole path), `"iso"` (high three-quarter), `"top"` (straight down: ground shapes, rings, cones), `"front"` (from beyond the target, back at the caster), `"behind"` (down the path), `"close"` (the target). `Zoom` 0.5 is twice as close, 2 twice as far; `Focus` aims at an impact spot. `Inspector.views` is a ready sweep: `side`, `iso`, `top`, `close` at 0.6.
    - `stage:Show({ Target = false, Caster = false, Floor = false })` hides the props for an unobstructed view of the effect; show them again to judge scale and aim.
    - Default read per key time: `iso` for the shape, `top` for ground coverage and radius, a `close` zoom for particle detail, `side` for height and travel.
+   - Placement: `Inspector.placement(container)` after the effect has landed (with a real character on the stage): `floating` and `in-body` mean it spawned in the air or inside a body.
    - For one emitter's last frame: `Inspector.endFrame(stage, emitter)` then capture; particles still clearly visible there vanish midair.
 5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.
 

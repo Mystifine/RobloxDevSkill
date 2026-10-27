@@ -256,6 +256,55 @@ function Inspector.endFrame(stage: Stage, emitter: ParticleEmitter, fraction: nu
 	copy.TimeScale = 0
 end
 
+-- Where did the effect land? Run it a moment after playing. Every effect part (a template's root, a piece) is tested:
+--   floating   a part meant for the ground is more than `tolerance` (1.5) studs above the floor under it
+--   in-body    a part sits inside a character's bounding box (an effect spawned on a head or a chest by mistake)
+-- A part meant for the air (meteors, auras at chest height) opts out with the boolean attribute `Airborne`. The floor is
+-- found like the game finds it: a ray down that ignores characters and effects and respects CanCollide.
+function Inspector.placement(container: Instance, tolerance: number?): ({ Finding }, string)
+	local limit = tolerance or 1.5
+	local findings: { Finding } = {}
+	local characters: { Model } = {}
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("Humanoid") and descendant.Parent and descendant.Parent:IsA("Model") then
+			table.insert(characters, descendant.Parent)
+		end
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.RespectCanCollide = true
+	local ignore: { Instance } = { container }
+	for _, character in characters do
+		table.insert(ignore, character)
+	end
+	params.FilterDescendantsInstances = ignore
+	for _, item in container:GetDescendants() do
+		if item:IsA("BasePart") and not item:GetAttribute("Airborne") and item.Name ~= "Floor" then
+			for _, character in characters do
+				local cf, size = character:GetBoundingBox()
+				local local_ = cf:PointToObjectSpace(item.Position)
+				-- above the feet: a ground effect at the soles is where it belongs
+				if math.abs(local_.X) <= size.X / 2 + 0.5 and local_.Y > -size.Y / 2 + 1.2 and local_.Y <= size.Y / 2 + 0.5
+					and math.abs(local_.Z) <= size.Z / 2 + 0.5 then
+					table.insert(findings, { Severity = "error", Path = relative(container, item), Rule = "in-body",
+						Detail = "inside " .. character.Name .. "'s bounds at " .. tostring(item.Position) .. ": spawn ground effects on the floor and body effects on the right attachment" })
+				end
+			end
+			local hit = workspace:Raycast(item.Position + Vector3.yAxis * 2, -Vector3.yAxis * 60, params)
+			if hit and item.Position.Y - hit.Position.Y > limit and item.Transparency >= 0.95 then
+				table.insert(findings, { Severity = "error", Path = relative(container, item), Rule = "floating",
+					Detail = string.format("%.1f studs above the floor: ray down from the point, ignoring characters, and place it there (or mark it Airborne)", item.Position.Y - hit.Position.Y) })
+			end
+		end
+	end
+	local lines = {}
+	for _, finding in findings do
+		table.insert(lines, string.format("ERROR %s [%s] %s", finding.Path, finding.Rule, finding.Detail))
+	end
+	table.insert(lines, #findings .. " findings")
+	return findings, table.concat(lines, "\n")
+end
+
 -- Hide (true) or restore (false) every ScreenGui in PlayerGui so popups and the HUD stay out of the captures. Client only.
 function Inspector.hideUI(hide: boolean)
 	local gui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
@@ -294,7 +343,7 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 		return p
 	end
 	local floor = part("Floor", Vector3.new(260, 1, 260), origin - Vector3.yAxis * 0.5, if settings.Bright then Color3.fromRGB(200, 200, 205) else Color3.fromRGB(28, 28, 34))
-	floor.CanQuery = true -- effects ray down to find the ground
+	floor.CanQuery, floor.CanCollide = true, true -- effects ray down to find the ground, and a character can stand on it
 	local caster = part("Caster", Vector3.one * 4, origin + Vector3.yAxis * 2, Color3.fromRGB(80, 170, 255), Enum.PartType.Ball)
 	local target = part("Target", Vector3.one * 4, origin + Vector3.new(0, 2, -distance), Color3.fromRGB(235, 70, 70))
 	folder.Parent = workspace
