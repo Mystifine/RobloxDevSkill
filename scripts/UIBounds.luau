@@ -135,6 +135,7 @@ function UIBounds.audit(root: GuiBase2d, options: { Ignore: { string }? }?): ({ 
 			end
 			local radius = cornerRadius(parent)
 			local flat = item:IsA("TextLabel") or item:IsA("TextButton") or item:IsA("TextBox") or item:IsA("ImageLabel") or item:IsA("ImageButton")
+				or (item.BackgroundTransparency >= 0.95 and grow == 0) -- an invisible layout box draws no corner
 			if radius > 2 and over <= SLACK and not flat then
 				-- the child's corners against the parent's rounded corners; a rounded child's corner is pulled in along the diagonal
 				local pull = (cornerRadius(item) + grow) * (1 - 0.7071)
@@ -160,7 +161,8 @@ function UIBounds.audit(root: GuiBase2d, options: { Ignore: { string }? }?): ({ 
 			local innerLow, innerHigh = frame.AbsolutePosition, frame.AbsolutePosition + frame.AbsoluteSize
 			local outerLow, outerHigh = innerLow - Vector2.one * thickness, innerHigh + Vector2.one * thickness
 			for _, other in items do
-				if not related(other, frame) then
+				-- only elements in the frame's own container: a separate window that happens to overlap is not a leak
+				if not related(other, frame) and frame.Parent ~= nil and other:IsDescendantOf(frame.Parent) then
 					local grow = outline(other)
 					local low, high = rect(other, grow)
 					local crosses = low.X < outerHigh.X - SLACK and high.X > outerLow.X + SLACK and low.Y < outerHigh.Y - SLACK and high.Y > outerLow.Y + SLACK
