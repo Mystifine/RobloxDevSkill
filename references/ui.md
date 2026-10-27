@@ -51,6 +51,7 @@ Nothing leaks out of its box unless the design says so. **A stroke is drawn outs
 
 - Generate icons as **512x512, 1:1 (square), transparent-background PNG** by default (smaller memory on clients). If a generator cannot output transparency, remove the background and confirm the alpha channel before upload. Use a different size or aspect only for non-icon art (banners, hero art), with the user's agreement.
 - **Character art** follows [characters.md](characters.md): put its garment line in the prompt and review at full size before upload.
+- **Uploads** use the project's asset key and must end public: [assets.md](assets.md), Uploading.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
 - When an image is needed and not supplied: look in the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; images are normally supplied later to upload and swap in.
 - Preload important images (`ContentProvider:PreloadAsync`) before showing a screen that depends on them.

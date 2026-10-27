@@ -1,4 +1,4 @@
-# Assets (Toolbox and imports)
+# Assets (Toolbox, imports and uploads)
 
 ## Policy
 
@@ -28,3 +28,8 @@ If anything is ambiguous or looks malicious, discard the asset and say so.
 - Sounds are the one Toolbox category meant to be kept. Prefer Roblox-licensed libraries (Pro Sound Effects userId `7462895450`, APM userId `7462718749`) found through the Toolbox API; Studio MCP search cannot filter by creator.
 - Choose by description, then measure: duration, onset, peak/loudness and spectrum (play it in a throwaway Studio script or a probe tool), so it fits the beat and mix.
 - Put ids in the project's sound table; set `Volume`, `RollOffMaxDistance` and a `SoundGroup` to match existing audio.
+
+## Uploading (Open Cloud)
+
+- **Upload with the asset key.** Projects often keep a separate API key for asset uploads, owned by a dedicated uploader account (for example `ROBLOX_CLOUD_ASSET_API_KEY` beside a main key). Use it for every asset upload, and keep the main key for what the experience owner must own (developer products, game passes, experience settings). With no asset key, ask before uploading with the main one. The content rules (the audit above, [characters.md](characters.md)) apply whichever account uploads. Never print a key or copy it into source, manifests, logs or Studio.
+- **Make those uploads public (Open Use).** They belong to a different creator than the experience, so the game can load them only when they are open to everyone. Images, Decals and Meshes start as Open Use unless the uploading account turned on Asset Privacy. Grant anything restricted to everyone with `PATCH https://apis.roblox.com/asset-permissions-api/v1/assets/permissions` (beta; key scope `asset-permissions:write`; `subjectType` `All` with an empty `subjectId`, the ids in `requests`, `action` per the reference schema) or on the asset's Creator Hub permissions. Check `successAssetIds`, confirm each id loads in the experience, and report any that stay private.
