@@ -10,6 +10,8 @@
 | Images / decals | Yes, temporary preferred | check content; swap when the user supplies final art |
 | Sounds | Yes, may be kept | see below |
 
+**Character art** (portraits, thumbnails, icons) must also pass the all-ages check in [ui.md](ui.md) (Icons and images) before any upload.
+
 ## Safe intake (every asset, no exceptions)
 
 1. Search with Studio MCP `search_asset`; read the result list and prefer trusted creators and plain results.

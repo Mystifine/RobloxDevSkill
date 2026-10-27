@@ -7,7 +7,7 @@
 --   spot.Focus(Guide.screenRect(chest))          -- a 3D Model/BasePart: the focus box is its projected bounds
 --   spot.Clear()                                 -- lights the screen again; spot.Destroy() removes it
 --   local stopArrow = Guide.arrow(chest)         -- bobbing arrow floating above a 3D target
---   local stopBeam = Guide.beam(gatePosition)    -- beam from the character, raised off the floor
+--   local stopBeam = Guide.beam(gatePosition, nil, nil, { gateModel })  -- beam from the character, raised off the floor
 --   local unlock = Guide.lock({ shopGui, offersGui }, { Enum.KeyCode.G })  -- hide the HUD the lesson does not use and
 --                                                -- sink the keys it forbids; call unlock() on finish, skip and leave
 --   local release = Guide.lookAt(chest.Position, 1.5)  -- camera assist for a key reveal; returns the camera early
@@ -25,6 +25,21 @@ local Guide = {}
 
 local DIM = Color3.new(0, 0, 0)
 local FLOOR_LIFT = 1.5 -- studs a beam stays above the floor at both ends: never digging into it
+local resetToken = 0
+
+-- The reset button callback errors until the CoreGui is ready, so retry briefly; a later call supersedes an earlier one
+local function setReset(enabled: boolean)
+	resetToken += 1
+	local token = resetToken
+	task.spawn(function()
+		for _ = 1, 15 do
+			if token ~= resetToken or pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", enabled) then
+				return
+			end
+			task.wait(0.3)
+		end
+	end)
+end
 
 local function camera(): Camera
 	return workspace.CurrentCamera :: Camera
@@ -142,8 +157,9 @@ function Guide.arrow(target: Instance, text: string?, color: Color3?): () -> ()
 end
 
 -- A beam from the character to `goal` (a point), both ends FLOOR_LIFT above the floor so it never digs in; fades at both
--- ends. Pass a chevron `texture` to animate flow. Returns the stop function.
-function Guide.beam(goal: Vector3, color: Color3?, texture: string?): () -> ()
+-- ends. Pass a chevron `texture` to animate flow. `ignore` lists what the floor ray must skip besides the character (the
+-- target model). Returns the stop function.
+function Guide.beam(goal: Vector3, color: Color3?, texture: string?, ignore: { Instance }?): () -> ()
 	local player = Players.LocalPlayer
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -151,7 +167,14 @@ function Guide.beam(goal: Vector3, color: Color3?, texture: string?): () -> ()
 	if not root or not humanoid then
 		return function() end
 	end
-	local ground = workspace:Raycast(goal + Vector3.yAxis * 8, -Vector3.yAxis * 40)
+	local params = RaycastParams.new()
+	params.FilterType, params.RespectCanCollide = Enum.RaycastFilterType.Exclude, true
+	local skipped = { character }
+	for _, item in ignore or {} do
+		table.insert(skipped, item)
+	end
+	params.FilterDescendantsInstances = skipped
+	local ground = workspace:Raycast(goal + Vector3.yAxis * 4, -Vector3.yAxis * 40, params)
 	local anchor = Instance.new("Part")
 	anchor.Anchored, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch, anchor.Transparency = true, false, false, false, 1
 	anchor.Size, anchor.Position = Vector3.one, (if ground then ground.Position else goal) + Vector3.yAxis * FLOOR_LIFT
@@ -213,7 +236,7 @@ function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
 			item.Visible = false
 		end
 	end
-	pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", false)
+	setReset(false)
 	if keys and #keys > 0 then
 		ContextActionService:BindActionAtPriority("TutorialLock", function()
 			return Enum.ContextActionResult.Sink
@@ -221,7 +244,7 @@ function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
 	end
 	return function()
 		ContextActionService:UnbindAction("TutorialLock")
-		pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", true)
+		setReset(true)
 		for _, entry in restore do
 			if (entry[1] :: Instance).Parent then
 				(entry[1] :: any)[entry[2] :: string] = entry[3]

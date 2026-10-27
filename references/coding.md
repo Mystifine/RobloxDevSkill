@@ -27,3 +27,5 @@
 ## Verify
 
 Run the project's linter/formatter/builder (for example `selene`, `stylua`, `rojo build`) and its tests. Then test in a Studio Play session: the console is clean, no leaked instances/connections after the feature ends, and behaviour holds for two players and after rejoin. State anything you could not run.
+
+**Specs in Studio:** drive live services from a temporary Script (a spec as its child ModuleScript) that writes its result to an attribute you poll; an Edit-mode `execute_luau` keeps a stale require cache after edits, so run specs in Play. Never let a test write live or the owner's saves (use a scratch/QA profile and restore what it changed), and delete every temporary Script, ModuleScript and server you started.

@@ -16,14 +16,14 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 5. **No Toolbox code, ever.** Models, VFX and images may come from the Toolbox (audited, preferably temporary); Scripts, LocalScripts and ModuleScripts never. Sounds are the exception that may be kept.
 6. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
 7. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Design and check the phone first; nothing leaks out of its box, rim or rounded corner; ground effects land on the floor (never at a character's hip, head or in the air). See `references/ui.md` and `references/vfx.md` section 5.
-8. **Images are all-ages safe.** Visible bust never larger than an A cup, and with any cleavage no skin curves may show (chest fully wrapped, flat edges). Check every generated or supplied character image at full size before uploading (rule in `references/ui.md`, Icons and images).
+8. **Images are all-ages safe.** Visible bust never larger than an A cup, and with any cleavage no skin curves may show (chest fully wrapped, flat edges). Check every generated or supplied character image at full size before uploading (`references/ui.md`, Icons and images).
 
 ## Route
 
 | Task | Load |
 |---|---|
 | Luau, modules, services, networking, data, optimization, tests | [references/coding.md](references/coding.md) |
-| GUI, HUD, menus, icons, UI tweens | [references/ui.md](references/ui.md) |
+| GUI, HUD, menus, icons, image generation, UI tweens | [references/ui.md](references/ui.md) |
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
 | 3D models, meshes, textures, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Toolbox, free models, images, sounds, any imported asset | [references/assets.md](references/assets.md) |
