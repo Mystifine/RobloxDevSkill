@@ -64,9 +64,17 @@ A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the
 2. **Stage, Play client:** `Inspector.hideUI(true)`; `Inspector.preload(template)` (a cold effect can freeze before its textures arrive and photograph empty); `local stage = Inspector.stage()` (a **sphere caster** and a **cube target** on a dark plate high above the map). Play the effect from `stage.Caster` toward `stage.Target` through the project's player (`stage.Frame` sits at the caster, facing the target).
 3. **Watch:** `local watch = Inspector.watch(container)` before playing; after the container is gone, `watch.Stop()` (it yields a frame) lists `popped` (part, decal or light removed while visible) and `cut-off` (emitter, beam or trail removed with particles alive, including a container destroyed or a `Debris` lifetime that ignores `TimeScale`). Fix by fading first and destroying after `EmitDelay + EmitDuration + Lifetime.Max / TimeScale`. Run every cast of a system through it (stage the real payload) rather than one sample.
 4. **Look:** take `times = Inspector.keyTimes(container)` right after playing. For each time: play a fresh copy and `Inspector.hold(container, t)`; the frame is then snapshotted out of reach of the project's `Debris`, tweens and `Destroy`, so capture latency does not matter and **you can move the camera and capture it as many times as you like**:
-   - `stage:Camera(kind, { Zoom = n, Focus = point, Fov = n })`, kinds `"side"` (default, whole path), `"iso"` (high three-quarter), `"top"` (straight down: ground shapes, rings, cones), `"front"` (from beyond the target, back at the caster), `"behind"` (down the path), `"close"` (the target). `Zoom` 0.5 is twice as close, 2 twice as far; `Focus` aims at an impact spot. `Inspector.views` is a ready sweep: `side`, `iso`, `top`, `close` at 0.6.
-   - `stage:Show({ Target = false, Caster = false, Floor = false })` hides the props for an unobstructed view of the effect; show them again to judge scale and aim.
-   - Default read per key time: `iso` for the shape, `top` for ground coverage and radius, a `close` zoom for particle detail, `side` for height and travel.
+   - Camera `stage:Camera(kind, { Zoom, Focus, Fov })` (Zoom 0.5 is twice as close, 2 twice as far; Focus aims at an impact spot):
+
+     | kind | use |
+     |---|---|
+     | `side` (default) | whole path, height, travel |
+     | `iso` | the shape |
+     | `top` | ground coverage, radius, cones and rings |
+     | `front` / `behind` | from beyond the target back at the caster / down the path |
+     | `close` | particle detail |
+
+     `Inspector.views` is the ready sweep (`side`, `iso`, `top`, `close` at 0.6). `stage:Show({ Target = false, Caster = false, Floor = false })` hides the props for an unobstructed view; show them again to judge scale and aim.
    - Placement: `Inspector.placement(container)` after the effect has landed (with a real character on the stage): `floating` and `in-body` mean it spawned in the air or inside a body.
    - For one emitter's last frame: `Inspector.endFrame(stage, emitter)` then capture; particles still clearly visible there vanish midair.
 5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.

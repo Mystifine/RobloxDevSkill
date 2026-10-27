@@ -38,7 +38,7 @@ Nothing leaks out of its box unless the design says so. **A stroke is drawn outs
 
 - Build once, then show/hide; do not recreate frames on every open. Pool list rows and virtualize long lists.
 - Update text/images only when the value changes. No per-frame property writes for static UI; drive animation with `TweenService` or one shared loop.
-- Avoid stacked full-screen transparent frames, many `UIStroke`/`UIGradient` on large lists, and deep `ClipsDescendants` chains. Disconnect listeners when a view closes.
+- Avoid stacked full-screen transparent frames, many `UIStroke`/`UIGradient` on large lists, and deep `ClipsDescendants` chains.
 
 ## Icons and images
 

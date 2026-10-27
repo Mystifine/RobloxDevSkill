@@ -33,13 +33,10 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 A task can span several rows (a skill ability = coding + vfx + animation); load each reference once, when you reach that part.
 
 ## Scripts
+- [ParticlePlayer](scripts/ParticlePlayer.luau): fallback particle player; use the project's own first.
+- [VFXInspector](scripts/VFXInspector.luau): mandatory effect check, vfx.md section 8.
+- [UIBounds](scripts/UIBounds.luau): mandatory bounds audit, phone size first, ui.md.
+- [TutorialGuide](scripts/TutorialGuide.luau): tutorial pointers and UI lock, onboarding.md.
+- [AssetAudit](scripts/AssetAudit.luau): mandatory audit of every imported asset, assets.md.
 
-- [scripts/ParticlePlayer.luau](scripts/ParticlePlayer.luau): fallback attribute-driven particle player. Use the project's own player if it has one.
-- [scripts/VFXInspector.luau](scripts/VFXInspector.luau): VFX inspection (lint and repair particle exits, caster-sphere/target-cube stage with multi-angle cameras, vanish watcher, frozen frames for screenshots). Run it on every effect before calling it done; steps in [references/vfx.md](references/vfx.md) section 8.
-- [scripts/UIBounds.luau](scripts/UIBounds.luau): UI bounds audit (children and outlines inside their boxes and rounded corners, clear of rims). Run it on every UI at the phone size first; steps in [references/ui.md](references/ui.md).
-- [scripts/TutorialGuide.luau](scripts/TutorialGuide.luau): tutorial pointer templates (spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock). Steps in [references/onboarding.md](references/onboarding.md).
-- [scripts/AssetAudit.luau](scripts/AssetAudit.luau): Toolbox asset safety audit. Run it on every imported asset before keeping anything.
-
-## Handoffs (use if installed; otherwise follow the reference)
-
-`blender-director` (plan), `blender-modeler`, `blender-retopology-uv`, `blender-pbr-materials`, `blender-texture-baking`, `blender-game-optimization`, `blender-asset-qa` (mandatory gate), `blender-export-pipelines`, `blender-character-rigging`, `blender-animation`, `animate-roblox-characters` (R6/R15 animation), `find-skills` (when no skill covers a need).
+Blender and animation skill chains: modeling.md, animation.md; `find-skills` when nothing fits.
