@@ -216,7 +216,8 @@ function Inspector.hold(root: Instance, seconds: number)
 		proxy.Anchored = true
 		proxy.Parent = folder
 		for _, child in part:GetChildren() do
-			if child:IsA("Attachment") or child:IsA("Light") or child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui") then
+			if child:IsA("Attachment") or child:IsA("Light") or child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui")
+				or child:IsA("ParticleEmitter") or child:IsA("Beam") or child:IsA("Trail") then -- emitters sit on parts as well as attachments
 				child.Parent = proxy
 			end
 		end

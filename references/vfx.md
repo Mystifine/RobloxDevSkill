@@ -79,4 +79,6 @@ A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the
    - For one emitter's last frame: `Inspector.endFrame(stage, emitter)` then capture; particles still clearly visible there vanish midair.
 5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.
 
+Capture caveat: a Studio capture can return a stale or blank frame right after you change the camera or start an effect. Wait about 6 s, and treat two identical successive captures as a stale frame, not as an empty effect; judge time-varying effects by looping them every few seconds, or from held frames. `Inspector.hold` keeps emitters and beams that sit on parts as well as on attachments.
+
 Notes: layers whose `EmitDelay` is later than the held time fire into the frozen frame as fresh births; compute `keyTimes` before `hold` (it empties the container). The Studio MCP runs calls one at a time: start long-running work from a fixture Script and poll, rather than expecting two calls to overlap.
