@@ -30,6 +30,7 @@ scripts/
   AssetAudit.luau        Toolbox safety audit: report first, then strip
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   GameInventory.luau     Studio-to-Rojo inventory: scripts and what they touch, content counts, export, leftovers
+  export_place.luau      Lune: every script of a saved place file written to disk, byte for byte
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
 INSTALL.md               placement rules, options, manual steps
@@ -61,10 +62,14 @@ It hands off to Blender and animation skills when they are installed (`blender-d
   - `VFXInspector` lints in Edit and photographs in Play (`references/vfx.md` section 8).
   - `ParticlePlayer` runs on the client; prefer the project's own player.
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
-- **Tested so far:**
-  - `RigAudit` passed in Studio on 98 real R15 rigs and on deliberately broken copies.
-  - `ZFight` and `GameInventory` passed offline tests in Lune.
-  - `AnimationInspector` and the VFX real-rig stage have not yet run in Studio.
+  - `export_place.luau` runs in Lune: `lune run export_place.luau <place.rbxl> <out folder>`.
+- **Tested in Studio on a real game** (2026-10-27):
+  - `AnimationInspector`: Roblox's R15 clips give 0 errors; every planted defect is caught; works on AnimationConstraint and Motor6D rigs.
+  - `RigAudit`: 98 R15 rigs, broken copies and a generated R6.
+  - `ZFight`: an 18,882-part map, audited and settled to 0 on a copy.
+  - `GameInventory`: 26 scripts; `export_place` on the same game's saved file.
+  - The VFX real-rig stage: in Play.
+  - `ZFight` and `GameInventory` also have offline Lune tests.
 
 ## License
 

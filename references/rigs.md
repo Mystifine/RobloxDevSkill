@@ -24,7 +24,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 1. **Seat every accessory.** Set each Handle's CFrame to where its AccessoryWeld holds it. The generator leaves handles where the catalog asset sat (seen 13 to 2,800 studs away), and only physics pulls them in. Anchored models, viewports and previews then show floating hair and clothes.
 2. **Remove the generated scripts** (Animate, Health) when the project animates characters itself.
 3. **Remove the default face under a face accessory:** the Head's Decal and the head MeshPart's TextureID (the default head texture is a face, which shows through as two dots). `clean` handles Face accessories; a hair or hat with a face built in needs the same by hand.
-4. **Remove the handles' TouchInterests** unless the game listens for Touched on accessories.
+4. **Remove the handles' TouchInterests** unless the game listens for Touched on accessories. Catalog accessories arrive with one saved in, and it stays until removed.
 5. **Finish the template:** name it, put metadata in attributes, keep the HumanoidRootPart as PrimaryPart, and store it in ReplicatedStorage only when clients show it (ServerStorage otherwise).
 
 **What it is made of** (all of it stays):

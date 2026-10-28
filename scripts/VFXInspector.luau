@@ -270,7 +270,9 @@ local function animatorOf(model: Model): Animator
 	return animator :: Animator
 end
 
--- A scriptless copy of `rig` with its feet on the floor at `spot`, facing `toward`, its root anchored.
+-- A scriptless copy of `rig` standing on the floor at `spot`, facing `toward`, its root anchored. A Humanoid stands as
+-- the engine stands it (R15: the root's bottom HipHeight above the floor; R6: on its legs); any other rig rests its
+-- lowest body part (accessories excluded) on the floor.
 local function standIn(rig: Model, spot: Vector3, toward: Vector3, parent: Instance): Model
 	local archivable = rig.Archivable
 	rig.Archivable = true
@@ -285,18 +287,31 @@ local function standIn(rig: Model, spot: Vector3, toward: Vector3, parent: Insta
 	local look = root.CFrame.LookVector
 	local current = CFrame.new(root.Position) * CFrame.Angles(0, math.atan2(-look.X, -look.Z), 0)
 	copy:PivotTo(CFrame.lookAt(spot, Vector3.new(toward.X, spot.Y, toward.Z)) * current:Inverse() * copy:GetPivot())
-	local lowest = math.huge
-	for _, part in copy:GetDescendants() do
-		if part:IsA("BasePart") and part.Transparency < 1 then
-			local cf, half = part.CFrame, part.Size / 2
-			lowest = math.min(lowest, cf.Position.Y - math.abs(cf.RightVector.Y) * half.X - math.abs(cf.UpVector.Y) * half.Y - math.abs(cf.LookVector.Y) * half.Z)
+	local humanoid = copy:FindFirstChildOfClass("Humanoid")
+	local leg = copy:FindFirstChild("Left Leg")
+	local height: number? = nil -- of the root's centre above the floor
+	if humanoid and root.Name == "HumanoidRootPart" then
+		if humanoid.RigType == Enum.HumanoidRigType.R15 then
+			height = humanoid.HipHeight + root.Size.Y / 2
+		elseif leg and leg:IsA("BasePart") then
+			height = leg.Size.Y + root.Size.Y / 2
 		end
 	end
-	if lowest < math.huge then
-		copy:PivotTo(copy:GetPivot() + Vector3.yAxis * (spot.Y - lowest))
+	if height then
+		copy:PivotTo(copy:GetPivot() + Vector3.yAxis * (spot.Y + height - root.Position.Y))
+	else
+		local lowest = math.huge
+		for _, part in copy:GetDescendants() do
+			if part:IsA("BasePart") and part.Transparency < 1 and not part:FindFirstAncestorWhichIsA("Accessory") then
+				local cf, half = part.CFrame, part.Size / 2
+				lowest = math.min(lowest, cf.Position.Y - math.abs(cf.RightVector.Y) * half.X - math.abs(cf.UpVector.Y) * half.Y - math.abs(cf.LookVector.Y) * half.Z)
+			end
+		end
+		if lowest < math.huge then
+			copy:PivotTo(copy:GetPivot() + Vector3.yAxis * (spot.Y - lowest))
+		end
 	end
 	root.Anchored = true
-	local humanoid = copy:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
@@ -514,6 +529,9 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 	end
 	function stage.Clear(_: Stage)
 		RunService:UnbindFromRenderStep("__VFXStageCamera")
+		for _, track in staged do
+			track:Stop(0)
+		end
 		table.clear(staged)
 		folder:Destroy()
 		local camera = workspace.CurrentCamera

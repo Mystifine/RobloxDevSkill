@@ -38,7 +38,7 @@ A task can span several rows (a skill ability = coding + vfx + animation); load 
 ## Scripts
 
 - **Mandatory checks:** [UIBounds](scripts/UIBounds.luau) (ui.md), [VFXInspector](scripts/VFXInspector.luau) (vfx.md 8), [AnimationInspector](scripts/AnimationInspector.luau) (animation.md 4), [ZFight](scripts/ZFight.luau) (modeling.md), [RigAudit](scripts/RigAudit.luau) (rigs.md), [AssetAudit](scripts/AssetAudit.luau) (assets.md).
-- **Helpers:** [ParticlePlayer](scripts/ParticlePlayer.luau) (fallback; prefer the project's own), [TutorialGuide](scripts/TutorialGuide.luau) (onboarding.md), [GameInventory](scripts/GameInventory.luau) (rojo-project.md), [icon_outlines.py](scripts/icon_outlines.py) (ui.md; Python with numpy and Pillow).
+- **Helpers:** [ParticlePlayer](scripts/ParticlePlayer.luau) (fallback; prefer the project's own), [TutorialGuide](scripts/TutorialGuide.luau) (onboarding.md), [GameInventory](scripts/GameInventory.luau) and [export_place](scripts/export_place.luau) (rojo-project.md; Lune), [icon_outlines.py](scripts/icon_outlines.py) (ui.md; Python with numpy and Pillow).
 - **Loading into Studio:** `loadstring(game:GetService("HttpService"):GetAsync(url, true))()` from a local static server on this folder (`python -m http.server 8394 --bind 127.0.0.1 --directory <skill>/scripts`). If the game's HTTP requests are off, leave them off (the setting ships with the game): pass the source to `loadstring`, or use a temporary ModuleScript (the only way on the client). Delete what you add when done.
 
 Blender and animation skill chains: modeling.md, animation.md; `find-skills` when nothing fits.
