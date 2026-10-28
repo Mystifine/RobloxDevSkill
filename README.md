@@ -2,13 +2,13 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: eight always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
+`SKILL.md` is a short dispatcher: eight always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Rules marked *(default)* are house conventions a project can override; the rest are Roblox limits, safety or correctness rules. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
 ```
 SKILL.md                 dispatcher (always loaded, about 45 lines)
 references/
   coding.md              dependencies, structure, backend performance, pitfalls, verification
-  rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, tests
+  rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, parity tests
   ui.md                  mobile first, stay in bounds, centered anchors, state, world-space GUIs, 512x512 icons, outlines
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow, no z-fighting
@@ -31,6 +31,7 @@ scripts/
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   GameInventory.luau     Studio-to-Rojo inventory: scripts and what they touch, content counts, export, leftovers
   export_place.luau      Lune: every script of a saved place file written to disk, byte for byte
+  UIParity.luau          port vs original: per-window fingerprints of every visible text and image, scroll sweeps
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
 INSTALL.md               placement rules, options, manual steps
@@ -60,14 +61,15 @@ It hands off to Blender and animation skills when they are installed (`blender-d
 - **Where they run:**
   - `UIBounds`, `AssetAudit`, `ZFight`, `RigAudit`, `AnimationInspector` and `GameInventory` run in Edit.
   - `VFXInspector` lints in Edit and photographs in Play (`references/vfx.md` section 8).
-  - `ParticlePlayer` runs on the client; prefer the project's own player.
+  - `ParticlePlayer` and `UIParity` run on the client (Play); prefer the project's own particle player.
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
   - `export_place.luau` runs in Lune: `lune run export_place.luau <place.rbxl> <out folder>`.
-- **Tested in Studio on a real game** (2026-10-27):
+- **Tested in Studio on a real game** (2026-10-27 unless noted):
   - `AnimationInspector`: Roblox's R15 clips give 0 errors; every planted defect is caught; works on AnimationConstraint and Motor6D rigs.
   - `RigAudit`: 98 R15 rigs, broken copies and a generated R6.
   - `ZFight`: an 18,882-part map, audited and settled to 0 on a copy.
   - `GameInventory`: 26 scripts; `export_place` on the same game's saved file.
+  - `UIParity` (2026-10-28): that game's Rojo port beside the original, identical at five viewport sizes for the HUD, 8 windows and every scroll position; a 3 px nudge is caught.
   - The VFX real-rig stage: in Play.
   - `ZFight` and `GameInventory` also have offline Lune tests.
 

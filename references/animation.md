@@ -6,7 +6,7 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 
 ## 1. Non-negotiables
 
-- **Author at 60 FPS** (unless the project sets another rate for a rig): scene at that rate before keying, keys on whole frames, export/import at the same rate.
+- **Author at 60 FPS** *(default)*: scene at that rate before keying, keys on whole frames, export/import at the same rate.
 - **Proper weighted joints.** Normalized weights, at most 4 influences per vertex, no stray weights on distant bones, clean falloff. Test deformation in extreme poses before animating (`blender-character-rigging`).
 - **Clean animation.** Readable silhouette, anticipation/overshoot/settle, eased curves, no foot sliding, no jitter or flips, loops whose last frame meets the first, sparse keys rather than a bake of every frame unless needed.
 - **Feet meet the ground exactly.** A foot that is meant to touch the ground (stance, landing, stomp, idle) sits on the in-game floor, where the HumanoidRootPart's bottom minus HipHeight puts it, within 0.05 studs while planted. It never hovers above the floor, and no heel or toe sinks through it. Pose against that floor height, not by eye.

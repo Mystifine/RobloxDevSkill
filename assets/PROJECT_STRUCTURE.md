@@ -97,7 +97,8 @@ src/ServerScriptService/Services/PlayerDataService.luau       # SoulStore lifecy
 
 - The server-only schema declares the default save; keep shared UI config out unless genuinely persistent. The server-only profile isolates production and development store names; client input never selects or resets a production store.
 - SoulStore is a Wally **server dependency**, required only through `ServerScriptService.ServerPackages`. Follow its pinned API; never copy package code.
-- `PlayerDataService` loads one session per player, reconciles from a fresh schema copy, registers save/removal, and exposes a small API. It is not a feature service. It initializes before save-dependent services, which register through a loaded-player lifecycle instead of assuming data during `PlayerAdded`.
+- `PlayerDataService` loads one session per player, reconciles from a fresh schema copy, registers save/removal, and exposes a small API. It is not a feature service. It initializes before save-dependent services, which register through a loaded-player lifecycle instead of assuming data during `PlayerAdded`. It also owns the leave order: final save first, then each service's teardown in reverse start order; services register teardown with it instead of connecting `PlayerRemoving` themselves.
+- An unpublished place (`game.PlaceId == 0`, a saved copy in Studio) has no DataStores: every call throws. The profile marks it, and `PlayerDataService` keeps that session's saves in memory so the place stays playable.
 - Writes are server-authoritative and validated; clients never send arbitrary save paths or values.
 - `PlayerDataController` owns the client cache: initial snapshot by request, then server-pushed changes. It queues updates arriving before the snapshot and cleans up subscriptions on teardown. UI reads and subscribes; it never mutates the save.
 - Declare remote names and payloads in one shared place; the server owns handlers and validation.
@@ -138,11 +139,11 @@ wally = "UpliftGames/wally@<pinned-version>"
 
 `selene.toml` uses `std = "roblox"`. Check changes with:
 
-```powershell
+```sh
 rokit install
 wally install
 selene <changed-luau-files>
-rojo build default.project.json -o "$env:TEMP/project-check.rbxlx"
+rojo build default.project.json -o "${TMPDIR:-/tmp}/project-check.rbxlx"   # PowerShell: -o "$env:TEMP/project-check.rbxlx"
 rojo serve default.project.json   # sync with Studio
 ```
 
@@ -188,7 +189,7 @@ Graphify is optional repository knowledge tooling, never a runtime or package de
   ServerPackages/
   ```
 
-  After adding or upgrading MysLib, refresh the graph and confirm a MysLib query returns its modules. `graphify-out/` (`graph.json`, HTML, `GRAPH_REPORT.md`) holds no source.
+  Graphify also honours `.gitignore`, and a negation cannot re-include what `.gitignore` excludes: when `Packages/` is git-ignored, add `graphify-out/.graphify_build.json` containing `{"gitignore": false}` (commit it) so `.graphifyignore` alone decides. After adding or upgrading MysLib, refresh the graph and confirm a MysLib query returns its modules. `graphify-out/` (`graph.json`, HTML, `GRAPH_REPORT.md`) holds no source.
 - If Graphify is unavailable or fails, report what was checked once and continue with targeted `rg` plus bounded reads. Never claim a query or update that didn't succeed, or measured token savings without evidence.
 
 ## Initialize a new checkout

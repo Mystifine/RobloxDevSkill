@@ -2,6 +2,8 @@
 
 ## Policy
 
+Code never (a security rule); "temporary preferred" is *(default)*.
+
 | Type | Allowed | Notes |
 |---|---|---|
 | Scripts / LocalScripts / ModuleScripts | **Never** | strip them, do not read-and-reuse |

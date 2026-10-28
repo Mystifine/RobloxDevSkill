@@ -1,6 +1,6 @@
 # Rojo project: start one, or convert a Studio game
 
-The blueprint is [assets/PROJECT_STRUCTURE.md](../assets/PROJECT_STRUCTURE.md): layout, Rojo mapping, startup order, packages (MysLib, Nexus, Pulse, SoulStore), toolchain, `AGENTS.md`, MCP and Graphify. Read it first; this file is the procedure. Work on a saved copy of the place, never the published one, and publish nothing.
+The blueprint is [assets/PROJECT_STRUCTURE.md](../assets/PROJECT_STRUCTURE.md): layout, Rojo mapping, startup order, packages (MysLib, Nexus, Pulse, SoulStore), toolchain, `AGENTS.md`, MCP and Graphify. Read it first; this file is the procedure. Work on saved copies of the place, never the published one or the owner's open session, and publish nothing.
 
 ## 1. Folder
 
@@ -21,7 +21,7 @@ Find where the user keeps projects: the folder holding the most Rojo projects (`
 
 ## 3. Inventory (Studio MCP, Edit mode, the game open)
 
-1. **Back up first.** The owner saves the place to a file (`File > Save to File`) outside the repository; everything after this works on a copy.
+1. **Back up first.** The owner saves the place to a file (`File > Save to File`) outside the repository. Copy it twice: a **working copy** for the switch-over and a **reference copy** left untouched, to play beside the port. Open each in its own Studio window.
 2. **Load [scripts/GameInventory.luau](../scripts/GameInventory.luau)**, then:
    - `Inventory.markdown(Inventory.scripts())` starts `docs/migration.md`: one row per legacy script with what it touches.
      - It records requires, remote calls (even on remotes made at runtime), DataStores (a computed store name is shown as its expression), tags, products and attributes.
@@ -48,25 +48,29 @@ This is a rewrite into systems, not a copy of the scripts:
 | One script copied into many models (doors, pads, kill bricks) | one service or controller over a CollectionService tag: tag the instances in Studio, delete the copies |
 | DataStore code | `PlayerDataService` on SoulStore with the schema and profile, reading the **same store names and keys** (or an explicit migration) so no save is lost |
 
-- **Composition roots only bootstrap,** in an explicit order.
+- **Order of work.** Domains with their own scripts and state migrate one at a time, each passing section 6 steps 1-3 before the next. A monolith whose systems share one session table cannot be split that way: list which domain owns each field, move each domain with its fields, and prove parity offline (configs equal to the old ones, the new save load equal to the old `load()`) before the switch-over.
+- **Composition roots only bootstrap,** in an explicit order. Client handlers register before the transport starts, so no early server event is dropped.
+- **One teardown per player.** The data service takes the final save, then releases each domain in reverse start order. A service with its own `PlayerRemoving` races that order (seen: a plot freed before its units were cleared, their loops still running).
+- **An unpublished copy has no DataStores:** with `game.PlaceId == 0` every DataStoreService call throws, and a save library may retry forever. Give the save layer a session-memory mode for that case so the copy stays playable; real saves are tested as in section 6.
 - **Fix the legacy mistakes as you go:** client-trusted values, missing validation, leaks, polling, `wait()`. Log every behaviour change in `docs/migration.md`; gameplay otherwise stays the same.
 - **UI:** with a reactive UI framework in the project, rebuild the Studio GUIs as reactive components in code. The blueprint installs Pulse; React, Fusion or Vide also count.
-  - **Components:** a component function builds its instances. State lives in framework values (Pulse `Value`, `Computed`), and effects write the properties (Pulse `Effect`, `Spring`, `Tween`). Reuse a shared components module for buttons and panels.
-  - **Match the original** layout, sizes, colors, fonts and images. Compare each screen side by side with the original at phone, tablet and desktop, pass UIBounds ([ui.md](ui.md)), then delete the Studio GUI.
+  - **Components:** a component function builds its instances. Framework values (Pulse `Value`, `Computed`) hold state: data, the open window, the selected tab. A component's effect (one, or a few) reads them and writes its instances. Never give each instance property its own value or effect: a port that did allocated 17x the original's Lua memory per second on an idle HUD. Reuse a shared components module for buttons and panels.
+  - **GUIs built in code** by the legacy scripts: port the builder calls as they are, under the same lifetime and state rules, then convert screen by screen, each checked for parity.
+  - **Match the original** layout, sizes, colors, fonts and images: pass the parity and UIBounds checks (section 6), then delete the Studio GUI.
   - **Without a reactive framework,** the GUIs stay in Studio, and controllers find and drive them.
-- **Large games:** migrate one domain at a time, and pass section 6 steps 1-3 before starting the next.
 
 ## 5. Map ownership and switch over
 
 - **Map code only.** `default.project.json` maps the blueprint's code folders, the entry scripts and the packages. Declare each service with `$className` and child entries, never map a whole service with `$path`, so Rojo cannot delete its Studio content. A Studio-owned folder inside a mapped tree gets `$ignoreUnknownInstances: true`. Scripts, LocalScripts and ModuleScripts move to Rojo; every other instance stays in Studio, except GUIs rebuilt as components.
-- **Switch over in the copy.** Delete the legacy scripts, `rojo serve`, connect the plugin. Then confirm that `Inventory.leftovers({ <every Rojo-managed instance> })` is empty and the content counts still match section 3, apart from the GUIs rebuilt as components.
+- **Switch over in the working copy.** Delete the legacy scripts, `rojo serve`, connect the plugin (or write the `rojo build` output into the copy with Lune's `@lune/roblox`). Then confirm that `Inventory.leftovers({ <every Rojo-managed instance> })` is empty and the content counts still match section 3, apart from the GUIs rebuilt as components.
 
 ## 6. Test the migration
 
 1. **Static:** `selene src` and `rojo build` pass, no require cycles, and the Graphify graph is refreshed and queried.
 2. **Inventory:** every `docs/migration.md` row is verified, there are no leftovers, and the content counts match the backup (apart from rebuilt GUIs).
-3. **Play**, server and client, with a clean console:
-   - exercise every feature in the inventory side by side with the backup place: UI flows, combat, purchases with test products, teleports, tags;
-   - with two players, a respawn and a rejoin.
-4. **Data:** load a legacy-format save from a scratch store and confirm the same values come back. Never use production stores.
+3. **Play** the working copy beside the reference copy, server and client, with a clean console:
+   - **UI parity**, the same fresh player in both, at the same viewport: phone landscape (844x390) first, then portrait (390x844) if the game allows it, tablet (1024x768) and desktop (1280x720). Set it with Studio's device emulator or by resizing the Studio window (a screen too short for a size: use one of the same aspect ratio). [scripts/UIParity.luau](../scripts/UIParity.luau): `fingerprint()` gives one line per window (count and hash of its texts and images with their pixel rectangles); open each window the same way in both, `sweep(frame)` each scrolling page, and read `Detail` only where a line differs. Pass `Ignore` for decorations placed at random and `Moving` for animated ones. Then UIBounds ([ui.md](ui.md)): the same findings as the original, or fewer.
+   - **Every feature with real input** (clicks, keys, walking: [coding.md](coding.md) Verify): each inventory row, UI flows, purchases with test products, teleports, tags, cutscenes and their skip; then two players, a respawn and a rejoin.
+   - **Client cost** beside the original on the same screen: Lua allocation and heap ([coding.md](coding.md) Performance). The port costs no more without a reason.
+4. **Data:** a legacy-format save loads with the same values: offline through the real save library over a fake DataStoreService (Lune), or in a private published test place on scratch stores. Never production stores or the owner's saves.
 5. **Record** the results in `docs/migration.md` and `artifacts/verification/`, and report what you could not verify.

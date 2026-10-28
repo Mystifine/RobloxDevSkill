@@ -14,7 +14,7 @@ For every emitter set deliberately: `Texture`, `Color` (ColorSequence), `Transpa
 
 ## 3. Attribute contract (burst timing)
 
-Each `ParticleEmitter` carries attributes; templates store `Enabled = false`.
+*(default: a project with its own contract keeps it)* Each `ParticleEmitter` carries attributes; templates store `Enabled = false`.
 
 | Attribute | Meaning |
 |---|---|

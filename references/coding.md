@@ -15,13 +15,15 @@
 - **Data.** Budget DataStore calls, save on `PlayerRemoving` + `BindToClose` + interval, use `UpdateAsync` for read-modify-write, retry with backoff, session-lock, never yield inside critical sections without a guard.
 - **Memory.** Track every connection/instance/thread with a maid/janitor or the project's equivalent; clean up on player leave, death, unequip and destroy. `Debris:AddItem` is fine for fire-and-forget but cannot be cancelled.
 - **Luau.** `--!strict` and typed exports; `@native`/`--!native` only for measured numeric hot paths; `if-then` expressions over closures; integer-keyed arrays.
-- **Quality.** Do not lower fidelity, range or features to get a speedup. If a trade is unavoidable, state it and let the user choose. Profile (MicroProfiler, Script Profiler, `os.clock`) before and after.
+- **Quality.** Do not lower fidelity, range or features to get a speedup. If a trade is unavoidable, state it and let the user choose. Profile (MicroProfiler, Script Profiler, `os.clock`) before and after. Client Lua cost from a temporary LocalScript: allocation per second is the sum of positive `gcinfo()` deltas per `Heartbeat`, the heap is `gcinfo()` sampled over a few seconds (an `execute_luau` call measures its own VM, not the game's).
 
 ## Known pitfalls
 
 - `GetPartBoundsInBox`/`GetPartBoundsInRadius` count a wedge (or any non-block) by its whole bounding box; use `GetPartsInPart` for shape-accurate tests.
 - A ray or cast starting inside a part does not hit that part. Thin spherecasts can skip seams, and `Spherecast` results can contain a NaN position on wedge edges: validate `Position` before use.
 - `Humanoid.Health` is float32: adding 1 HP vanishes above roughly 16.8M max health. Carry fractional heals yourself.
+- A raw RemoteEvent queues server events until its first client listener, but a networking wrapper that connects once and dispatches to registered handlers drops events whose handler is not registered yet: register every handler, then start the transport.
+- `WaitForChild` on world content under StreamingEnabled can take longer than its 5 s warning; give it an explicit timeout (`math.huge` to wait silently) or react to `ChildAdded`.
 - Anything a Studio MCP `execute_luau` call requires has its own module cache; to test live services run them from a temporary Script and remove it afterwards.
 - Studio MCP calls run one at a time, so a long call blocks every other. Start long work from a temporary Script and poll an attribute it writes.
 
@@ -30,3 +32,9 @@
 Run the project's linter/formatter/builder (for example `selene`, `stylua`, `rojo build`) and its tests. Then test in a Studio Play session: the console is clean, no leaked instances/connections after the feature ends, and behaviour holds for two players and after rejoin. State anything you could not run.
 
 **Specs in Studio:** drive live services from a temporary Script (a spec as its child ModuleScript) that writes its result to an attribute you poll; an Edit-mode `execute_luau` keeps a stale require cache after edits, so run specs in Play. Never let a test write live or the owner's saves (use a scratch/QA profile and restore what it changed), and delete every temporary Script, ModuleScript and server you started.
+
+**Play tests with real input** (Studio MCP), so the client path is tested, not only the remotes:
+- **Prompts:** a real key press (keyboard input: key down, about 150 ms, key up); `ProximityPrompt:InputHoldBegin` can do nothing. With the default `Exclusivity` (`OnePerButton`) only one prompt per key shows, so stand where only the target is in range and check which one is shown before pressing.
+- **Clicks** take GUI coordinates (`AbsolutePosition`, below the top-bar inset), for BillboardGuis too. A world SurfaceGui button: its world point through `Camera:WorldToViewportPoint`, minus `GuiService:GetGuiInset()`; confirm with `ViewportPointToRay` that the ray hits the board.
+- **Camera:** a camera an `execute_luau` call made Scriptable is reset to Custom after the call, so place the character for the game's own camera to face the target.
+- **Moving the character:** raycast for the floor before teleporting it (a fall may trigger the game's rescue and send it to spawn), or walk with `Humanoid:MoveTo`.

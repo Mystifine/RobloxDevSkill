@@ -1,6 +1,6 @@
 # Characters (all-ages safety)
 
-Applies to every character that could read as female, humanoid or creature, in 2D (icons, portraits, thumbnails) and 3D (models, textures, renders). Moderation can deactivate the owner's account, not just remove the asset. Female designs are fine under this filter:
+Applies to every character that could read as female, humanoid or creature, in 2D (icons, portraits, thumbnails) and 3D (models, textures, renders). Moderation can deactivate the owner's account, not just remove the asset. This filter is the skill's default bar, set after a moderation action and stricter than Roblox's Community Standards: a project may set another, never a looser one than Roblox's. Female designs are fine under it:
 
 1. **Flat chest** in silhouette, outlines, contour lines, shading and highlights: the chest piece lies flat, with at most a slight curve, and has no bust bump, cleavage dip or shading that models breasts. Straight torso: its sides run straight and nearly parallel from the armpits to the hips (widen the waist, never the chest), with no pinched waist or hourglass.
 2. **Covered, no cleavage.** Opaque armor or clothing covers the whole chest and at least 70% of the torso (by area of the front, from the shoulders to the hips, or to where a tail, stem or flower begins). Its top edge, or the point of a V-neck, sits on the upper chest above the bust, so no cleavage line or inner curve shows. The neck, shoulders and a strip of upper chest above the bust may stay bare, with no rounded forms in it.
