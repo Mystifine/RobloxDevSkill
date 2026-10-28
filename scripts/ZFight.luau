@@ -671,20 +671,39 @@ local function relative(root, item)
 	return if item == root then root.Name else item:GetFullName():sub(#root:GetFullName() + 2)
 end
 
---- Lists what flickers under `root` without changing anything. Returns the count, a text report (the largest overlaps
---- first) and the pairs ({ A, B, Area, At } for faces; { A, B, Face } for decals).
+-- How a fighting pair shows: two different surfaces flicker; one surface on a textured material shimmers (each part
+-- tiles its texture from its own origin); one smooth surface looks unchanged. settle() fixes all three.
+local SMOOTH = { SmoothPlastic = true, Neon = true, Glass = true, ForceField = true }
+local RANK = { flicker = 1, shimmer = 2, hidden = 3 }
+local function look(a, b)
+	if a.Color ~= b.Color or a.Material ~= b.Material or a.MaterialVariant ~= b.MaterialVariant or math.abs(a.Transparency - b.Transparency) > 1e-3 then
+		return "flicker"
+	end
+	return if SMOOTH[a.Material.Name] then "hidden" else "shimmer"
+end
+
+--- Lists what flickers under `root` without changing anything. Returns the count, a text report (visible flicker
+--- first, largest overlaps first) and the pairs ({ A, B, Area, At, Look } for faces; { A, B, Face } for decals).
 function ZFight.audit(root: Instance, limit: number?)
 	local fights = settlePass(root, {}, true)
+	local counts = { flicker = 0, shimmer = 0, hidden = 0 }
+	for _, info in fights do
+		info.look = look(info.a.r.inst, info.b.r.inst)
+		counts[info.look] += 1
+	end
 	table.sort(fights, function(p, q)
+		if p.look ~= q.look then
+			return RANK[p.look] < RANK[q.look]
+		end
 		return p.area > q.area
 	end)
 	local ties = decalTies(root)
 	local lines, pairs = {}, {}
 	for index, info in fights do
 		local a, b = info.a.r.inst, info.b.r.inst
-		table.insert(pairs, { A = a, B = b, Area = info.area, At = info.at })
+		table.insert(pairs, { A = a, B = b, Area = info.area, At = info.at, Look = info.look })
 		if index <= (limit or 15) then
-			table.insert(lines, string.format("FIGHT %s <-> %s: %.2f studs² at (%.1f, %.1f, %.1f)", relative(root, a), relative(root, b),
+			table.insert(lines, string.format("%s %s <-> %s: %.2f studs² at (%.1f, %.1f, %.1f)", string.upper(info.look), relative(root, a), relative(root, b),
 				info.area, info.at.X, info.at.Y, info.at.Z))
 		end
 	end
@@ -696,7 +715,8 @@ function ZFight.audit(root: Instance, limit: number?)
 		table.insert(lines, string.format("DECAL %s and %s share the %s face at ZIndex %d", relative(root, tie.first), relative(root, tie.second),
 			tie.first.Face.Name, tie.first.ZIndex))
 	end
-	table.insert(lines, string.format("%d fighting face pairs, %d decal ties%s", #fights, #ties, if #fights + #ties > 0 then ": ZFight.settle(root), then audit again" else ""))
+	table.insert(lines, string.format("%d fighting face pairs (%d flicker, %d shimmer, %d hidden), %d decal ties%s", #fights, counts.flicker, counts.shimmer,
+		counts.hidden, #ties, if #fights + #ties > 0 then ": ZFight.settle(root), then audit again" else ""))
 	return #fights + #ties, table.concat(lines, "\n"), pairs
 end
 
