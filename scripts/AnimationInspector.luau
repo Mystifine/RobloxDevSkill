@@ -7,15 +7,15 @@
 --                              pops, loop seam, feet, floor, end offset, knee/elbow hyperextension, key grid, easing,
 --                              missing markers, a marker away from the tip's fastest moment)
 --   sheet(rig, clip, options)  one picture: the key poses side by side in rows (side and front) with motion trails;
---                              parks the camera and returns the legend, then screen_capture with no camera arguments
+--                              returns the legend and the camera position to pass to screen_capture
 --   closeLoop / snapKeys / setMarker   repairs on an editable KeyframeSequence; audit again afterwards
 --   clear()                    removes the sheet and restores the camera
 --
 -- rig: a Model with a Humanoid or AnimationController (R15, R6 or custom; Motor6D or AnimationConstraint joints; Bones
 -- are followed). clip: a KeyframeSequence, an Animation or an asset id. The rig itself is never changed.
 -- Load in Edit: loadstring(game:GetService("HttpService"):GetAsync(url, true))(), or a temporary ModuleScript.
--- Status (2026-10-27): not yet run in Studio. On first use, confirm a known-good clip audits with 0 errors and the sheet
--- reads, then retune any threshold that misfires; remove this note once it has passed.
+-- Calibrated in Studio (2026-10-27) on Roblox's R15 idle, walk, run and point clips (0 errors) and on planted defects
+-- (flip, seam, sink, hover, renamed poses, hyperextended knee and elbow, off-grid key, missing and early marker).
 
 local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 
@@ -29,7 +29,7 @@ export type Options = {
 	Markers: { string }?, -- markers the clip must have; the first is compared with the tip's fastest moment
 	Ignore: { string }?, -- rules to skip, say { "end-offset" } for a death or knockback clip
 	Looped: boolean?, -- overrides the clip's own Looped
-	Hinges: { { Upper: string, Lower: string, End: string, Bend: string } }?, -- custom knees (Bend "back"), elbows ("front")
+	Hinges: { { Upper: string, Lower: string, Bend: string } }?, -- custom hinges about the upper part's X axis: "back" flexes with a negative turn (R15 knees), "front" with a positive one (elbows)
 }
 export type SheetOptions = Options & {
 	Times: { number }?, -- exact columns (default: start, end, markers, peak, the stillest key poses, evenly filled)
@@ -58,10 +58,10 @@ local R15 = {
 	Feet = { "LeftFoot", "RightFoot" },
 	Trails = { "LeftHand", "RightHand", "LeftFoot", "RightFoot", "Head" },
 	Hinges = {
-		{ Upper = "LeftUpperLeg", Lower = "LeftLowerLeg", End = "LeftFoot", Bend = "back" },
-		{ Upper = "RightUpperLeg", Lower = "RightLowerLeg", End = "RightFoot", Bend = "back" },
-		{ Upper = "LeftUpperArm", Lower = "LeftLowerArm", End = "LeftHand", Bend = "front" },
-		{ Upper = "RightUpperArm", Lower = "RightLowerArm", End = "RightHand", Bend = "front" },
+		{ Upper = "LeftUpperLeg", Lower = "LeftLowerLeg", Bend = "back" },
+		{ Upper = "RightUpperLeg", Lower = "RightLowerLeg", Bend = "back" },
+		{ Upper = "LeftUpperArm", Lower = "LeftLowerArm", Bend = "front" },
+		{ Upper = "RightUpperArm", Lower = "RightLowerArm", Bend = "front" },
 	},
 }
 local R6 = { Feet = { "Left Leg", "Right Leg" }, Trails = { "Left Arm", "Right Arm", "Left Leg", "Right Leg", "Head" } }
@@ -81,7 +81,7 @@ type Rig = {
 	Ground: number, -- world Y of the floor the rig stands on
 	Descendants: { Instance }, -- for mapping snapshot clones back to the subject
 }
-type Frame = { T: number, World: { [BasePart]: CFrame }, Pivot: { [BasePart]: Vector3 }, Bone: { [Bone]: CFrame }, BoneT: { [Bone]: CFrame } }
+type Frame = { T: number, World: { [BasePart]: CFrame }, Bone: { [Bone]: CFrame }, BoneT: { [Bone]: CFrame } }
 type Clip = {
 	Rig: Rig, Track: AnimationTrack, Sequence: KeyframeSequence?, Name: string, Length: number, Looped: boolean, Frames: { Frame },
 	Moved: boolean, -- some joint or bone left its rest transform at least once (else nothing applied)
@@ -318,24 +318,17 @@ local function open(source: Model, clip: any, settings: Options): Clip
 	return { Rig = rig, Track = track, Sequence = sequence, Name = name, Length = track.Length, Looped = looped, Frames = {}, Moved = false }
 end
 
--- Poses the subject at `t` and measures it: part frames by forward kinematics, joint pivots, bone frames.
+-- Poses the subject at `t` and measures it: part frames by forward kinematics, bone frames.
 local function pose(clip: Clip, t: number): Frame
 	local rig = clip.Rig
 	clip.Track.TimePosition = t
 	rig.Animator:StepAnimations(0.001)
 	local world: { [BasePart]: CFrame } = { [rig.Root] = rig.Rest }
-	local pivot: { [BasePart]: Vector3 } = {}
 	for _, link in rig.Links do
 		local transform = if link.Joint then (link.Joint :: any).Transform :: CFrame else CFrame.identity
 		clip.Moved = clip.Moved or transform ~= CFrame.identity
 		local base = world[link.Parent]
-		if link.Reversed then
-			world[link.Part] = base * link.C1 * transform:Inverse() * link.C0:Inverse()
-			pivot[link.Part] = (base * link.C1).Position
-		else
-			world[link.Part] = base * link.C0 * transform * link.C1:Inverse()
-			pivot[link.Part] = (base * link.C0).Position
-		end
+		world[link.Part] = if link.Reversed then base * link.C1 * transform:Inverse() * link.C0:Inverse() else base * link.C0 * transform * link.C1:Inverse()
 	end
 	for part, offset in rig.Loose do
 		world[part] = rig.Rest * offset
@@ -351,7 +344,7 @@ local function pose(clip: Clip, t: number): Frame
 			clip.Moved = clip.Moved or bone.Transform ~= CFrame.identity
 		end
 	end
-	return { T = t, World = world, Pivot = pivot, Bone = boneWorld, BoneT = boneT }
+	return { T = t, World = world, Bone = boneWorld, BoneT = boneT }
 end
 
 local function sample(clip: Clip)
@@ -415,7 +408,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	end
 	if not clip.Moved then -- not ignorable: every other result would describe the rest pose, a false pass
 		table.insert(findings, { Severity = "error", Path = clip.Name, Rule = "rest-only", Detail = string.format(
-			"the rig never left its rest pose in %d samples, so the clip did not apply and every other result is void: check the id and the joint names, or park the camera near the subject (tracks far from the camera may not play)",
+			"the rig never left its rest pose in %d samples, so the clip did not apply and every other result is void: check the id, its owner and the pose names",
 			#frames) })
 	end
 	local step = frames[2].T - frames[1].T
@@ -431,13 +424,16 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	-- keys, easing, unmatched poses, markers
 	local markers: { { Name: string, Time: number } } = {}
 	local sequence = clip.Sequence
+	local linearShare: number? = nil -- of the posed joints, how many ease Linear (nil: keys unreadable)
 	if sequence then
 		local keyframes = sequence:GetKeyframes() :: { any }
 		table.sort(keyframes, function(a, b)
 			return a.Time < b.Time
 		end)
 		local fps = settings.Fps or 60
-		local offGrid, styles, moving, unmatched = 0, {} :: { [string]: number }, 0, {} :: { [string]: boolean }
+		local offGrid, styles, moving = 0, {} :: { [string]: number }, 0
+		-- poses that actually move something (weight and a non-identity pose at least once): grouping poses don't count
+		local unmatched, matched = {} :: { [string]: boolean }, 0
 		for _, keyframe in keyframes do
 			local frame = keyframe.Time * fps
 			if math.abs(frame - math.floor(frame + 0.5)) > 0.02 then
@@ -450,17 +446,20 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 				table.insert(markers, { Name = keyframe.Name, Time = keyframe.Time })
 			end
 			for _, item in keyframe:GetDescendants() do
-				if item:IsA("Pose") then
-					if not rig.ByName[item.Name] then
-						unmatched[item.Name] = true
-					end
-					if item.Weight > 0 then
-						moving += 1
-						styles[item.EasingStyle.Name] = (styles[item.EasingStyle.Name] or 0) + 1
+				if item:IsA("Pose") and item.Weight > 0 then
+					moving += 1
+					styles[item.EasingStyle.Name] = (styles[item.EasingStyle.Name] or 0) + 1
+					if item.CFrame ~= CFrame.identity then
+						if rig.ByName[item.Name] then
+							matched += 1
+						else
+							unmatched[item.Name] = true
+						end
 					end
 				end
 			end
 		end
+		linearShare = (styles.Linear or 0) / math.max(moving, 1)
 		local share = {}
 		for style, count in styles do
 			table.insert(share, { style, count })
@@ -487,8 +486,12 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			table.insert(missing, name)
 		end
 		table.sort(missing)
-		if #missing > 0 then
-			add("error", sequence.Name, "unmatched", "poses with no part or bone of that name, so their motion is dropped: " .. table.concat(missing, ", "))
+		if #missing > 0 and matched == 0 then
+			add("error", sequence.Name, "unmatched", "the clip moves none of this rig's parts: its pose names (" .. table.concat(missing, ", ", 1, math.min(#missing, 8))
+				.. (if #missing > 8 then ", ..." else "") .. ") must match the rig's part names")
+		elseif #missing > 0 then
+			add("warn", sequence.Name, "unmatched", string.format("%d posed names this rig lacks, so their motion is dropped (%s%s): fine for extra bones such as fingers or a face; a misspelled or renamed part loses motion",
+				#missing, table.concat(missing, ", ", 1, math.min(#missing, 6)), if #missing > 6 then ", ..." else ""))
 		end
 	else
 		table.insert(lines, "Keys: not readable (published clip without access); key, easing and marker checks skipped")
@@ -621,18 +624,42 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	local feet = feetOf(rig, settings)
 	local planted: { [string]: { boolean } } = {}
 	local stanceSpeeds, drifts, levels, rests = {}, {}, {}, {}
-	local lowest, lowestName, lowestTime, everPlanted, measured = math.huge, "", 0, false, 0
+	local lowest, lowestName, lowestTime, everPlanted, measured, mostStill = math.huge, "", 0, false, 0, 0
 	for _, name in feet do
 		local find = locator(rig, name)
 		local item = rig.ByName[name]
 		if find and item then
 			measured += 1
+			-- contact points: the sole attachment (R15 and R6 feet carry a *FootAttachment at the sole) with a toe and a heel
+			-- point along the foot, so a rolling foot is measured where the shoe is, not at its box's corners
+			local soles: { CFrame }? = nil
+			if item:IsA("BasePart") then
+				for _, child in item:GetChildren() do
+					if child:IsA("Attachment") and string.find(child.Name, "FootAttachment$") then
+						local reach = item.Size.Z * 0.35
+						soles = { child.CFrame, child.CFrame * CFrame.new(0, 0, -reach), child.CFrame * CFrame.new(0, 0, reach) }
+						break
+					end
+				end
+			end
 			local flags, heights, flat, centre = {}, {}, {}, {}
 			for index, frame in frames do
 				local cf = find(frame) or rig.Rest
-				heights[index] = (if item:IsA("BasePart") then bottom(cf, item.Size) else cf.Position.Y) - rig.Ground
-				flat[index] = Vector3.new(cf.Position.X, 0, cf.Position.Z)
-				centre[index] = cf.Position
+				local low, sole = math.huge, cf.Position
+				if soles then
+					for _, offset in soles do
+						local point = (cf * offset).Position
+						if point.Y < low then
+							low = point.Y
+						end
+					end
+					sole = (cf * soles[1]).Position
+				else
+					low = if item:IsA("BasePart") then bottom(cf, item.Size) else cf.Position.Y
+				end
+				heights[index] = low - rig.Ground
+				flat[index] = Vector3.new(sole.X, 0, sole.Z)
+				centre[index] = sole
 				flags[index] = heights[index] <= CONTACT
 				if heights[index] < lowest then
 					lowest, lowestName, lowestTime = heights[index], name, frame.T
@@ -640,6 +667,13 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 				everPlanted = everPlanted or flags[index]
 			end
 			planted[name] = flags
+			local quiet = 0
+			for k = 2, #frames do
+				if (centre[k] - centre[k - 1]).Magnitude / math.max(frames[k].T - frames[k - 1].T, 1e-4) < 2 then
+					quiet += 1
+				end
+			end
+			mostStill = math.max(mostStill, quiet / math.max(#frames - 1, 1))
 			-- a still foot a little above the floor: meant to stand on it, or lifted on purpose
 			local function resting(k: number): boolean
 				return k > 1 and heights[k] > CONTACT and heights[k] <= 0.6
@@ -753,16 +787,40 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		if lowest < -0.1 and (not low or lowest < low.Level - 0.05) then
 			add(if lowest < -0.3 then "error" else "warn", lowestName, "clip", string.format("dips %.2f studs into the floor at %s: a toe or heel goes through the ground", -lowest, seconds(lowestTime)))
 		end
-		for _, rest in rests do
-			add("warn", rest.Name, "float", string.format("rests %.2f studs above the floor from %s without touching it: lower it if it should stand there (Ignore 'float' if it is lifted on purpose)",
-				rest.Height, seconds(rest.Time)))
-		end
-		if not everPlanted and #rests == 0 then
-			add("warn", table.concat(feet, ", "), "float", string.format("no foot reaches the floor (lowest %+.2f): check the root offset or HipHeight", lowest))
+		if not everPlanted then
+			-- standing still in the air for most of the clip is an offset bug; feet that move and never land may be a jump
+			if mostStill >= 0.5 then
+				add("error", table.concat(feet, ", "), "float", string.format("the feet never touch the floor though they stay still for %d%% of the clip: they hover %.2f studs up (lower the root or HipHeight; Ignore 'float' for a clip that is airborne on purpose)",
+					math.floor(mostStill * 100 + 0.5), lowest))
+			else
+				add("warn", table.concat(feet, ", "), "float", string.format("no foot reaches the floor (lowest %+.2f): fine for a jump or fall, else check the root offset or HipHeight", lowest))
+			end
+		else
+			for _, rest in rests do
+				add("warn", rest.Name, "float", string.format("rests %.2f studs above the floor from %s without touching it: lower it if it should stand there (Ignore 'float' if it is lifted on purpose)",
+					rest.Height, seconds(rest.Time)))
+			end
 		end
 	end
 
-	-- pops: a joint turning far more in one sample than around it (a flip, a missing key)
+	-- pops: one sample that turns or moves 4x more than every sample within two frames of it (a flip, a missing key), or
+	-- any joint turning over 45° in one 60 fps frame (a flip spread across a few frames). A fast motion keyed over two
+	-- or three frames between slow ones is not a pop. Loops wrap around their seam.
+	local steps = #frames - 1
+	local function spike(series: { number }, index: number): (boolean, number)
+		local around, seen = 0, false
+		for _, d in { -2, -1, 1, 2 } do
+			local k = index + d
+			if clip.Looped then
+				k = (k - 2) % steps + 2
+			end
+			local value = series[k]
+			if value then
+				around, seen = math.max(around, value), true
+			end
+		end
+		return seen and series[index] > 4 * around, around
+	end
 	for _, link in animated do
 		local angles, moves = {}, {}
 		for index = 2, #frames do
@@ -771,37 +829,23 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			angles[index] = turn(a, b)
 			moves[index] = (b.Position - a.Position).Magnitude
 		end
-		local worst, worstAt, around = 0, 0, 0
+		local worst, worstAt, worstAround, jump, jumpAt = 0, 0, 0, 0, 0
 		for index = 2, #frames do
-			local near = {}
-			for k = index - 3, index + 3 do
-				if k ~= index and angles[k] then
-					table.insert(near, angles[k])
+			if angles[index] > math.rad(15) and angles[index] > worst then
+				local isSpike, around = spike(angles, index)
+				-- 45° per frame is a flip whatever its neighbours; per second rather than per sample, so short clips count the same
+				local perFrame = angles[index] / math.max((frames[index].T - frames[index - 1].T) * 60, 1e-3)
+				if isSpike or perFrame > math.rad(45) then
+					worst, worstAt, worstAround = angles[index], index, around
 				end
 			end
-			table.sort(near)
-			local median = near[math.max(1, math.ceil(#near / 2))] or 0
-			if angles[index] > math.rad(15) and angles[index] > 4 * median and angles[index] > worst then
-				worst, worstAt, around = angles[index], index, median
+			if moves[index] > 0.4 and moves[index] > jump and (spike(moves, index)) then
+				jump, jumpAt = moves[index], index
 			end
 		end
 		if worst > 0 then
-			add(if worst > math.rad(30) then "error" else "warn", link.Part.Name, "pop", string.format("turns %.0f° in one frame at %s (%.0f° around it): a flip or a missing key",
-				math.deg(worst), seconds(frames[worstAt].T), math.deg(around)))
-		end
-		local jump, jumpAt = 0, 0
-		for index = 2, #frames do
-			local near = {}
-			for k = index - 3, index + 3 do
-				if k ~= index and moves[k] then
-					table.insert(near, moves[k])
-				end
-			end
-			table.sort(near)
-			local median = near[math.max(1, math.ceil(#near / 2))] or 0
-			if moves[index] > 0.4 and moves[index] > 4 * median and moves[index] > jump then
-				jump, jumpAt = moves[index], index
-			end
+			add(if worst > math.rad(30) then "error" else "warn", link.Part.Name, "pop", string.format("turns %.0f° in one frame at %s (at most %.0f° in the frames around it): a flip or a missing key",
+				math.deg(worst), seconds(frames[worstAt].T), math.deg(worstAround)))
 		end
 		if jump > 0 then
 			add("error", link.Part.Name, "pop", string.format("jumps %.2f studs in one frame at %s", jump, seconds(frames[jumpAt].T)))
@@ -839,7 +883,9 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		if worst > math.rad(1) or gap > 0.05 then
 			add(if worst > math.rad(3) or gap > 0.15 then "error" else "warn", if worst > math.rad(1) then worstName else gapName, "seam",
 				string.format("the last frame misses the first by %.1f° and %.2f studs: the loop jumps (closeLoop)", math.deg(worst), gap))
-		elseif hitch > 0 then
+		elseif hitch > 0 and linearShare and linearShare < 0.5 then
+			-- with smooth easing a speed change at the seam is a curve that is not cyclic; with Linear easing every key
+			-- changes speed, so the seam is no different (the easing rule covers that)
 			add("warn", hitchName, "seam-speed", string.format("matches the first pose but changes speed across the loop (%.1f rad/s): match the tangents at the seam", hitch))
 		end
 	else
@@ -861,23 +907,27 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		end
 	end
 
-	-- knees and elbows must not bend backwards
+	-- knees and elbows must not bend backwards: the lower part's turn about the hinge (the upper part's X axis) from its
+	-- rest pose. Measured on Roblox's R15 clips: knees flex with a negative turn ("back"), elbows with a positive one
+	-- ("front"); a turn the other way past 5° is hyperextension
 	local hinges = settings.Hinges or (if rig.Kind == "R15" then R15.Hinges else {})
+	local rest: { [BasePart]: CFrame } = { [rig.Root] = rig.Rest }
+	for _, link in rig.Links do
+		local base = rest[link.Parent]
+		rest[link.Part] = if link.Reversed then base * link.C1 * link.C0:Inverse() else base * link.C0 * link.C1:Inverse()
+	end
 	for _, hinge in hinges do
-		local upper, lower, ending = rig.ByName[hinge.Upper], rig.ByName[hinge.Lower], rig.ByName[hinge.End]
-		if upper and lower and ending and upper:IsA("BasePart") and lower:IsA("BasePart") and ending:IsA("BasePart") then
+		local upper, lower = rig.ByName[hinge.Upper], rig.ByName[hinge.Lower]
+		if upper and lower and upper:IsA("BasePart") and lower:IsA("BasePart") and rest[upper] and rest[lower] then
+			local restRelative = rest[upper]:ToObjectSpace(rest[lower]):Inverse()
 			local worst, worstAt = 0, 0
 			for _, frame in frames do
-				local hip, knee, ankle = frame.Pivot[upper], frame.Pivot[lower], frame.Pivot[ending]
-				if hip and knee and ankle then
-					local a, b = knee - hip, ankle - knee
-					if a.Magnitude > 1e-3 and b.Magnitude > 1e-3 then
-						local angle = math.acos(math.clamp(a.Unit:Dot(b.Unit), -1, 1))
-						local side = a:Cross(b):Dot(frame.World[upper].RightVector)
-						local natural = if hinge.Bend == "back" then side < 0 else side > 0
-						if not natural and angle > worst then
-							worst, worstAt = angle, frame.T
-						end
+				local now, below = frame.World[upper], frame.World[lower]
+				if now and below then
+					local bend = select(1, (restRelative * now:ToObjectSpace(below)):ToEulerAnglesXYZ())
+					local wrong = if hinge.Bend == "back" then bend else -bend
+					if wrong > worst then
+						worst, worstAt = wrong, frame.T
 					end
 				end
 			end
@@ -1126,7 +1176,9 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 			end
 		end
 
-		-- park the camera: straight on, narrow lens, the whole sheet in frame
+		-- where to shoot from: straight on, through a narrow lens (nearly flat), the whole sheet in frame. The camera
+		-- itself is not moved: a parked edit camera made Studio captures come back blank, while passing this position to
+		-- screen_capture works. Only the lens is narrowed; clear() restores it.
 		local camera = workspace.CurrentCamera
 		if folder:GetAttribute("Fov") == nil then
 			folder:SetAttribute("Fov", camera.FieldOfView)
@@ -1139,7 +1191,6 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 		local distance = math.max((height / 2 + 1) / slope, (width / 2 + 1) / (slope * aspect)) * 1.05
 		local eye = center + Vector3.zAxis * distance
 		camera.FieldOfView = fov
-		camera.CFrame = CFrame.lookAt(eye, center)
 
 		local columnText = {}
 		for column, chosen in picks do
@@ -1153,7 +1204,8 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 			table.insert(rowText, LABEL[view] or view)
 		end
 		local legend = table.concat({
-			string.format("Sheet: %d rows x %d columns; camera parked, so screen_capture without camera arguments", #views, columns),
+			string.format("Sheet: %d rows x %d columns; capture it with screen_capture camera_position %.1f, %.1f, %.1f and look_at_position %.1f, %.1f, %.1f",
+				#views, columns, eye.X, eye.Y, eye.Z, center.X, center.Y, center.Z),
 			"Rows, top to bottom: " .. table.concat(rowText, "; "),
 			"Columns: " .. table.concat(columnText, " | "),
 			if trails then string.format("Trails: blue at the start to red at the end; %s dots are a planted foot (a smear is sliding)", if settings.Dark then "white" else "black") else nil,
