@@ -6,7 +6,8 @@
 --                          source touches (requires, remotes, DataStores, tags, products, attributes)
 --   markdown(entries)      those entries as rows for docs/migration.md
 --   content(roots?)        non-script instances per service by class, to compare before and after the switch to Rojo
---   export(first, budget)  a batch of { Path, Class, Source } of at most `budget` characters, for migration/legacy/
+--   export(first, budget)  a batch of { Path, Class, Source } of at most `budget` characters (small games; a large
+--                          game's sources come out of its saved file with export_place.luau instead)
 --   leftovers(managed)     scripts outside the Rojo-managed instances after the switch (expected: none)
 --
 -- The source scan is pattern matching, so treat it as a checklist to confirm by reading, not as a parser.
@@ -24,8 +25,9 @@ export type Entry = {
 	Enabled: boolean,
 	Lines: number,
 	Requires: { string },
-	Remotes: { string },
-	DataStores: { string },
+	Remotes: { string }, -- remote instances in the place that the source names
+	Network: { string }, -- remote calls and handlers it uses (FireServer, OnServerEvent, ...), even on remotes made at runtime
+	DataStores: { string }, -- store names, or the expression that builds one
 	Tags: { string },
 	Products: { string },
 	Attributes: { string },
@@ -59,6 +61,25 @@ local function collect(source: string, patterns: { string }): { string }
 	for _, pattern in patterns do
 		for match in string.gmatch(source, pattern) do
 			set[match] = true
+		end
+	end
+	return sorted(set)
+end
+
+-- The argument of every call to one of `names` (Lua patterns), with balanced parentheses: a string literal unquoted,
+-- anything else as written (a computed store name), at most 80 characters.
+local function calls(source: string, names: { string }): { string }
+	local set = {}
+	for _, name in names do
+		for args in string.gmatch(source, name .. "%s*(%b())") do
+			local inner = (string.match(string.gsub(string.sub(args, 2, -2), "%s+", " "), "^%s*(.-)%s*$")) :: string
+			-- a literal name, alone or as the first argument (GetProfileStore("PlayerData", template))
+			local text = string.match(inner, '^"([^"]*)"%s*$') or string.match(inner, "^'([^']*)'%s*$")
+				or string.match(inner, '^"([^"]*)"%s*,') or string.match(inner, "^'([^']*)'%s*,") or inner
+			if text == "" then
+				text = "(no name)"
+			end
+			set[if #text > 80 then string.sub(text, 1, 77) .. "..." else text] = true
 		end
 	end
 	return sorted(set)
@@ -108,9 +129,12 @@ function Inventory.scripts(list: { Instance }?): { Entry }
 			RunContext = if typeof(context) == "EnumItem" then context.Name else "",
 			Enabled = property(item, "Enabled") ~= false,
 			Lines = if source == "" then 0 else newlines + 1,
-			Requires = collect(source, { "require%s*%(%s*([^%)]-)%s*%)" }),
+			Requires = calls(source, { "%f[%w_]require" }),
 			Remotes = remotes,
-			DataStores = collect(source, { "GetDataStore%s*%(%s*[\"']([^\"']+)", "GetOrderedDataStore%s*%(%s*[\"']([^\"']+)" }),
+			Network = collect(source, { ":(FireServer)%s*%(", ":(FireClient)%s*%(", ":(FireAllClients)%s*%(", ":(InvokeServer)%s*%(", ":(InvokeClient)%s*%(",
+				"%.(OnServerEvent)", "%.(OnClientEvent)", "%.(OnServerInvoke)", "%.(OnClientInvoke)" }),
+			-- DataStoreService and the common wrappers (ProfileService, ProfileStore, DataStore2)
+			DataStores = calls(source, { "GetDataStore", "GetOrderedDataStore", "GetGlobalDataStore", "GetProfileStore", "ProfileStore%.New", "%f[%w_]DataStore2", "%f[%w_]DataStore2%.Combine" }),
 			Tags = collect(source, { "GetTagged%s*%(%s*[\"']([^\"']+)", "GetInstanceAddedSignal%s*%(%s*[\"']([^\"']+)", "AddTag%s*%([^,]+,%s*[\"']([^\"']+)",
 				"HasTag%s*%([^,]+,%s*[\"']([^\"']+)", ":AddTag%s*%(%s*[\"']([^\"']+)", ":HasTag%s*%(%s*[\"']([^\"']+)" }),
 			Products = collect(source, { "(ProcessReceipt)", "Prompt%a*Purchase%s*%([^,]+,%s*(%d+)", "UserOwnsGamePassAsync%s*%([^,]+,%s*(%d+)" }),
@@ -125,10 +149,10 @@ function Inventory.markdown(entries: { Entry }): string
 	local lines = { "| Legacy path | Class | Lines | Touches | New home | Status |", "|---|---|---|---|---|---|" }
 	for _, entry in entries do
 		local touches = {}
-		for label, list in { requires = entry.Requires, remotes = entry.Remotes, stores = entry.DataStores, tags = entry.Tags,
-			products = entry.Products, attributes = entry.Attributes } do
+		for label, list in { requires = entry.Requires, remotes = entry.Remotes, network = entry.Network, stores = entry.DataStores,
+			tags = entry.Tags, products = entry.Products, attributes = entry.Attributes } do
 			if #list > 0 then
-				table.insert(touches, label .. ": " .. table.concat(list, ", "))
+				table.insert(touches, label .. ": " .. table.concat(list, ", ", 1, math.min(#list, 20)) .. (if #list > 20 then string.format(" (+%d more)", #list - 20) else ""))
 			end
 		end
 		table.sort(touches)

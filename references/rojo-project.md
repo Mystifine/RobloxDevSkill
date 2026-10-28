@@ -23,10 +23,15 @@ Find where the user keeps projects: the folder holding the most Rojo projects (`
 
 1. **Back up first.** The owner saves the place to a file (`File > Save to File`) outside the repository; everything after this works on a copy.
 2. **Load [scripts/GameInventory.luau](../scripts/GameInventory.luau)**, then:
-   - `Inventory.markdown(Inventory.scripts())` starts `docs/migration.md`: one row per legacy script with what it touches (requires, remotes, DataStores, tags, products, attributes). Fill in each row's new home and status until every row is verified. An asset-id `require` is outside code: drop it ([assets.md](assets.md)).
+   - `Inventory.markdown(Inventory.scripts())` starts `docs/migration.md`: one row per legacy script with what it touches.
+     - It records requires, remote calls (even on remotes made at runtime), DataStores (a computed store name is shown as its expression), tags, products and attributes.
+     - Fill in each row's new home and status until every row is verified.
+     - An asset-id `require` is outside code: drop it ([assets.md](assets.md)).
    - `select(2, Inventory.content())` gives the non-script instance counts per service. Keep them for the switch-over check.
-   - `Inventory.export(first, budget)` pages the sources out to `migration/legacy/<DataModel path>.luau`. Rojo does not map that folder. Commit it first so the rewrite can be reviewed against it.
-3. **Understand before redesigning.** Read the legacy code feature by feature, and query Graphify on `migration/legacy/`.
+3. **Export the legacy code from the backup file**, not through Studio: `lune run <skill>/scripts/export_place.luau <backup.rbxl> migration/legacy`.
+   - It writes every script byte for byte (a 26-script, 1 MB game took 1.3 s).
+   - Rojo does not map `migration/legacy/`. Commit it first, so the rewrite can be reviewed against it.
+4. **Understand before redesigning.** Read the legacy code feature by feature, and query Graphify on `migration/legacy/`.
 
 ## 4. Rebuild into the blueprint
 
