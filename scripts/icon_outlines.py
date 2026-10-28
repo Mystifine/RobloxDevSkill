@@ -42,6 +42,8 @@ def style(width):
     return "white border" if width >= 2 else "no white border"
 
 
+if len(sys.argv) < 2 or not os.path.isdir(sys.argv[1]):
+    sys.exit("usage: uv run --with numpy --with pillow python icon_outlines.py <folder of .png icons> [name ...]")
 folder, named = sys.argv[1], sys.argv[2:]
 widths, details = {}, {}
 for name in sorted(os.listdir(folder)):

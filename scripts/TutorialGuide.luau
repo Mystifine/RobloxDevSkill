@@ -59,7 +59,7 @@ function Guide.screenRect(target: Instance, padding: number?): Rect?
 	for x = -1, 1, 2 do
 		for y = -1, 1, 2 do
 			for z = -1, 1, 2 do
-				local point = (camera():WorldToViewportPoint(cframe:PointToWorldSpace(size / 2 * Vector3.new(x, y, z))))
+				local point = (camera():WorldToViewportPoint(cframe:PointToWorldSpace(size / 2 * Vector3.new(x, y, z)) :: Vector3))
 				if point.Z <= 0 then
 					return nil
 				end
@@ -169,8 +169,8 @@ function Guide.beam(goal: Vector3, color: Color3?, texture: string?, ignore: { I
 	end
 	local params = RaycastParams.new()
 	params.FilterType, params.RespectCanCollide = Enum.RaycastFilterType.Exclude, true
-	local skipped = { character }
-	for _, item in ignore or {} do
+	local skipped: { Instance } = { character :: Model }
+	for _, item in (ignore or {}) :: { Instance } do
 		table.insert(skipped, item)
 	end
 	params.FilterDescendantsInstances = skipped
@@ -226,13 +226,13 @@ end
 -- function restores all three. The server must still refuse out-of-order requests and keep the player alive: this is the
 -- client half of an enforced tutorial. Keep the lock state out of the save (leaving mid-tutorial resets the run).
 function Guide.lock(hide: { Instance }, keys: { Enum.KeyCode }?): () -> ()
-	local restore = {}
+	local restore: { { any } } = {} -- { instance, property, value }
 	for _, item in hide do
 		if item:IsA("ScreenGui") then
-			table.insert(restore, { item, "Enabled", item.Enabled })
+			table.insert(restore, { item, "Enabled", item.Enabled } :: { any })
 			item.Enabled = false
 		elseif item:IsA("GuiObject") then
-			table.insert(restore, { item, "Visible", item.Visible })
+			table.insert(restore, { item, "Visible", item.Visible } :: { any })
 			item.Visible = false
 		end
 	end

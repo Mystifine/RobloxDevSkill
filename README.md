@@ -69,9 +69,10 @@ It hands off to Blender and animation skills when they are installed (`blender-d
   - `RigAudit`: 98 R15 rigs, broken copies and a generated R6.
   - `ZFight`: an 18,882-part map, audited and settled to 0 on a copy.
   - `GameInventory`: 26 scripts; `export_place` on the same game's saved file.
-  - `UIParity` (2026-10-28): that game's Rojo port beside the original, identical at five viewport sizes for the HUD, 8 windows and every scroll position; a 3 px nudge is caught.
+  - `UIParity` (2026-10-28): in Play, a fixture covering every option, clipping rule and sweep case (39 checks), its visibility verdicts matching the engine's own hit test. An earlier version matched that game's Rojo port to the original at five viewport sizes (HUD, 8 windows, every scroll position) and caught a 3 px nudge.
   - The VFX real-rig stage: in Play.
-  - `ZFight` and `GameInventory` also have offline Lune tests.
+  - `ZFight` and `GameInventory` were also tested offline in Lune while they were written.
+- **Also checked** (2026-10-28): every Studio script type-checks clean in strict mode under both Luau type solvers (luau-lsp with Roblox's definitions) and passes Selene with no warnings; `export_place` re-exported that game's saved file and matched the earlier export, apart from one edit made after the file was saved; `icon_outlines.py` measured generated icons of known border widths; both installers ran local, global, update and Claude-link installs.
 
 ## License
 

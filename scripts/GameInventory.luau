@@ -150,7 +150,7 @@ function Inventory.markdown(entries: { Entry }): string
 	for _, entry in entries do
 		local touches = {}
 		for label, list in { requires = entry.Requires, remotes = entry.Remotes, network = entry.Network, stores = entry.DataStores,
-			tags = entry.Tags, products = entry.Products, attributes = entry.Attributes } do
+			tags = entry.Tags, products = entry.Products, attributes = entry.Attributes } :: { [string]: { string } } do
 			if #list > 0 then
 				table.insert(touches, label .. ": " .. table.concat(list, ", ", 1, math.min(#list, 20)) .. (if #list > 20 then string.format(" (+%d more)", #list - 20) else ""))
 			end
@@ -188,13 +188,13 @@ end
 
 -- Sources in a stable order, `budget` characters at a time (default 150,000): call with the returned Next until it is nil.
 function Inventory.export(first: number?, budget: number?): { Items: { { Path: string, Class: string, Source: string } }, Next: number?, Total: number }
-	local all = {}
+	local all: { LuaSourceContainer } = {}
 	each(nil, function(item)
 		if item:IsA("LuaSourceContainer") then
 			table.insert(all, item)
 		end
 	end)
-	local items, used, index = {}, 0, first or 1
+	local items: { { Path: string, Class: string, Source: string } }, used, index = {}, 0, first or 1
 	local limit = budget or 150000
 	while index <= #all do
 		local item = all[index]

@@ -87,9 +87,11 @@ type Clip = {
 	Moved: boolean, -- some joint or bone left its rest transform at least once (else nothing applied)
 }
 type Extra = { Energy: { number }, Planted: { [string]: { boolean } }, Trails: { string }, Tip: string? }
+type Drift = { Name: string, Drift: number, Time: number } -- how far a planted foot slid
+type Level = { Name: string, Level: number, Time: number } -- a planted foot's height over the floor
 
 local function listed(list: { string }?, name: string): boolean
-	for _, item in list or {} do
+	for _, item in (list or {}) :: { string } do
 		if item == name then
 			return true
 		end
@@ -98,13 +100,14 @@ local function listed(list: { string }?, name: string): boolean
 end
 
 local function holder(): Folder
-	local folder = workspace:FindFirstChild(HOLD)
-	if not folder then
-		folder = Instance.new("Folder")
-		folder.Name = HOLD
-		folder.Parent = workspace
+	local existing = workspace:FindFirstChild(HOLD)
+	if existing then
+		return existing :: Folder
 	end
-	return folder :: Folder
+	local folder = Instance.new("Folder")
+	folder.Name = HOLD
+	folder.Parent = workspace
+	return folder
 end
 
 local function seconds(t: number): string
@@ -215,7 +218,7 @@ local function build(source: Model, at: Vector3): Rig
 	while head <= #queue do
 		local part = queue[head]
 		head += 1
-		for _, e in adjacency[part] or {} do
+		for _, e in (adjacency[part] or {}) :: { any } do
 			local other = if e.P0 == part then e.P1 else e.P0
 			if not seen[other] then
 				seen[other] = true
@@ -268,7 +271,7 @@ local function build(source: Model, at: Vector3): Rig
 	local byName: { [string]: Instance } = {}
 	for _, pass in { "BasePart", "Bone", "Attachment" } do
 		for _, item in model:GetDescendants() do
-			if item:IsA(pass) and byName[item.Name] == nil then
+			if item:IsA(pass) and (byName[item.Name] :: Instance?) == nil then
 				byName[item.Name] = item
 			end
 		end
@@ -282,12 +285,12 @@ end
 
 -- Animation id, the KeyframeSequence when it can be read, and a display name.
 local function resolve(clip: any): (string, KeyframeSequence?, string)
-	if typeof(clip) == "Instance" and clip:IsA("KeyframeSequence") then
-		return KeyframeSequenceProvider:RegisterKeyframeSequence(clip), clip, clip.Name
+	if typeof(clip) == "Instance" and (clip :: Instance):IsA("KeyframeSequence") then
+		return KeyframeSequenceProvider:RegisterKeyframeSequence(clip :: KeyframeSequence), clip :: KeyframeSequence, (clip :: KeyframeSequence).Name
 	end
-	local id, name
-	if typeof(clip) == "Instance" and clip:IsA("Animation") then
-		id, name = clip.AnimationId, clip.Name
+	local id: string, name: string
+	if typeof(clip) == "Instance" and (clip :: Instance):IsA("Animation") then
+		id, name = (clip :: Animation).AnimationId, (clip :: Animation).Name
 	else
 		local text = tostring(clip)
 		id, name = if string.find(text, "://", 1, true) then text else "rbxassetid://" .. text, text
@@ -409,7 +412,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	if not clip.Moved then -- not ignorable: every other result would describe the rest pose, a false pass
 		table.insert(findings, { Severity = "error", Path = clip.Name, Rule = "rest-only", Detail = string.format(
 			"the rig never left its rest pose in %d samples, so the clip did not apply and every other result is void: check the id, its owner and the pose names",
-			#frames) })
+			#frames) } :: Finding)
 	end
 	local step = frames[2].T - frames[1].T
 	local animated: { Link } = {}
@@ -428,7 +431,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	if sequence then
 		local keyframes = sequence:GetKeyframes() :: { any }
 		table.sort(keyframes, function(a, b)
-			return a.Time < b.Time
+			return (a.Time :: number) < (b.Time :: number)
 		end)
 		local fps = settings.Fps or 60
 		local offGrid, styles, moving = 0, {} :: { [string]: number }, 0
@@ -460,12 +463,12 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			end
 		end
 		linearShare = (styles.Linear or 0) / math.max(moving, 1)
-		local share = {}
+		local share: { { any } } = {} -- { style, count }
 		for style, count in styles do
-			table.insert(share, { style, count })
+			table.insert(share, { style, count } :: { any })
 		end
 		table.sort(share, function(a, b)
-			return a[2] > b[2]
+			return (a[2] :: number) > (b[2] :: number)
 		end)
 		local easing = {}
 		for _, entry in share do
@@ -497,7 +500,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		table.insert(lines, "Keys: not readable (published clip without access); key, easing and marker checks skipped")
 	end
 	table.sort(markers, function(a, b)
-		return a.Time < b.Time
+		return (a.Time :: number) < (b.Time :: number)
 	end)
 	if #markers > 0 then
 		local list = {}
@@ -506,7 +509,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		end
 		lines[#lines] ..= "; markers " .. table.concat(list, ", ")
 	end
-	for _, expected in settings.Markers or {} do
+	for _, expected in (settings.Markers or {}) :: { string } do
 		local present = false
 		for _, marker in markers do
 			present = present or marker.Name == expected
@@ -623,7 +626,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	-- feet: a planted foot sits on the floor (no float, no clip); planted drift (in place) or travel speed (locomotion)
 	local feet = feetOf(rig, settings)
 	local planted: { [string]: { boolean } } = {}
-	local stanceSpeeds, drifts, levels, rests = {}, {}, {}, {}
+	local stanceSpeeds, drifts: { Drift }, levels: { Level }, rests = {}, {}, {}, {}
 	local lowest, lowestName, lowestTime, everPlanted, measured, mostStill = math.huge, "", 0, false, 0, 0
 	for _, name in feet do
 		local find = locator(rig, name)
@@ -713,7 +716,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			end
 		end
 	end
-	local high, low = nil, nil -- the planted contacts furthest above and below the floor
+	local high: Level?, low: Level? = nil, nil -- the planted contacts furthest above and below the floor
 	for _, level in levels do
 		if not high or level.Level > high.Level then
 			high = level
@@ -858,7 +861,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		local worst, worstName, gap, gapName, hitch, hitchName = 0, "", 0, "", 0, ""
 		for _, link in animated do
 			local function rel(frame: Frame): CFrame
-				return frame.World[link.Parent]:ToObjectSpace(frame.World[link.Part])
+				return frame.World[link.Parent]:ToObjectSpace(frame.World[link.Part]) :: CFrame
 			end
 			local angle = turn(rel(first), rel(last))
 			if angle > worst then
@@ -910,7 +913,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	-- knees and elbows must not bend backwards: the lower part's turn about the hinge (the upper part's X axis) from its
 	-- rest pose. Measured on Roblox's R15 clips: knees flex with a negative turn ("back"), elbows with a positive one
 	-- ("front"); a turn the other way past 5° is hyperextension
-	local hinges = settings.Hinges or (if rig.Kind == "R15" then R15.Hinges else {})
+	local hinges: { { Upper: string, Lower: string, Bend: string } } = settings.Hinges or (if rig.Kind == "R15" then R15.Hinges else {})
 	local rest: { [BasePart]: CFrame } = { [rig.Root] = rig.Rest }
 	for _, link in rig.Links do
 		local base = rest[link.Parent]
@@ -960,7 +963,7 @@ end
 
 -- Measures `clip` played on a copy of `rig` and reports. Edit mode. Fix every ERROR; read the sparkline for timing.
 function Inspector.audit(rig: Model, clip: any, options: Options?): Report
-	local settings = options or {}
+	local settings: Options = options or {}
 	local opened = open(rig, clip, settings)
 	local ok, report = pcall(function()
 		sample(opened)
@@ -1020,7 +1023,7 @@ local function pick(report: Report, extra: Extra, frames: { Frame }, count: numb
 		add(report.Length * (slot % count) / count, "")
 	end
 	table.sort(picks, function(a, b)
-		return a.T < b.T
+		return (a.T :: number) < (b.T :: number)
 	end)
 	return picks
 end
@@ -1039,7 +1042,7 @@ local function snapshot(rig: Rig, frame: Frame, place: CFrame): Model
 	end
 	local originals: { Instance? } = {}
 	if #items == #rig.Descendants then
-		originals = rig.Descendants
+		originals = rig.Descendants :: { Instance? }
 	else -- something was not Archivable: match by path instead of by position
 		local byPath: { [string]: Instance } = {}
 		local prefix = #rig.Model:GetFullName() + 2
@@ -1092,7 +1095,7 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 		else
 			picks = pick(report, extra, frames, settings.Count or 8)
 		end
-		local views = settings.Views or { "side", "front" }
+		local views: { string } = settings.Views or { "side", "front" }
 		local trails = settings.Trails ~= false
 
 		-- extents over the whole clip: how far any part reaches from the root, and how high
@@ -1193,7 +1196,7 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 		camera.FieldOfView = fov
 
 		local columnText = {}
-		for column, chosen in picks do
+		for column: number, chosen in picks do
 			table.insert(columnText, string.format("%d %s%s", column, seconds(chosen.T), if chosen.Why ~= "" then " " .. chosen.Why else ""))
 		end
 		if trails then
@@ -1208,7 +1211,7 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 				#views, columns, eye.X, eye.Y, eye.Z, center.X, center.Y, center.Z),
 			"Rows, top to bottom: " .. table.concat(rowText, "; "),
 			"Columns: " .. table.concat(columnText, " | "),
-			if trails then string.format("Trails: blue at the start to red at the end; %s dots are a planted foot (a smear is sliding)", if settings.Dark then "white" else "black") else nil,
+			(if trails then string.format("Trails: blue at the start to red at the end; %s dots are a planted foot (a smear is sliding)", if settings.Dark then "white" else "black") else nil) :: string, -- nil ends the list
 		} :: { string }, "\n")
 		return {
 			Legend = legend, Report = report,
@@ -1237,7 +1240,7 @@ end
 local function ordered(sequence: KeyframeSequence): { Keyframe }
 	local keyframes = sequence:GetKeyframes() :: { any }
 	table.sort(keyframes, function(a, b)
-		return a.Time < b.Time
+		return (a.Time :: number) < (b.Time :: number)
 	end)
 	return keyframes
 end

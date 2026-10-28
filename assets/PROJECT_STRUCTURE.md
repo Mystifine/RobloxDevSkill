@@ -1,6 +1,6 @@
 # Roblox Project Structure
 
-A setup blueprint for a Rojo-managed Roblox experience: repository layout, runtime boundaries and tooling, not any game's services. Use it to initialize or align a project; replace example names and optional folders as needed. [AGENTS.md](AGENTS.md) stays the canonical source of project-specific rules.
+A setup blueprint for a Rojo-managed Roblox experience: repository layout, runtime boundaries and tooling, not any game's services. Use it to initialize or align a project; replace example names and optional folders as needed. The project's root `AGENTS.md` stays the canonical source of project-specific rules.
 
 ## Repository layout
 

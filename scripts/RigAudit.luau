@@ -34,7 +34,7 @@ end
 local function seatOf(handle: BasePart): CFrame?
 	local weld = handle:FindFirstChild("AccessoryWeld")
 	if weld and weld:IsA("Weld") and weld.Part0 and weld.Part1 then
-		return if weld.Part0 == handle then weld.Part1.CFrame * weld.C1 * weld.C0:Inverse() else weld.Part0.CFrame * weld.C0 * weld.C1:Inverse()
+		return if weld.Part0 == handle then (weld.Part1 :: BasePart).CFrame * weld.C1 * weld.C0:Inverse() else (weld.Part0 :: BasePart).CFrame * weld.C0 * weld.C1:Inverse()
 	elseif weld and weld:IsA("RigidConstraint") and weld.Attachment0 and weld.Attachment1 then
 		local mine, other = weld.Attachment0, weld.Attachment1
 		if mine.Parent ~= handle then
@@ -125,7 +125,7 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 		local queue = { root }
 		local index = 1
 		while index <= #queue do
-			for _, other in links[queue[index]] or {} do
+			for _, other in (links[queue[index]] or {}) :: { BasePart } do
 				if not reached[other] then
 					reached[other] = true
 					table.insert(queue, other)

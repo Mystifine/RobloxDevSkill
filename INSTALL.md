@@ -37,7 +37,7 @@ sh install.sh --local    # into the current project instead
 Options: `-Project <dir>` / `--project <dir>` (local target, default: current folder), `-Force` / `--force` (replace a non-git copy). Read a script before running it.
 
 - **Global** installs keep their git history; re-run the script to update.
-- **Local** installs drop `.git` so the project can commit the skill; re-run to refresh. Claude's link in a local install is relative on macOS/Linux and a junction on Windows.
+- **Local** installs drop `.git` so the project can commit the skill; re-run with `-Force` / `--force` to refresh it (without it the script stops rather than replace the copy). Claude's link in a local install is relative on macOS/Linux and a junction on Windows.
 - On Windows use the `.ps1` (junctions need no special rights; symlinks do). `install.sh` is for macOS/Linux/WSL.
 
 ## Manual steps (what an agent without the scripts should do)

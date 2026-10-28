@@ -8,16 +8,21 @@
 --   UIParity.fingerprint({ Detail = { "Hud/Shop" } })   -- plus every line of those windows, to see what differs
 --   UIParity.sweep(scrollingFrame)                      -- "<canvas y> <count> <hash>" per window-height step, top to bottom
 --
--- A line is "T|text|x,y,w,h" or "I|image|x,y,w,h" for each visible text or image inside the viewport (AbsolutePosition and
--- AbsoluteSize, rounded). Same-named children of one ScreenGui are one window. Equal hashes mean equal layout and content.
+-- A line is "T|text|x,y,w,h" or "I|image|x,y,w,h" (AbsolutePosition and AbsoluteSize, rounded) for each text or image the
+-- engine draws: Visible up to an enabled ScreenGui, not fully transparent, and at least partly on screen and inside every
+-- ancestor that clips. Clipping follows the engine: ClipsDescendants (a ScrollingFrame clips to its window) is ignored on and
+-- under a rotated GuiObject, and a CanvasGroup always clips to its box. An empty TextBox shows its placeholder; a sprite-sheet
+-- image adds its rectangle to the id ("I|id@x,y,w,h|..."). Same-named children of one ScreenGui are one window. Equal hashes
+-- mean equal layout and content.
 -- Options:
---   Detail  window keys to list in full
---   Ignore  image ids to skip: decorations repositioned every frame (sparkles, glints)
---   Moving  attribute names: an element with one of them on itself or an ancestor is compared by presence only, since an
---           animated scale changes its rectangle every frame
---   Digits  false keeps digits (by default they become "#", so cash, timers and counters match)
---   Settle  sweep: seconds to wait after each scroll, for content that loads lazily (default 0.5)
+--   Detail      window keys to list in full
+--   Ignore      image ids to skip: decorations repositioned every frame (sparkles, glints)
+--   Moving      attribute names: an element with a truthy one on itself or an ancestor is compared by presence only, since
+--               an animated scale changes its rectangle every frame
+--   KeepDigits  true keeps digits; by default they become "#", so cash, timers and counters match
+--   Settle      sweep: seconds to wait after each scroll, for content that loads lazily (default 0.5)
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 
 local UIParity = {}
@@ -26,9 +31,13 @@ export type Options = {
 	Detail: { string }?,
 	Ignore: { string }?,
 	Moving: { string }?,
-	Digits: boolean?,
+	KeepDigits: boolean?,
 	Settle: number?,
 }
+
+type Context = { Options: Options, Ignore: { [string]: boolean }, Moving: { string }, Low: Vector2, High: Vector2 }
+
+local MAX_SWEEP_STEPS = 500 -- a canvas that keeps growing (an endless feed) stops here
 
 local function hash(lines: { string }): string
 	local h = 7
@@ -40,63 +49,108 @@ local function hash(lines: { string }): string
 	return string.format("%08x", h)
 end
 
-local function shown(node: Instance, gui: Instance): boolean
-	local current: Instance? = node
-	while current and current ~= gui do
-		if current:IsA("GuiObject") and not current.Visible then
-			return false
-		end
-		if current:IsA("LayerCollector") and not current.Enabled then
-			return false
-		end
-		current = current.Parent
+-- one call's settings, and the whole screen in GUI coordinates (AbsolutePosition counts from below the top-bar inset)
+local function context(options: Options?): Context
+	local opts: Options = options or {}
+	local ignore: { [string]: boolean } = {}
+	for _, id in (opts.Ignore or {}) :: { string } do
+		ignore[id] = true
 	end
-	return true
+	local inset = GuiService:GetGuiInset()
+	local viewport = (workspace.CurrentCamera :: Camera).ViewportSize
+	return { Options = opts, Ignore = ignore, Moving = (opts.Moving or {}) :: { string }, Low = -inset, High = viewport - inset }
 end
 
-local function moving(node: Instance, gui: Instance, names: { string }): boolean
-	local current: Instance? = node
-	while current and current ~= gui do
-		for _, name in names do
-			if current:GetAttribute(name) then
-				return true
-			end
+-- what a text or image shows ("T|..." or "I|..."), or nil when it shows nothing
+local function content(node: Instance, ctx: Context): string?
+	if node:IsA("TextLabel") or node:IsA("TextButton") or node:IsA("TextBox") then
+		local o = node :: any
+		local text: string = o.Text
+		if text == "" and node:IsA("TextBox") then
+			text = node.PlaceholderText
 		end
-		current = current.Parent
+		if text == "" or o.TextTransparency >= 1 or o.MaxVisibleGraphemes == 0 then
+			return nil
+		end
+		return "T|" .. (if ctx.Options.KeepDigits then text else (string.gsub(text, "%d", "#")))
+	elseif node:IsA("ImageLabel") or node:IsA("ImageButton") then
+		local o = node :: any
+		local image: string = o.Image
+		if image == "" or o.ImageTransparency >= 1 or ctx.Ignore[image] then
+			return nil
+		end
+		local size: Vector2 = o.ImageRectSize
+		if size.X > 0 and size.Y > 0 then
+			local offset: Vector2 = o.ImageRectOffset
+			return string.format("I|%s@%d,%d,%d,%d", image, offset.X, offset.Y, size.X, size.Y)
+		end
+		return "I|" .. image
+	end
+	return nil
+end
+
+local function tagged(item: Instance, names: { string }): boolean
+	for _, name in names do
+		if item:GetAttribute(name) then
+			return true
+		end
 	end
 	return false
 end
 
--- every visible text and image under `root` inside `clip` (min, max), as sorted lines
-local function collect(root: Instance, gui: Instance, clip: { Vector2 }, options: Options): { string }
-	local ignore: { [string]: boolean } = {}
-	for _, id in options.Ignore or {} do
-		ignore[id] = true
+-- Walks from `node` up to its ScreenGui: whether the engine draws it at all (Visible all the way up, the ScreenGui enabled,
+-- no CanvasGroup faded out), whether it or an ancestor carries a Moving attribute, and the window it can be drawn in (the
+-- screen cut down by every ancestor that clips).
+local function place(node: Instance, ctx: Context): (boolean, boolean, Vector2, Vector2)
+	local low, high = ctx.Low, ctx.High
+	local chain: { GuiObject } = {}
+	local moving = false
+	local current: Instance? = node
+	while current and not current:IsA("LayerCollector") do
+		if current:IsA("GuiObject") then
+			if not current.Visible or (current:IsA("CanvasGroup") and current.GroupTransparency >= 1) then
+				return false, false, low, high
+			end
+			table.insert(chain, current)
+		end
+		moving = moving or tagged(current, ctx.Moving)
+		current = current.Parent
 	end
-	local names = options.Moving or {}
+	local layer = current :: LayerCollector?
+	if not layer or not layer:IsA("ScreenGui") or not layer.Enabled then
+		return false, false, low, high
+	end
+	moving = moving or tagged(layer, ctx.Moving)
+	local rotated = false
+	for i = #chain, 2, -1 do -- top down; chain[1] is the node itself, which clips only its children
+		local frame = chain[i]
+		rotated = rotated or frame.Rotation ~= 0
+		if frame:IsA("CanvasGroup") or (frame.ClipsDescendants and not rotated) then
+			local size = if frame:IsA("ScrollingFrame") then frame.AbsoluteWindowSize else frame.AbsoluteSize
+			low = low:Max(frame.AbsolutePosition)
+			high = high:Min(frame.AbsolutePosition + size)
+		end
+	end
+	return true, moving, low, high
+end
+
+-- every text and image under `root` (itself included) that shows, as sorted lines
+local function collect(root: Instance, ctx: Context): { string }
 	local lines = {}
 	local nodes = root:GetDescendants()
 	table.insert(nodes, root)
 	for _, node in nodes do
-		if not node:IsA("GuiObject") then
-			continue
-		end
-		local o = node :: any
-		local p, s = o.AbsolutePosition, o.AbsoluteSize
-		if s.X <= 0 or s.Y <= 0 or p.X + s.X <= clip[1].X or p.Y + s.Y <= clip[1].Y or p.X >= clip[2].X or p.Y >= clip[2].Y then
-			continue
-		end
-		local key: string? = nil
-		if (o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox")) and o.Text ~= "" and o.TextTransparency < 1 then
-			key = "T|" .. (if options.Digits == false then o.Text else (string.gsub(o.Text, "%d", "#")))
-		elseif (o:IsA("ImageLabel") or o:IsA("ImageButton")) and o.Image ~= "" and o.ImageTransparency < 1 and not ignore[o.Image] then
-			key = "I|" .. o.Image
-		end
-		if key and shown(node, gui) then
-			local rect = if #names > 0 and moving(node, gui, names)
-				then "~"
-				else string.format("%d,%d,%d,%d", math.round(p.X), math.round(p.Y), math.round(s.X), math.round(s.Y))
-			table.insert(lines, key .. "|" .. rect)
+		local key = content(node, ctx)
+		if key then
+			local shows, moving, low, high = place(node, ctx)
+			local o = node :: GuiObject
+			local p, s = o.AbsolutePosition, o.AbsoluteSize
+			if shows and s.X > 0 and s.Y > 0 and p.X < high.X and p.Y < high.Y and p.X + s.X > low.X and p.Y + s.Y > low.Y then
+				local rect = if moving
+					then "~"
+					else string.format("%d,%d,%d,%d", math.round(p.X), math.round(p.Y), math.round(s.X), math.round(s.Y))
+				table.insert(lines, key .. "|" .. rect)
+			end
 		end
 	end
 	table.sort(lines)
@@ -104,12 +158,11 @@ local function collect(root: Instance, gui: Instance, clip: { Vector2 }, options
 end
 
 function UIParity.fingerprint(options: Options?): string
-	local opts: Options = options or {}
+	local ctx = context(options)
 	local gui = (Players.LocalPlayer :: Player):WaitForChild("PlayerGui")
 	local viewport = (workspace.CurrentCamera :: Camera).ViewportSize
-	local clip = { Vector2.zero, viewport }
 	local detail: { [string]: boolean } = {}
-	for _, key in opts.Detail or {} do
+	for _, key in (ctx.Options.Detail or {}) :: { string } do
 		detail[key] = true
 	end
 	local windows: { [string]: { string } } = {}
@@ -119,7 +172,7 @@ function UIParity.fingerprint(options: Options?): string
 				local key = screen.Name .. "/" .. top.Name
 				local list = windows[key] or {}
 				windows[key] = list
-				for _, line in collect(top, gui, clip, opts) do
+				for _, line in collect(top, ctx) do
 					table.insert(list, line)
 				end
 			end
@@ -146,30 +199,38 @@ function UIParity.fingerprint(options: Options?): string
 	return table.concat(out, "\n")
 end
 
--- Scrolls `frame` from top to bottom one window height at a time (yields) and fingerprints what shows inside it at each step;
--- puts the canvas back where it was.
+-- Scrolls `frame` (a ScrollingFrame in a ScreenGui) from top to bottom one window height at a time (yields) and fingerprints
+-- what shows inside it at each step, following a canvas that grows as it loads; puts the canvas back where it was, also when
+-- something fails.
 function UIParity.sweep(frame: ScrollingFrame, options: Options?): string
-	local opts: Options = options or {}
-	local gui = (Players.LocalPlayer :: Player):WaitForChild("PlayerGui")
+	assert(typeof(frame) == "Instance" and frame:IsA("ScrollingFrame"), "UIParity.sweep: expected a ScrollingFrame")
+	local layer = frame:FindFirstAncestorWhichIsA("LayerCollector")
+	assert(layer and layer:IsA("ScreenGui"), "UIParity.sweep: the ScrollingFrame must be in a ScreenGui")
+	local ctx = context(options)
+	local settle = ctx.Options.Settle or 0.5
 	local start = frame.CanvasPosition
-	local maxY = math.max(0, frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y)
-	local step = math.max(frame.AbsoluteWindowSize.Y, 50)
-	local clip = { frame.AbsolutePosition, frame.AbsolutePosition + frame.AbsoluteWindowSize }
-	local out = {}
-	local y = 0
-	while true do
-		local at = math.min(y, maxY)
-		frame.CanvasPosition = Vector2.new(start.X, at)
-		task.wait(opts.Settle or 0.5)
-		local lines = collect(frame, gui, clip, opts)
-		table.insert(out, string.format("%d %d %s", at, #lines, hash(lines)))
-		if at >= maxY then
-			break
+	local ok, result = pcall(function(): string
+		local out = {}
+		local y = 0
+		for _ = 1, MAX_SWEEP_STEPS do
+			local at = math.min(y, math.max(0, frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y))
+			frame.CanvasPosition = Vector2.new(start.X, at)
+			task.wait(settle)
+			local lines = collect(frame, ctx)
+			table.insert(out, string.format("%d %d %s", at, #lines, hash(lines)))
+			if at >= math.max(0, frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y) then
+				return table.concat(out, "\n")
+			end
+			y = at + math.max(frame.AbsoluteWindowSize.Y, 50)
 		end
-		y += step
-	end
+		table.insert(out, string.format("stopped after %d steps: the canvas kept growing", MAX_SWEEP_STEPS))
+		return table.concat(out, "\n")
+	end)
 	frame.CanvasPosition = start
-	return table.concat(out, "\n")
+	if not ok then
+		error(result, 0)
+	end
+	return result
 end
 
 return UIParity

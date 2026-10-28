@@ -17,6 +17,9 @@ local RunService = game:GetService("RunService")
 local Inspector = {}
 
 export type Finding = { Severity: "error" | "warn", Path: string, Rule: string, Detail: string }
+export type StageOptions = { Distance: number?, Origin: Vector3?, Bright: boolean?, Rig: Model?, Victim: Model?, Animation: any? }
+export type View = { Zoom: number?, Focus: Vector3?, Fov: number? } -- stage:Camera framing
+export type Props = { Target: boolean?, Caster: boolean?, Floor: boolean? } -- stage:Show: which stage props to show
 export type Stage = {
 	Folder: Folder,
 	Caster: Part, -- the sphere effects start from
@@ -25,8 +28,8 @@ export type Stage = {
 	Rig: Model?, -- the caster rig, when staged with one
 	Victim: Model?, -- the target rig, when staged with one
 	Play: (self: Stage, clip: any?, speed: number?) -> AnimationTrack?, -- plays a clip on the caster rig
-	Camera: (self: Stage, kind: string?, options: { Zoom: number?, Focus: Vector3?, Fov: number? }?) -> CFrame,
-	Show: (self: Stage, options: { Target: boolean?, Caster: boolean?, Floor: boolean? }) -> (),
+	Camera: (self: Stage, kind: string?, view: View?) -> CFrame,
+	Show: (self: Stage, props: Props) -> (),
 	Clear: (self: Stage) -> (),
 }
 
@@ -96,25 +99,25 @@ function Inspector.lint(root: Instance): ({ Finding }, string)
 				local flipbook = item.FlipbookLayout ~= Enum.ParticleFlipbookLayout.None and item.FlipbookMode == Enum.ParticleFlipbookMode.OneShot
 				table.insert(findings, if flipbook
 					then { Severity = "warn", Path = relative(root, item), Rule = "flipbook-exit",
-						Detail = "relies on the flipbook's last frame being empty (" .. numbers .. "): confirm with Inspector.endFrame, else fade it too." }
+						Detail = "relies on the flipbook's last frame being empty (" .. numbers .. "): confirm with Inspector.endFrame, else fade it too." } :: Finding
 					else { Severity = "error", Path = relative(root, item), Rule = "no-exit",
-						Detail = "particles pop out at end of life: " .. numbers .. ". Fade Transparency to 1, shrink Size to 0 or squash it away." })
+						Detail = "particles pop out at end of life: " .. numbers .. ". Fade Transparency to 1, shrink Size to 0 or squash it away." } :: Finding)
 			end
 			local entered, start = gone(item, 0)
 			if not entered then
 				table.insert(findings, { Severity = "warn", Path = relative(root, item), Rule = "pop-in",
-					Detail = "particles pop in at birth: " .. start })
+					Detail = "particles pop in at birth: " .. start } :: Finding)
 			end
 			if item.Lifetime.Max > 6 then
 				table.insert(findings, { Severity = "warn", Path = relative(root, item), Rule = "long-lifetime",
-					Detail = string.format("Lifetime.Max %.1f s keeps the effect alive (and its container) a long time", item.Lifetime.Max) })
+					Detail = string.format("Lifetime.Max %.1f s keeps the effect alive (and its container) a long time", item.Lifetime.Max) } :: Finding)
 			end
 		elseif item:IsA("Trail") then
 			local alpha = at(item.Transparency, 1)
 			local width = at(item.WidthScale, 1)
 			if alpha < GONE_ALPHA and width > 0.05 then
 				table.insert(findings, { Severity = "error", Path = relative(root, item), Rule = "trail-tail",
-					Detail = string.format("trail tail stays visible: Transparency %.2f, WidthScale %.2f", alpha, width) })
+					Detail = string.format("trail tail stays visible: Transparency %.2f, WidthScale %.2f", alpha, width) } :: Finding)
 			end
 		end
 	end
@@ -192,13 +195,14 @@ local staged: { AnimationTrack } = {} -- clips playing on stage rigs: hold() fre
 
 -- A held frame lives in this folder, outside the effect: the project's own cleanup (Debris, tweens, Destroy) cannot reach it.
 local function holder(): Folder
-	local folder = workspace:FindFirstChild("__VFXHold") :: Folder?
-	if not folder then
-		folder = Instance.new("Folder")
-		folder.Name = "__VFXHold"
-		folder.Parent = workspace
+	local existing = workspace:FindFirstChild("__VFXHold") :: Folder?
+	if existing then
+		return existing
 	end
-	return folder :: Folder
+	local folder = Instance.new("Folder")
+	folder.Name = "__VFXHold"
+	folder.Parent = workspace
+	return folder
 end
 
 -- Wait `seconds`, then snapshot the effect under `root` into a holder: each part is cloned bare (so its current size and
@@ -229,7 +233,7 @@ function Inspector.hold(root: Instance, seconds: number)
 		for _, child in part:GetChildren() do
 			if child:IsA("Attachment") or child:IsA("Light") or child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui")
 				or child:IsA("ParticleEmitter") or child:IsA("Beam") or child:IsA("Trail") then -- emitters sit on parts as well as attachments
-				child.Parent = proxy
+				(child :: Instance).Parent = proxy
 			end
 		end
 	end
@@ -368,13 +372,13 @@ function Inspector.placement(container: Instance, tolerance: number?): ({ Findin
 				if math.abs(local_.X) <= size.X / 2 + 0.5 and local_.Y > -size.Y / 2 + 1.2 and local_.Y <= size.Y / 2 + 0.5
 					and math.abs(local_.Z) <= size.Z / 2 + 0.5 then
 					table.insert(findings, { Severity = "error", Path = relative(container, item), Rule = "in-body",
-						Detail = "inside " .. character.Name .. "'s bounds at " .. tostring(item.Position) .. ": spawn ground effects on the floor and body effects on the right attachment" })
+						Detail = "inside " .. character.Name .. "'s bounds at " .. tostring(item.Position) .. ": spawn ground effects on the floor and body effects on the right attachment" } :: Finding)
 				end
 			end
 			local hit = workspace:Raycast(item.Position + Vector3.yAxis * 2, -Vector3.yAxis * 60, params)
 			if hit and item.Position.Y - hit.Position.Y > limit and item.Transparency >= 0.95 then
 				table.insert(findings, { Severity = "error", Path = relative(container, item), Rule = "floating",
-					Detail = string.format("%.1f studs above the floor: ray down from the point, ignoring characters, and place it there (or mark it Airborne)", item.Position.Y - hit.Position.Y) })
+					Detail = string.format("%.1f studs above the floor: ray down from the point, ignoring characters, and place it there (or mark it Airborne)", item.Position.Y - hit.Position.Y) } :: Finding)
 			end
 		end
 	end
@@ -403,14 +407,14 @@ function Inspector.hideUI(hide: boolean)
 end
 
 -- A sensible sweep for a general read of an effect: whole path, high angle, ground plan, particle detail.
-Inspector.views = { { "side", 1 }, { "iso", 1 }, { "top", 1 }, { "close", 0.6 } }
+Inspector.views = { { "side", 1 }, { "iso", 1 }, { "top", 1 }, { "close", 0.6 } } :: { { any } } -- { kind, zoom }
 
 -- A dark plate with a caster sphere and a target cube `distance` studs apart, high above the map so nothing else is in view.
 -- options.Rig (a character or monster Model) stands a copy at the caster instead of the sphere, so stage:Play(clip) can
 -- drive it with an animation that passed AnimationInspector and the effect can be timed to its markers; options.Victim
 -- stands a copy at the target instead of the cube (scale, hit height, in-body checks). options.Animation is the default clip.
-function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright: boolean?, Rig: Model?, Victim: Model?, Animation: any? }?): Stage
-	local settings = options or {}
+function Inspector.stage(options: StageOptions?): Stage
+	local settings: StageOptions = options or {}
 	local distance = settings.Distance or 30
 	local origin = settings.Origin or Vector3.new(0, 1000, 0)
 	local folder = Instance.new("Folder")
@@ -458,10 +462,10 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 			return nil
 		end
 		local animation = Instance.new("Animation")
-		if typeof(source) == "Instance" and source:IsA("Animation") then
-			animation.AnimationId = source.AnimationId
-		elseif typeof(source) == "Instance" and source:IsA("KeyframeSequence") then
-			animation.AnimationId = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(source)
+		if typeof(source) == "Instance" and (source :: Instance):IsA("Animation") then
+			animation.AnimationId = (source :: Animation).AnimationId
+		elseif typeof(source) == "Instance" and (source :: Instance):IsA("KeyframeSequence") then
+			animation.AnimationId = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(source :: KeyframeSequence)
 		else
 			local text = tostring(source)
 			animation.AnimationId = if string.find(text, "://", 1, true) then text else "rbxassetid://" .. text
@@ -478,10 +482,10 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 	end
 	-- Scriptable camera. kind: "side" (default, both ends in view), "iso" (high three-quarter), "top" (straight down: ground
 	-- shapes), "front" (from beyond the target, looking back at the caster), "behind" (over the caster's shoulder, down
-	-- the effect's path), "close" (the target, three-quarter). options.Zoom scales the distance (0.5 is twice as close, 2
-	-- twice as far), options.Focus replaces the look-at point (an impact spot, a flying projectile), options.Fov the lens.
-	function stage.Camera(_: Stage, kind: string?, options: { Zoom: number?, Focus: Vector3?, Fov: number? }?): CFrame
-		local settings = options or {}
+	-- the effect's path), "close" (the target, three-quarter). view.Zoom scales the distance (0.5 is twice as close, 2
+	-- twice as far), view.Focus replaces the look-at point (an impact spot, a flying projectile), view.Fov the lens.
+	function stage.Camera(_: Stage, kind: string?, view: View?): CFrame
+		local framing: View = view or {}
 		local middle = (caster.Position + target.Position) / 2
 		local wide = math.max(distance * 1.1, 26)
 		local look: CFrame
@@ -498,11 +502,11 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 		else
 			look = CFrame.lookAt(middle + Vector3.new(wide, 8, 0), middle)
 		end
-		local zoom = settings.Zoom or 1
-		local focus = settings.Focus or (if kind == "close" then target.Position elseif kind == "behind" then target.Position else middle)
-		if settings.Focus or zoom ~= 1 then
+		local zoom = framing.Zoom or 1
+		local focus = framing.Focus or (if kind == "close" then target.Position elseif kind == "behind" then target.Position else middle)
+		if framing.Focus or zoom ~= 1 then
 			-- keep the preset's direction, move along it toward or away from the focus
-			local from = if settings.Focus then focus + (look.Position - (if kind == "close" then target.Position else middle)) else look.Position
+			local from = if framing.Focus then focus + (look.Position - (if kind == "close" then target.Position else middle)) else look.Position
 			local away = (from - focus)
 			look = CFrame.lookAt(focus + away * zoom, focus)
 		end
@@ -513,17 +517,17 @@ function Inspector.stage(options: { Distance: number?, Origin: Vector3?, Bright:
 			if camera then
 				camera.CameraType = Enum.CameraType.Scriptable
 				camera.CFrame = look
-				camera.FieldOfView = settings.Fov or 60
+				camera.FieldOfView = framing.Fov or 60
 			end
 		end)
 		return look
 	end
 	-- Hide or show the stage props, say `stage:Show({ Target = false })` for an unobstructed view of the effect.
-	function stage.Show(_: Stage, options: { Target: boolean?, Caster: boolean?, Floor: boolean? })
-		for name, part in { Target = target, Caster = caster, Floor = folder:FindFirstChild("Floor") } do
-			local visible = (options :: any)[name]
-			if visible ~= nil and part then
-				(part :: Part).Transparency = if visible then 0 else 1
+	function stage.Show(_: Stage, props: Props)
+		for name, prop in { Target = target, Caster = caster, Floor = folder:FindFirstChild("Floor") } :: { [string]: Instance? } do
+			local visible = (props :: any)[name]
+			if visible ~= nil and prop then
+				(prop :: Part).Transparency = if visible then 0 else 1
 			end
 		end
 	end
@@ -546,8 +550,10 @@ end
 --   part / decal destroyed with Transparency under 0.9      light destroyed while lit
 --   emitter destroyed with particles still alive            beam or trail destroyed while enabled
 -- Run in Play. Call handle.Stop() after the effect's container is gone (it yields a frame, then returns findings and text).
+type Record = { Path: string, Born: number, Seen: number, Enabled: number?, Visible: number, Size: number, Light: number }
+
 function Inspector.watch(container: Instance): { Stop: () -> ({ Finding }, string) }
-	local records: { [Instance]: { Path: string, Born: number, Seen: number, Enabled: number?, Visible: number, Size: number, Light: number } } = {}
+	local records: { [Instance]: Record } = {}
 	local findings: { Finding } = {}
 	local ended = false
 
@@ -556,7 +562,7 @@ function Inspector.watch(container: Instance): { Stop: () -> ({ Finding }, strin
 			records[item] = { Path = relative(container, item), Born = os.clock(), Seen = os.clock(), Visible = 1, Size = 1, Light = 0 }
 		end
 	end
-	local function sample(item: Instance, record)
+	local function sample(item: Instance, record: Record)
 		record.Seen = os.clock()
 		if item:IsA("BasePart") then
 			record.Visible, record.Size = 1 - item.Transparency, item.Size.Magnitude
@@ -570,11 +576,11 @@ function Inspector.watch(container: Instance): { Stop: () -> ({ Finding }, strin
 			end
 		end
 	end
-	local function judge(item: Instance, record)
+	local function judge(item: Instance, record: Record)
 		local now = os.clock()
 		local path = record.Path -- taken while still parented: a removed item can no longer name itself
 		local function add(rule: string, detail: string)
-			table.insert(findings, { Severity = "error", Path = path, Rule = rule, Detail = detail })
+			table.insert(findings, { Severity = "error", Path = path, Rule = rule, Detail = detail } :: Finding)
 		end
 		if now - record.Born < 0.1 then
 			return
