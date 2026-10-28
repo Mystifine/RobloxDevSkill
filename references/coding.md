@@ -2,7 +2,7 @@
 
 ## Before writing
 
-1. Map the project: `default.project.json` (what lives where), dependency manifests, `Packages/`, shared `Utility`/`Constants`/`Services` folders, lint config. Search for an existing helper before writing one (signals, maids, tweens, particle players, networking, data, pooling).
+1. Map the project: `default.project.json` (what lives where), dependency manifests, `Packages/`, shared `Utility`/`Constants`/`Services` folders, lint config. Search for an existing helper before writing one (signals, maids, tweens, particle players, networking, data, pooling). A project without a clear structure, or a new one, follows [rojo-project.md](rojo-project.md).
 2. Read the dependency's source or docs for any function you will call. Warn the user about: deprecated APIs, missing edge cases (nil, zero, fractional input), hidden per-frame cost, silent overwrites (for example a networking wrapper that keeps only one listener per event, so a second `Connect` replaces the first), and unbounded caches. Report; do not edit `Packages/` unless asked.
 3. Match the module pattern in use (`init.luau`, class tables, service/controller split, type exports, `--!strict`).
 
@@ -23,6 +23,7 @@
 - A ray or cast starting inside a part does not hit that part. Thin spherecasts can skip seams, and `Spherecast` results can contain a NaN position on wedge edges: validate `Position` before use.
 - `Humanoid.Health` is float32: adding 1 HP vanishes above roughly 16.8M max health. Carry fractional heals yourself.
 - Anything a Studio MCP `execute_luau` call requires has its own module cache; to test live services run them from a temporary Script and remove it afterwards.
+- Studio MCP calls run one at a time, so a long call blocks every other. Start long work from a temporary Script and poll an attribute it writes.
 
 ## Verify
 

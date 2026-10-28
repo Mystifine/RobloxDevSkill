@@ -1,6 +1,6 @@
 # UI
 
-Everything here applies to every GUI container, **ScreenGui, BillboardGui and SurfaceGui** alike (bounds, touch size, state, performance), not only ScreenGui; the BillboardGui and SurfaceGui specifics are under World-space GUIs.
+Everything here applies to **ScreenGui, BillboardGui and SurfaceGui** alike; the world-space specifics are under World-space GUIs.
 
 ## Match first
 

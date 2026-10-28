@@ -9,14 +9,14 @@ Applies to every character that could read as female, humanoid or creature, in 2
 
 ## Design the cover in character
 
-Build the cover from the character's own materials and palette, shaped like armor or clothing it would wear: its jewelry metal as a breastplate, its scales, bark, leaves or petals as panels. It should look designed, not added. Avoid bulky collars, boxy tunics, robes or colors foreign to the character unless the design calls for them, since they change who it is.
-
-**Change as little as the rules need**, so the character stays itself. Keep its outfit and the bare areas the rules allow (neck, shoulders, arms, a strip of upper chest), and reshape only what fails:
-- two cups become one flat band or plate in the same material;
-- a bare midriff gets a fitted panel down to the hips, in the body's scales, bark or cloth in a darker shade, edged with trim;
-- a bust drawn on a creature body becomes a flat plate of its own material.
-
-Prefer a chest plate plus a waist panel or belt to one long dress, robe or cuirass. More cover than the rules need is not safer; it only changes the character. Fix a pinched waist by straightening the sides, not by lengthening the chest piece.
+**Change as little as the rules need**, so the character stays itself:
+- **Build every piece from the character's own materials and palette,** shaped like armor or clothing it would wear: its jewelry metal as a breastplate, its scales, bark, leaves or petals as panels. It should look designed, not added.
+- **Keep its outfit and the bare areas the rules allow** (neck, shoulders, arms, a strip of upper chest), and reshape only what fails:
+  - two cups become one flat band or plate in the same material;
+  - a bare midriff gets a fitted panel down to the hips, in the body's scales, bark or cloth in a darker shade, edged with trim;
+  - a bust drawn on a creature body becomes a flat plate of its own material.
+- **Prefer a chest plate plus a waist panel or belt** to one long dress, robe, cuirass or boxy tunic, and to colors foreign to the character. More cover than the rules need is not safer; it only changes who the character is.
+- **Fix a pinched waist by straightening the sides,** not by lengthening the chest piece.
 
 To fix existing art, make a precise edit of that image: change only the torso cover, and an expression that breaks rule 4. Keep the pose, identity, palette, line style and border; only the torso's silhouette may straighten. Generative edits drift, so when everything outside the torso must stay identical, composite the edited torso back into the original through a soft mask.
 
