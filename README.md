@@ -5,13 +5,14 @@ A token-efficient agent skill for Roblox game development (Claude Code, Codex an
 `SKILL.md` is a short dispatcher: eight always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide.
 
 ```
-SKILL.md                 dispatcher (always loaded, about 50 lines)
+SKILL.md                 dispatcher (always loaded, about 45 lines)
 references/
   coding.md              dependencies, structure, backend performance, pitfalls, verification
   rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, tests
   ui.md                  mobile first, stay in bounds, centered anchors, state, world-space GUIs, 512x512 icons, outlines
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
   modeling.md            20k tri limit (18k for top tier), full PBR, Blender workflow, no z-fighting
+  rigs.md                character models: R15 from a HumanoidDescription (seat, clean), parts, joints, attachments, accessories, R6
   characters.md          all-ages character rules (2D and 3D): flat chest, no cleavage, 70% in-character cover, review
   assets.md              Toolbox policy (no code), safe intake, sounds, uploads (key by asset type, public)
   animation.md           60 FPS, weighted joints, feet on the ground, export, publish, inspection
@@ -25,6 +26,7 @@ scripts/
   ParticlePlayer.luau    fallback attribute-driven particle player (graphics-scaled, min 1)
   AnimationInspector.luau  animation inspection: exact-time audit (pops, seams, feet, hyperextension, markers) and contact sheet
   ZFight.luau            z-fighting audit and fix: coplanar overlapping faces and decal ZIndex ties
+  RigAudit.luau          character model audit (R15/R6): parts, joints, root, seated accessories, cages, leftovers; seat, clean
   AssetAudit.luau        Toolbox safety audit: report first, then strip
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   GameInventory.luau     Studio-to-Rojo inventory: scripts and what they touch, content counts, export, leftovers
@@ -55,11 +57,14 @@ It hands off to Blender and animation skills when they are installed (`blender-d
 
 - **Loading:** the `.luau` files are plain Studio modules. Load one through a local static server and `loadstring` (Edit or server), or as a temporary ModuleScript (client), as `SKILL.md` describes.
 - **Where they run:**
-  - `UIBounds`, `AssetAudit`, `ZFight`, `AnimationInspector` and `GameInventory` run in Edit.
+  - `UIBounds`, `AssetAudit`, `ZFight`, `RigAudit`, `AnimationInspector` and `GameInventory` run in Edit.
   - `VFXInspector` lints in Edit and photographs in Play (`references/vfx.md` section 8).
   - `ParticlePlayer` runs on the client; prefer the project's own player.
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
-- **Tested so far:** `AnimationInspector` and the VFX real-rig stage have not yet run in Studio. `ZFight` and `GameInventory` passed offline tests in Lune.
+- **Tested so far:**
+  - `RigAudit` passed in Studio on 98 real R15 rigs and on deliberately broken copies.
+  - `ZFight` and `GameInventory` passed offline tests in Lune.
+  - `AnimationInspector` and the VFX real-rig stage have not yet run in Studio.
 
 ## License
 
