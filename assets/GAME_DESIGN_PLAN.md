@@ -251,6 +251,14 @@ income curve (PacingSim curve). -->
 | Onboarding completion | | onboarding funnel |
 
 ### Funnels and events
+
+<!-- The onboarding funnel, then one funnel per progression feature, each starting at tutorial completion
+(references/onboarding.md). Kind: lifetime or per attempt. Failures and friction are custom events, not steps. -->
+
+| Funnel | Feature | Kind | Steps, in order | Custom fields |
+|---|---|---|---|---|
+| Onboarding | Tutorial | Lifetime | One per lesson | |
+
 ### Experiments
 ### Pivot criteria
 

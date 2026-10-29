@@ -37,7 +37,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 | Generating or uploading assets (moderation margin, neutral textures), reusing existing ones; blood and gore: stylized hits, injuries, defeat, monsters, horror | [references/no-gore.md](references/no-gore.md) |
 | Toolbox, free models, images, sounds, any imported asset; the upload gate, uploads and API keys | [references/assets.md](references/assets.md) |
 | Rigging, skinning, Blender animation, import, inspection, publishing (R15/R6: `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
-| Onboarding, tutorials, guidance pointers, analytics funnels | [references/onboarding.md](references/onboarding.md) |
+| Onboarding, tutorials, guidance pointers; analytics funnels (onboarding, post-tutorial progression) | [references/onboarding.md](references/onboarding.md) |
 | Game design: a new game, a redesign or audit, a new gameplay system; fantasy, loops, progression, depth, retention; the design plan | [references/game-design.md](references/game-design.md) |
 | Economy, pacing, odds, prices and offers, update cadence (with game design) | [references/game-economy.md](references/game-economy.md) |
 

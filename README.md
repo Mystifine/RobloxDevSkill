@@ -19,7 +19,7 @@ references/
   no-gore.md             blood and gore: strict uploads (false-positive margin, neutral textures), trusted existing assets, stylized play
   assets.md              Toolbox policy (no code), safe intake, sounds, the upload gate, uploads (key by asset type, public)
   animation.md           60 FPS, weighted joints, feet on the ground, export, publish, inspection
-  onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields)
+  onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields, a post-tutorial funnel per feature)
   game-design.md         fantasy, direction, simple vs deep, loops, progression, retention, social, review
   game-economy.md        currencies, pacing (PacingSim), odds, monetization, paid random items, live ops
 assets/

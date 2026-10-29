@@ -33,7 +33,7 @@ A design is ready when all six hold (the review at the end checks each):
 8. **Economy:** currencies, faucets and sinks, curves; simulate with [PacingSim](../scripts/PacingSim.luau) and adjust until the pacing targets hold ([game-economy.md](game-economy.md)).
 9. **Monetization:** offers mapped to the fantasy, prices, when offers appear, compliance ([game-economy.md](game-economy.md)).
 10. **Production:** systems mapped to code, data and save fields; launch content counts; a vertical slice; a build order with a measurement per step; a roadmap along the direction.
-11. **Metrics:** KPIs with targets, funnels ([onboarding.md](onboarding.md)), economy events, experiments, pivot criteria.
+11. **Metrics:** KPIs with targets, funnels (onboarding, then one post-tutorial funnel per progression feature: [onboarding.md](onboarding.md)), economy events, experiments, pivot criteria.
 12. **Review and write:** score the review table, fix every failing row or record why it stays, then write the plan and reply (Writing the plan, below).
 
 ## Fantasy
