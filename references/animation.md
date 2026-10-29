@@ -49,4 +49,4 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 3. **Repair and repeat:** `closeLoop`, `snapKeys` and `setMarker` edit the KeyframeSequence in place; bigger fixes go back to Blender. Audit again until there are 0 errors and look again, then publish.
 4. **Clean up:** `Anim.clear()` removes the sheet and restores the camera's field of view.
 
-A clip that passes can drive VFX timing: stage it on the real rig in place of the caster sphere ([vfx.md](vfx.md) section 8).
+A clip that passes can drive VFX timing: stage it on the real rig in place of the caster sphere ([vfx.md](vfx.md) section 8). Playing clips in game (loading tracks once, priorities, who plays them): [gameplay.md](gameplay.md).

@@ -1,6 +1,6 @@
 # VFX
 
-Goal: an effect that is unique to the ability and reads clearly, not a remix of two presets.
+Goal: an effect that is unique to the ability and reads clearly, not a remix of two presets. Hits, injuries and defeats default to the stylized effects in [no-gore.md](no-gore.md) (flashes, sparks, stars, puffs, element effects), within the experience's maturity label. Upload new textures neutral (white or grey) and tint them with `Color`; a pack's existing textures are fine by id (the project's own exclusions win).
 
 ## 1. Research before building
 
@@ -24,7 +24,7 @@ For every emitter set deliberately: `Texture`, `Color` (ColorSequence), `Transpa
 
 Use the **project's existing player** for this (it already honours these and graphics settings). If none exists, use [scripts/ParticlePlayer.luau](../scripts/ParticlePlayer.luau), which implements the same semantics.
 
-Count scaling: scale `EmitCount` by the player's graphics quality on the client (`UserSettings().GameSettings.SavedQualityLevel`; `Automatic` = full, otherwise `Value/10`), with a **minimum of 1** for any layer whose count is above 0, so low settings thin an effect but never delete a layer. If the project's player scales without that minimum (for example passing `count * factor` straight to `Emit`), tell the user. Optional per-layer attributes the project may use: `Detail` (dropped at distance / on low settings), `FullRate`, `Tint`, `Lifetime` (template).
+Count scaling: scale `EmitCount` on the client, with a **minimum of 1** for any layer whose count is above 0, so weak devices thin an effect but never delete a layer. A manual quality level gives `Value/10` (`UserSettings().GameSettings.SavedQualityLevel`). `Automatic` is the default and what most phones run, so it says nothing about the device: use the measured frame rate instead (the fallback player: 1 at 55 fps and up, down to 0.3 at 25 fps), and take the lower of the two. If the project's player treats `Automatic` as full quality, or scales without that minimum (for example passing `count * factor` straight to `Emit`), tell the user. Optional per-layer attributes the project may use: `Detail` (dropped at distance / on low settings), `FullRate`, `Tint`, `Lifetime` (template).
 
 ## 4. Smooth in, smooth out
 
@@ -58,7 +58,7 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 
 ## 8. Inspect (an effect is not done until it passes)
 
-A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the end of its life, never by lifetime alone (it pops out midair), and nothing may be destroyed while still visible. [scripts/VFXInspector.luau](../scripts/VFXInspector.luau) checks both. Studio Edit captures omit particles, so **lint in Edit, look in Play** (Client DataModel; load the module as SKILL.md Scripts describes).
+[scripts/VFXInspector.luau](../scripts/VFXInspector.luau) checks section 4: every particle leaves by fading, shrinking or squashing (never by lifetime alone), and nothing is destroyed while visible. Studio Edit captures omit particles, so **lint in Edit, look in Play** (Client DataModel; load the module as SKILL.md Scripts describes).
 
 1. **Lint, Edit, instant:** `local findings, text = Inspector.lint(templateOrFolder)`. Fix every `ERROR` (`no-exit`, `trail-tail`): the end of life must be transparent (>= 0.95), tiny, or squashed (`|Squash|` >= 1 and 0.5 above its start; calibrate against a held frame). `Inspector.fixExit(root)` repairs them (holds the curve, fades the last 22% to 1) before you write the template back. `flipbook-exit` is a warning: a one-shot flipbook ends on its own last frame, so confirm it in step 4 or fade it anyway. A deliberately hard-edged layer opts out with the boolean attribute `InspectIgnore` and a comment saying why.
 2. **Stage, Play client:** `Inspector.hideUI(true)`; `Inspector.preload(template)` (a cold effect can freeze before its textures arrive and photograph empty); `local stage = Inspector.stage()` (a **sphere caster** and a **cube target** on a dark plate high above the map). Play the effect from `stage.Caster` toward `stage.Target` through the project's player (`stage.Frame` sits at the caster, facing the target).
@@ -80,6 +80,6 @@ A particle must **leave by `Transparency` -> 1, `Size` -> 0 or `Squash`** at the
    - For one emitter's last frame: `Inspector.endFrame(stage, emitter)` then capture; particles still clearly visible there vanish midair.
 5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.
 
-Capture caveat: a Studio capture can return a stale or blank frame right after you change the camera or start an effect. Wait about 6 s, and treat two identical successive captures as a stale frame, not as an empty effect; judge time-varying effects by looping them every few seconds, or from held frames. `Inspector.hold` keeps emitters and beams that sit on parts as well as on attachments.
+Capture caveat: a Studio capture can return a stale or blank frame right after you change the camera or start an effect. Wait about 6 s, and treat two identical successive captures as a stale frame, not as an empty effect; judge time-varying effects by looping them every few seconds, or from held frames. An unpublished place (PlaceId 0) may load none of the game's own textures ([ui.md](ui.md)), so inspect in a published copy. `Inspector.hold` keeps emitters and beams that sit on parts as well as on attachments.
 
 Notes: layers whose `EmitDelay` is later than the held time fire into the frozen frame as fresh births; compute `keyTimes` before `hold` (it empties the container). The Studio MCP runs calls one at a time: start long-running work from a fixture Script and poll, rather than expecting two calls to overlap.

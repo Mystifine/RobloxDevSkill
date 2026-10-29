@@ -6,8 +6,10 @@
 --   EmitCount    particles in the initial burst                (default: the emitter's Rate)
 --   EmitDuration seconds the emitter stays Enabled afterwards  (default 0 = burst only)
 --
--- Counts are scaled by the player's graphics quality (Automatic = full, otherwise level/10) with a minimum of 1
--- for any layer whose count is above 0, so low settings thin an effect without deleting a layer.
+-- Counts are scaled on the client by the lower of two factors, with a minimum of 1 for any layer whose count is above 0,
+-- so weak devices thin an effect without deleting a layer: a manual graphics level gives level/10, and the measured frame
+-- rate gives 1 at 55 fps or more down to 0.3 at 25 fps or less. Automatic, the default and what most phones run, says
+-- nothing about the device, so for it the frame rate decides alone.
 --
 --   local lifetime = ParticlePlayer.play(effectRoot)         -- seconds until the last particle has faded
 --   ParticlePlayer.playAndClean(effectRoot)                  -- plays, then destroys the root once everything is done
@@ -27,12 +29,21 @@ local ParticlePlayer = {}
 local active: { [ParticleEmitter]: Entry } = {}
 local connection: RBXScriptConnection? = nil
 
+local FULL_FPS, FLOOR_FPS, FLOOR = 55, 25, 0.3
+local frameTime = 1 / 60 -- smoothed seconds per frame, sampled from the first play on
+local sampler: RBXScriptConnection? = nil
+
+local function sample(dt: number)
+	-- a single hitch (a load, a GC pause) moves the average only a little
+	frameTime += (math.min(dt, 0.25) - frameTime) * 0.05
+end
+
 local function qualityFactor(): number
 	local level = UserSettings().GameSettings.SavedQualityLevel
-	if level == Enum.SavedQualitySetting.Automatic then
-		return 1
-	end
-	return level.Value / 10
+	local manual = if level == Enum.SavedQualitySetting.Automatic then 1 else level.Value / 10
+	local fps = 1 / frameTime
+	local measured = math.clamp(FLOOR + (fps - FLOOR_FPS) / (FULL_FPS - FLOOR_FPS) * (1 - FLOOR), FLOOR, 1)
+	return math.min(manual, measured)
 end
 
 -- Scales a burst count by graphics quality, keeping at least 1 particle for any non-zero layer.
@@ -72,6 +83,9 @@ end
 -- Starts every emitter under `root` (and `root` itself). Returns how long until the last particle has faded.
 function ParticlePlayer.play(root: Instance): number
 	assert(RunService:IsClient(), "ParticlePlayer.play can only be called on the client.")
+	if sampler == nil then
+		sampler = RunService.Heartbeat:Connect(sample) -- one cheap connection for the session
+	end
 	local now = os.clock()
 	local longest = 0
 	local function start(emitter: ParticleEmitter)
