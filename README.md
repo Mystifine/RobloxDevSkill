@@ -2,7 +2,7 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: nine always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
+`SKILL.md` is a short dispatcher: ten always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
 ```
 SKILL.md                 dispatcher (always loaded, about 50 lines)
@@ -17,11 +17,12 @@ references/
   rigs.md                character models: R15 from a HumanoidDescription (seat, clean), parts, joints, attachments, accessories, R6
   characters.md          all-ages character rules (2D and 3D): flat chest, no cleavage, 70% in-character cover, review
   no-gore.md             blood and gore: strict uploads (false-positive margin, neutral textures), trusted existing assets, stylized play
-  assets.md              Toolbox policy (no code), safe intake, sounds, the upload gate, uploads (key by asset type, public)
+  assets.md              Toolbox policy (no code), safe intake, sounds, the upload gate, uploads (the cloud API key, owner-owned)
   animation.md           60 FPS, weighted joints, feet on the ground, export, publish, inspection
   onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields, a post-tutorial funnel per feature)
   game-design.md         fantasy, direction, simple vs deep, loops, progression, retention, social, review
   game-economy.md        currencies, pacing (PacingSim), odds, monetization, paid random items, live ops
+  codex-handoff.md       Claude only: open handoffs, Codex usage and room, briefs, review, takeover, cleanup
 assets/
   PROJECT_STRUCTURE.md   project blueprint: layout, Rojo map, packages, toolchain, AGENTS.md, MCP, Graphify
   GAME_DESIGN_PLAN.md    game design plan template, written to the project's docs/game-design.md
@@ -39,8 +40,10 @@ scripts/
   export_place.luau      Lune: every script of a saved place file written to disk, byte for byte
   UIParity.luau          port vs original: per-window fingerprints of every visible text and image, scroll sweeps
   PacingSim.luau         pacing model (Lune): milestone times for casual and optimizing players, odds tables
+  codex/                 Codex handoff wrapper (Node): handoff.sh entry, usage, state, summaries, cleanup, installer
 tests/
   run.luau               Lune specs for the pure-Luau scripts (PacingSim)
+  codex/                 Node tests for the handoff wrapper against a fake Codex CLI
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
 INSTALL.md               placement rules, options, manual steps
@@ -62,6 +65,20 @@ curl -fsSLO https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/inst
 
 Full rules, options and manual steps: [INSTALL.md](INSTALL.md).
 
+## Codex handoff (Claude Code, optional)
+
+Claude decides and reviews while the local [Codex CLI](https://github.com/openai/codex) does the execution on its own quota: decided code, bulk edits, Studio and Blender work, and image generation. The wrapper reads the account's live usage before every launch (no model turn), refuses or queues runs that would not fit, takes failed code back to Claude (images stay with Codex), lists open handoffs for the user to settle, and cleans up after each task. Rules: `references/codex-handoff.md`. It merges the earlier CodexHandoffSkill.
+
+One-time setup (Git Bash on Windows):
+
+```sh
+npm install -g @openai/codex && codex login
+node ~/.claude/skills/roblox-dev/scripts/codex/install.mjs      # Claude permission rules for the wrapper (merged, idempotent)
+bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --check
+```
+
+Configure the MCP servers Codex needs (Roblox Studio, Blender) once in Codex (`codex mcp list`); Claude's are not shared. Runs default to `--sandbox danger-full-access` (`CODEX_HANDOFF_SANDBOX` to change it). State lives in `~/.claude/codex-handoffs` (`CODEX_HANDOFF_HOME`).
+
 ## Companion skills
 
 It hands off to Blender and animation skills when they are installed (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `animate-roblox-characters`, `find-skills`, and others named in `SKILL.md`). Without them it falls back to the rules in each reference.
@@ -76,6 +93,7 @@ It hands off to Blender and animation skills when they are installed (`blender-d
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
   - `export_place.luau` runs in Lune: `lune run export_place.luau <place.rbxl> <out folder>`.
   - `PacingSim.luau` runs in Lune (or any Luau VM, Studio included): copy it beside a model, `lune run model.luau` (`references/game-economy.md`).
+  - `scripts/codex/` runs locally with Node 20+ through `handoff.sh` (Git Bash on Windows), from Claude Code (`references/codex-handoff.md`).
 - **Tested in Studio on a real game** (2026-10-27 unless noted):
   - `AnimationInspector`: Roblox's R15 clips give 0 errors; every planted defect is caught; works on AnimationConstraint and Motor6D rigs.
   - `RigAudit`: 98 R15 rigs, broken copies and a generated R6.
@@ -87,6 +105,7 @@ It hands off to Blender and animation skills when they are installed (`blender-d
   - `ZFight` and `GameInventory` were also tested offline in Lune while they were written.
 - **Also checked** (2026-10-28): every Studio script type-checks clean under both Luau type solvers (luau-lsp with Roblox's definitions; strict mode, except `ZFight`, which is nonstrict) and passes Selene with no warnings; `export_place` re-exported that game's saved file and matched the earlier export, apart from one edit made after the file was saved; `icon_outlines.py` measured generated icons of known border widths; both installers ran local, global, update and Claude-link installs.
 - **Tested in Lune** (2026-10-28): `PacingSim`, 1,694 spec checks. Cost ladders match brute force; the chance arithmetic matches its closed forms; simulated timings (sessions, offline earnings, time-away rules, a second currency, all three player policies, saving for a buy) match hand-worked cases; bad models are reported (NaN costs, a buy that never gets dearer, duplicate milestones, unknown policies, sessions longer than a day); over 4,000 runs of a 1-in-600 roll, `simulateMany`'s p10, median and p90 land within 3% of theory. It type-checks clean in strict mode under both Luau type solvers (luau-lsp, standard platform) and passes Selene with no warnings.
+- **Codex handoff** (2026-10-29): 30 Node tests against a fake CLI (CodexHandoffSkill's 20, carried over, plus the usage gate, room under parallel launches, queueing, the take-over line, misclassified failures, cleanup and the listing); the last 8 full runs on Windows (Node 26) passed in a row, after one installer write race was fixed with a retried write. Live with Codex CLI 0.162.1: the usage read (about 1.6 s, no model turn), the listing of 13 runs left by the old wrapper, a code handoff in a worktree (completed in 1m45s; reviewed, its spec rerun, integrated with `git apply`, then cleaned with its run and worktree removed) and an image handoff (completed in 3m20s; checked at 512 px with icon_outlines clean; cleaning removed Codex's image copy). The live runs found two faults the fake missed, both fixed and now tested: the entry points did nothing when reached through the install's junctions, and a worktree that `git apply` integrated with CRLF line endings was refused.
 - **Changed, not yet re-run in Studio** (2026-10-28): ParticlePlayer's frame-rate scaling. It type-checks clean under both solvers against that day's Roblox definitions, and Selene passes.
 
 ## Checks
@@ -97,6 +116,7 @@ From this folder, with [Rokit](https://github.com/rojo-rbx/rokit):
 rokit install
 lune run tests/run.luau     # specs for the pure-Luau scripts
 selene scripts tests        # lint, std = roblox
+node --test tests/codex/handoff.test.mjs   # the Codex handoff wrapper (Node 20+, Git), against a fake CLI
 luau-lsp analyze --platform=roblox --definitions=@roblox=<globalTypes.d.luau> <the Studio scripts>   # strict types; again with --flag:LuauSolverV2=true
 ```
 

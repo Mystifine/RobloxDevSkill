@@ -42,6 +42,8 @@ Nothing leaks out of its box unless the design says so. **A border stroke's band
 - **Lay out against the device,** not the Studio window: a frame of the device's size holding the HUD at its own `UIScale`. `GuiService:GetGuiInset()` reads 0 in Edit, so a preview passes the top bar's height in.
 - **Measure at each size,** once open tweens settle (Edit can run them late): UIBounds, the smallest text per line, every button's size, the distance to the top bar and the screen edges. Then the content extremes: the longest name and text, the lowest and highest values, optional parts hidden or shown.
 - **An unpublished place (PlaceId 0) may load none of the game's own images** (seen 2026-10-28: every one returned `AssetFetchStatus.Failure`). Judge art in the published place; images missing from such a preview are not a layout fault.
+- **Keep Studio in the foreground for captures:** in the background it stops rendering 3D, so the world and every ViewportFrame come out blank while the GUI still draws. That is the environment, not a code fault.
+- **Engine gotchas:** `TextFits` checks text against its own label only (a label wider than its parent still passes; UIBounds catches the leak); children of a `UIGridLayout` ignore `Rotation` (rotate a frame inside each cell); under a `UIScale`, `AbsoluteSize` is scaled, so lay out in logical points (`AbsoluteSize / scale`).
 
 ## State
 
@@ -66,7 +68,7 @@ Nothing leaks out of its box unless the design says so. **A border stroke's band
 - **Outlines match the set.** Before generating, measure the siblings' edge with [scripts/icon_outlines.py](../scripts/icon_outlines.py): a viewer shows transparency as white, which hides a white sticker border. Give every new or edited icon the same edge (a dark ink line, a white sticker border of the same width, or none). An edit never adds or drops a border, and a brief states the measured style, never one remembered.
 - **Character art** follows [characters.md](characters.md): put its garment line in the prompt and review at full size before upload.
 - **Damage, health and defeat icons** are uploads and follow [no-gore.md](no-gore.md): a burst or star for damage, a heart for health, a cartoon skull or KO stars for defeats; never blood drops, splatter or wounds.
-- **Uploads** use the project's asset key and must end public: [assets.md](assets.md), Uploading.
+- **Uploads** use the project's cloud API key and must load in the experience: [assets.md](assets.md), Uploading.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
 - When an image is needed and not supplied: look in the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; each is swapped later for supplied art (a new upload, through the gate in [assets.md](assets.md)) or a predefined asset id, whichever fits.
 - Preload important images (`ContentProvider:PreloadAsync`) before showing a screen that depends on them.

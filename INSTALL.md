@@ -51,6 +51,10 @@ ln -s <base>/.agents/skills/roblox-dev <base>/.claude/skills/roblox-dev         
 
 If `.agents` is absent but `.claude` exists, clone straight to `<base>/.claude/skills/roblox-dev` and skip the link. For a local install remove the clone's `.git` folder.
 
+## Optional: Codex handoff (Claude Code)
+
+To let Claude hand work to the Codex CLI, install and log in to Codex, then run the permission installer and the check, as the README's "Codex handoff" section shows. Skip it without Codex; the rest of the skill does not need it.
+
 ## Verify
 
 `<base>/.claude/skills/roblox-dev/SKILL.md` and `<base>/.agents/skills/roblox-dev/SKILL.md` should both open, and only the `.agents` one should be a real directory. Start a new agent session so the skill list refreshes.

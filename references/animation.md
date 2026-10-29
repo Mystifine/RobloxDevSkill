@@ -21,7 +21,7 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 
 1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig.
 2. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) instead of hardcoded times.
-3. Pass section 4, then publish to the **group that owns the experience** (the group key, or Studio publishing to that group; [assets.md](assets.md), Uploading). An animation plays only in experiences owned by its creator. Republishing makes a new id.
+3. Pass section 4, then publish to the **group that owns the experience** (the project's cloud API key with that group as creator, or Studio publishing to that group; [assets.md](assets.md), Uploading). An animation plays only in experiences owned by its creator. Republishing makes a new id.
 
 ## 4. Inspect (a clip is not done until it passes)
 

@@ -1,0 +1,156 @@
+// Cross-process bookkeeping. Only native Node PIDs own locks, including on Git Bash.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+// Whether the module at `url` is the entry script. Node gives a module its real path, while argv keeps the path
+// the caller typed, which differs when the skill is reached through a junction or symlink (as installs are).
+export function isMain(url) {
+  if (!process.argv[1]) return false;
+  try {
+    const [entry, self] = [fs.realpathSync(process.argv[1]), fs.realpathSync(fileURLToPath(url))];
+    return process.platform === 'win32' ? entry.toLowerCase() === self.toLowerCase() : entry === self;
+  } catch { return false; }
+}
+
+// Windows PowerShell writes JSON with a byte-order mark, which JSON.parse rejects.
+export const readJson = (file, fallback = null) => {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); }
+  catch (error) { if (error.code === 'ENOENT') return fallback; throw error; }
+};
+export const alive = (pid) => {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; }
+  catch (error) { return error.code === 'EPERM'; }
+};
+// Windows reports a file that another process is deleting or briefly reading as EPERM/EBUSY/EACCES.
+const transient = (error) => process.platform === 'win32' && ['EPERM', 'EBUSY', 'EACCES'].includes(error.code);
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+export function atomicWrite(file, text, mode = 0o600) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const temp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temp, text, { flag: 'wx', mode });
+    for (let attempt = 0; ; attempt++) {
+      try { fs.renameSync(temp, file); break; }
+      catch (error) { if (!transient(error) || attempt >= 40) throw error; pause(50); }
+    }
+  } finally { fs.rmSync(temp, { force: true }); }
+}
+export const writeJson = (file, value) => atomicWrite(file, `${JSON.stringify(value, null, 2)}\n`);
+export const canonical = (dir) => {
+  const real = fs.realpathSync(dir);
+  return process.platform === 'win32' ? real.toLowerCase() : real;
+};
+export function inside(root, target) {
+  const rel = path.relative(path.resolve(root), path.resolve(target));
+  return rel !== '' && !rel.startsWith(`..${path.sep}`) && rel !== '..' && !path.isAbsolute(rel);
+}
+export function safeRemove(root, target) {
+  if (!inside(root, target)) throw new Error(`Refusing removal outside ${root}: ${target}`);
+  // Do not follow a symlink or junction outside the intended root.
+  if (fs.existsSync(target) && !inside(canonical(root), canonical(target))) {
+    throw new Error(`Refusing removal through a link outside ${root}: ${target}`);
+  }
+  // Retries ride out a file that antivirus or an exiting process still holds on Windows.
+  fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
+export async function withLock(dir, fn, timeoutMs = 15000) {
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, '.handoff.lock');
+  const owner = { pid: process.pid, token: crypto.randomUUID() };
+  const deadline = Date.now() + timeoutMs;
+  let fd;
+  while (fd === undefined) {
+    try {
+      fd = fs.openSync(file, 'wx', 0o600);
+      fs.writeFileSync(fd, JSON.stringify(owner));
+    } catch (error) {
+      // A lock created here but not yet written is ours to discard before retrying.
+      if (fd !== undefined) { fs.closeSync(fd); fd = undefined; fs.rmSync(file, { force: true, maxRetries: 5, retryDelay: 20 }); }
+      if (error.code !== 'EEXIST' && !transient(error)) throw error;
+      // One reaper at a time; recheck the current owner while holding the reaper lock.
+      const reaper = `${file}.reaper`;
+      let reapFd;
+      try {
+        reapFd = fs.openSync(reaper, 'wx', 0o600);
+        let held;
+        try { held = readJson(file); } catch (parseError) { if (!(parseError instanceof SyntaxError) && !transient(parseError)) throw parseError; }
+        // Another process may have just created the file and not written its PID.
+        if ((held && !alive(held.pid)) || (!held && fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs > 30000)) fs.rmSync(file, { force: true });
+      } catch (reapError) {
+        if (!['EEXIST', 'ENOENT'].includes(reapError.code) && !transient(reapError)) throw reapError;
+      } finally {
+        if (reapFd !== undefined) { fs.closeSync(reapFd); fs.rmSync(reaper, { force: true }); }
+      }
+      if (Date.now() >= deadline) {
+        const busy = new Error(`Bookkeeping busy: ${file}. Retry after the active operation finishes.`);
+        busy.exitCode = 75; throw busy;
+      }
+      await sleep(25);
+    }
+  }
+  try { return await fn(); }
+  finally {
+    fs.closeSync(fd);
+    if (readJson(file)?.token === owner.token) fs.rmSync(file, { force: true, maxRetries: 5, retryDelay: 20 });
+  }
+}
+
+export const stateFile = (root) => path.join(root, 'state.json');
+export function loadState(root) {
+  return { reservations: [], limits: {}, models: {}, probes: {}, pending: {}, samples: [], ...readJson(stateFile(root), {}) };
+}
+export function liveReservations(state) {
+  return state.reservations.filter((r) => alive(r.pid) || alive(r.childPid));
+}
+// Runs that hold a checkout; readiness probes don't count against the usage room.
+export const activeRuns = (state) => liveReservations(state).filter((r) => r.paths.length);
+export function overlap(a, b) {
+  return a === b || inside(a, b) || inside(b, a);
+}
+// `admit` sees the live state under the lock and throws to refuse a run (the usage room check).
+export async function reserve(root, reservation, admit) {
+  return withLock(root, () => {
+    const state = loadState(root);
+    state.reservations = liveReservations(state);
+    const conflict = state.reservations.find((r) =>
+      reservation.paths.some((a) => r.paths.some((b) => overlap(a, b))) ||
+      reservation.resources.some((a) => r.resources.includes(a)));
+    if (conflict) {
+      const error = new Error(`Run busy: ${conflict.runDir}. Use a separate worktree or wait; shared apps/threads must run sequentially.`);
+      error.exitCode = 75; throw error;
+    }
+    admit?.(state);
+    // Runs that share the account at any moment can't measure their own usage.
+    if (reservation.paths.length && activeRuns(state).length) {
+      reservation.overlap = true;
+      for (const run of state.reservations) if (run.paths.length) run.overlap = true;
+    }
+    state.reservations.push(reservation);
+    writeJson(stateFile(root), state);
+  });
+}
+export async function updateReservation(root, token, update) {
+  return withLock(root, () => {
+    const state = loadState(root);
+    const record = state.reservations.find((r) => r.token === token);
+    if (record) Object.assign(record, update);
+    writeJson(stateFile(root), state);
+  });
+}
+export async function release(root, token) {
+  return withLock(root, () => {
+    const state = loadState(root);
+    state.reservations = state.reservations.filter((r) => r.token !== token);
+    writeJson(stateFile(root), state);
+  });
+}
+// Caller holds the root lock, so header creation and appends cannot race.
+export function appendTable(file, header, row) {
+  if (!fs.existsSync(file)) fs.writeFileSync(file, `${header}\n`, { flag: 'wx' });
+  fs.appendFileSync(file, `${row}\n`);
+}

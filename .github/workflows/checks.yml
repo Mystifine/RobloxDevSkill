@@ -20,3 +20,8 @@ jobs:
         run: lune run tests/run.luau
       - name: Lint
         run: selene scripts tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Codex handoff wrapper (against a fake CLI)
+        run: node --test tests/codex/handoff.test.mjs
