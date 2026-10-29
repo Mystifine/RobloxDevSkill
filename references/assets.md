@@ -2,17 +2,19 @@
 
 ## Policy
 
-Code never (a security rule); "temporary preferred" is *(default)*.
+Code never (a security rule). Any other Toolbox asset may stay as a placeholder or be kept. When one is replaced, the replacement is either a new upload (through the gate below) or a predefined asset id (an approved asset the project already uses or picks), whichever the case calls for *(default)*.
 
 | Type | Allowed | Notes |
 |---|---|---|
 | Scripts / LocalScripts / ModuleScripts | **Never** | strip them, do not read-and-reuse |
-| Models, meshes | Yes, temporary preferred | audit first; plan to replace with our own |
-| VFX | Yes, temporary preferred | audit; rebuild our own versions later |
-| Images / decals | Yes, temporary preferred | check content; swap when the user supplies final art |
+| Models, meshes | Yes | audit first; keep, or replace with a new upload or a predefined id |
+| VFX | Yes | audit; keep, rebuild (neutral textures, tinted in Roblox) or swap for a predefined id |
+| Images / decals | Yes | check content; keep, or swap for supplied art or a predefined id |
 | Sounds | Yes, may be kept | see below |
 
-**Character art and models** (portraits, thumbnails, icons, avatars) must also pass [characters.md](characters.md) before use or upload.
+**Character art and models you generate, edit or upload** (portraits, thumbnails, icons, avatars, and renders of any model, which are new uploads) must also pass [characters.md](characters.md). Characters already on Roblox are trusted like any existing asset.
+
+**Moderation risk sits in uploads** ([no-gore.md](no-gore.md)). An asset already on Roblox has passed moderation, so using it by id adds none. Downloading and re-uploading it, or saving it into a new model or package, is a new upload under your account and goes through the gate below.
 
 ## Safe intake (every asset, no exceptions)
 
@@ -29,13 +31,18 @@ If anything is ambiguous or looks malicious, discard the asset and say so.
 
 - Sounds are the one Toolbox category meant to be kept. Prefer Roblox-licensed libraries (Pro Sound Effects userId `7462895450`, APM userId `7462718749`) found through the Toolbox API; Studio MCP search cannot filter by creator.
 - Choose by description, then measure: duration, onset, peak/loudness and spectrum (play it in a throwaway Studio script or a probe tool), so it fits the beat and mix.
-- Put ids in the project's sound table; set `Volume`, `RollOffMaxDistance` and a `SoundGroup` to match existing audio.
+- Put ids in the project's sound table and play them through the project's audio path. Roblox now discourages `Sound`, `SoundGroup` and `SoundEffect` in favor of the Audio API ([audio objects](https://create.roblox.com/docs/audio/objects), checked 2026-10-28): `AudioPlayer` -> `Wire` -> `AudioDeviceOutput` for 2D; `AudioPlayer` -> `Wire` -> `AudioEmitter`, heard through `AudioListener` -> `Wire` -> `AudioDeviceOutput`, for 3D; `AudioEqualizer`, `AudioCompressor` and `AudioReverb` on the wire. New audio systems use it; a project built on `Sound` stays consistent (`Volume`, `RollOffMaxDistance` and a `SoundGroup` matching the existing audio) until it migrates.
 
 ## Uploading (Open Cloud)
 
+- **Gate every upload.** Moderation screens each new upload with its own rules whatever the experience's label, can misfire, and can strike the uploading account.
+  - Reuse an existing asset when one does the job.
+  - Screen the file at full size and at 128 px against [no-gore.md](no-gore.md), and [characters.md](characters.md) for character art; name it plainly.
+  - Upload one asset of a new kind first and wait: poll `GET https://apis.roblox.com/assets/v1/operations/{operationId}` until `done`, and go on only when `response.moderationResult.moderationState` is `MODERATION_STATE_APPROVED`.
+  - Never upload to test moderation or resend a rejected file unchanged. For a rejection that looks wrong, pause the batch and appeal it.
 - **Pick the key by asset type.** Projects often keep an asset key owned by a dedicated uploader account (for example `ROBLOX_CLOUD_ASSET_API_KEY`) beside the group key of the group that owns the experience.
   - **3D (meshes, models), 2D (images, decals) and sounds:** the asset key when there is one; with none, ask before using the group key.
   - **Animations:** the group key, with `creationContext.creator.groupId` set to that group. An animation plays only in experiences owned by its own creator, so one uploaded by another account never loads. Studio publishing (`AssetService:CreateAssetAsync`) must target the same group. Upload a `.rbxm` saved from Studio; Roblox warns that files edited elsewhere may fail.
   - **Developer products, game passes, experience settings:** the group key.
-  - The content rules (the audit above, [characters.md](characters.md)) apply whichever account uploads. Never print a key or copy it into source, manifests, logs or Studio.
+  - The content rules (the audit above, [characters.md](characters.md), [no-gore.md](no-gore.md)) apply whichever account uploads. Never print a key or copy it into source, manifests, logs or Studio.
 - **Make asset-key uploads public (Open Use):** they belong to another creator than the experience. Images, decals and meshes start Open Use unless the uploading account turned on Asset Privacy; sounds, videos and models start restricted, so grant them to everyone with `PATCH https://apis.roblox.com/asset-permissions-api/v1/assets/permissions` (beta; key scope `asset-permissions:write`; `subjectType` `All` with an empty `subjectId`, the ids in `requests`, `action` per the reference schema) or on the asset's Creator Hub permissions. Check `successAssetIds`, confirm each id loads in the experience, and report any that stay private. Group-key uploads need no grant.

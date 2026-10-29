@@ -18,6 +18,7 @@ Rules:
 - Real-world scale, applied transforms, sensible origin/pivot, clear naming.
 - No hidden or interior faces that never render; no coplanar overlaps (z-fighting); consistent normals; no n-gons left unintended.
 - Character models (R15/R6 rigs, NPCs) follow [rigs.md](rigs.md); any that could read as female also follow [characters.md](characters.md), renders included.
+- Every model, texture and decal you make is an upload: no blood or gore in it, and weapons, claws and tools carry no blood, though wear, rust and grime are fine ([no-gore.md](no-gore.md)).
 - Run `blender-asset-qa` before calling a model done. Verify triangle count, UVs, normals and materials after export.
 - After import in Studio: set `CollisionFidelity` (`Box`/`Hull` for most; precise only when needed), `CanCollide/CanTouch/CanQuery` off for decor, `Anchored` as appropriate, `RenderFidelity` as fits, and confirm textures applied. Remove leftover empty Models or Folders.
 
