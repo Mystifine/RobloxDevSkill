@@ -96,13 +96,12 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
    - Cut at the joint pivots, not at the box edges.
    - Each piece covers one box and may overhang it (a helmet, a skirt), but it moves with that part only.
    - Read the wrist, ankle and other joint heights from the dump instead of guessing them.
-4. **Name and export:**
-   - **Welded:** name each piece after its body part (`LeftUpperArm`, `Left Arm`), or `<Part>__<Look>` for one piece per part and material (`Head__Gold`), then `rr.export_pieces(pieces, path)`.
+4. **Name, validate and texture:** run blender-asset-qa on the clay geometry before UVs and baking. Pass the pieces with the replica body (`RIG_*` but the root) and `--tol 0.03` (pieces stand clear of the body); only an R15 replica's `RIG_`<->`RIG_` joint overlaps are expected. Preserve separate ornaments when gathering pieces; welding their coincident vertices can create non-manifold joins.
+   - **Welded:** name each piece after its body part (`LeftUpperArm`, `Left Arm`), or `<Part>__<Look>` for one piece per part and material (`Head__Gold`).
    - **PBR** (the default, [modeling.md](modeling.md)): after the clay check, `kit.merge` joins each part's pieces into one `<Part>__Skin` (glow looks stay apart, for Neon), `kit.unwrap` packs them into one atlas, `kit.bake` bakes the four SurfaceAppearance maps, and `kit.render(..., pbr=True)` shows them.
-   - **Skinned:** give the mesh vertex groups named after the body parts (`rr.rigid_weights(mesh, rig, blend)`, or painted) and parent it to the replica's armature, then `rr.export_skinned(mesh, armature, path)`.
+   - **Skinned:** give the mesh vertex groups named after the body parts (`rr.rigid_weights(mesh, rig, blend)`, or painted) and parent it to the replica's armature.
    - **Both** put every object's origin at the scene origin. Roblox's importer keeps a mesh's vertices but drops its object's own transform, so a piece exported with its origin at its centre imports at the file origin; the `astray` rule catches this.
-5. **Check and upload:** run blender-asset-qa and ZFight as for any model ([modeling.md](modeling.md)), then upload one Model asset ([assets.md](assets.md)) or bring it in with the 3D Importer.
-   - Pass `qa_check` the pieces with the replica body (`RIG_*` but the root) and `--tol 0.03` (pieces stand clear of the body). An R15 replica's boxes overlap at the joints as its meshes do: its `RIG_`<->`RIG_` z-fighting is expected.
+5. **Check, export and upload:** repeat blender-asset-qa on the finished geometry (UV checks on for PBR), then `rr.export_pieces(pieces, path)` or `rr.export_skinned(mesh, armature, path)`. Re-import the FBX to verify names, triangle counts, bounds and UVs. Upload one Model asset ([assets.md](assets.md)) or bring it in with the 3D Importer; run ZFight after dressing in Studio ([modeling.md](modeling.md)).
    - The importer drops textures embedded in the FBX (no TextureID or SurfaceAppearance, seen 2026-10-30): upload the four maps as images too.
 6. **Dress the rig:** insert the asset, then, before moving it, call one of:
    - welded: `RigSkin.apply(rig, skin, { colors = { Body = color }, face = faceImage })`;

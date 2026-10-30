@@ -29,6 +29,7 @@ export type Options = {
 	Markers: { string }?, -- markers the clip must have; the first is compared with the tip's fastest moment
 	Ignore: { string }?, -- rules to skip, say { "end-offset" } for a death or knockback clip
 	Looped: boolean?, -- overrides the clip's own Looped
+	Locomotion: boolean?, -- true: measure backward stance phases; false: stationary slide checks; nil: infer
 	Hinges: { { Upper: string, Lower: string, Bend: string } }?, -- custom hinges about the upper part's X axis: "back" flexes with a negative turn (R15 knees), "front" with a positive one (elbows)
 }
 export type SheetOptions = Options & {
@@ -38,6 +39,7 @@ export type SheetOptions = Options & {
 	Trails: boolean?, -- last column: the peak pose with hand, foot, head and tip paths (default true)
 	Dark: boolean?, -- dark backdrop (default light, which makes the silhouette read)
 	Fov: number?, -- camera field of view (default 20: nearly flat, little perspective)
+	CaptureDelay: number?, -- editor redraw time before returning a sheet (default 0.75 s, bounded 0..5)
 }
 export type Report = {
 	Findings: { Finding },
@@ -635,6 +637,33 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 
 	-- feet: a planted foot sits on the floor (no float, no clip); planted drift (in place) or travel speed (locomotion)
 	local feet = feetOf(rig, settings)
+	local locomotion = settings.Locomotion
+	-- Classic R6 walks can keep both rigid leg soles near/below the contact threshold
+	-- through the swing. Their whole-loop contact interval has zero net travel, so
+	-- infer the alternating gait before splitting contacts into backward stances.
+	if locomotion == nil and rig.Kind == "R6" and clip.Looped and #feet == 2 then
+		local left, right = locator(rig, feet[1]), locator(rig, feet[2])
+		if left and right then
+			local moving, opposed = 0, 0
+			for k = 2, #frames do
+				local dt = math.max(frames[k].T - frames[k - 1].T, 1e-4)
+				local la, lb = left(frames[k - 1]), left(frames[k])
+				local ra, rb = right(frames[k - 1]), right(frames[k])
+				if la and lb and ra and rb then
+					local a, b = (lb.Position.Z - la.Position.Z) / dt, (rb.Position.Z - ra.Position.Z) / dt
+					if math.abs(a) > 2 and math.abs(b) > 2 then
+						moving += 1
+						if a * b < 0 then
+							opposed += 1
+						end
+					end
+				end
+			end
+			if moving >= math.max(4, (#frames - 1) * 0.25) and opposed / moving >= 0.8 then
+				locomotion = true
+			end
+		end
+	end
 	local planted: { [string]: { boolean } } = {}
 	local stanceSpeeds, drifts: { Drift }, levels: { Level }, rests = {}, {}, {}, {}
 	local lowest, lowestName, lowestTime, everPlanted, measured, mostStill = math.huge, "", 0, false, 0, 0
@@ -678,6 +707,13 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 					lowest, lowestName, lowestTime = heights[index], name, frame.T
 				end
 				everPlanted = everPlanted or flags[index]
+			end
+			if locomotion == true then
+				for k = 2, #frames do
+					local dt = math.max(frames[k].T - frames[k - 1].T, 1e-4)
+					flags[k] = flags[k] and (flat[k].Z - flat[k - 1].Z) / dt > 2
+				end
+				flags[1] = flags[2] == true
 			end
 			planted[name] = flags
 			local quiet = 0
@@ -747,7 +783,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 				back += 1
 			end
 		end
-		if total > 0 and back == total then
+		if total > 0 and locomotion ~= false and back == total then
 			-- in-place locomotion: planted feet travel back at the speed the character moves forward
 			local sum = 0
 			for _, stance in stanceSpeeds do
@@ -1223,6 +1259,9 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 			"Columns: " .. table.concat(columnText, " | "),
 			(if trails then string.format("Trails: blue at the start to red at the end; %s dots are a planted foot (a smear is sliding)", if settings.Dark then "white" else "black") else nil) :: string, -- nil ends the list
 		} :: { string }, "\n")
+		-- Yield after the final row and FOV update; otherwise rapid consecutive
+		-- captures can contain the previous sheet or partially rendered rows.
+		task.wait(math.clamp(settings.CaptureDelay or 0.75, 0, 5))
 		return {
 			Legend = legend, Report = report,
 			Camera = { eye.X, eye.Y, eye.Z }, LookAt = { center.X, center.Y, center.Z },

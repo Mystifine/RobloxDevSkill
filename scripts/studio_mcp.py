@@ -9,6 +9,7 @@
   python studio_mcp.py luau FILE [--datamodel Edit|Server|Client]
   python studio_mcp.py call TOOL ['{"json": "args"}' | @args.json] [--image out.png]
   options: --studio NAME (a part of the place name, when several Studios are open; or STUDIO_ID), --timeout SECONDS
+           --output FILE (text blocks as UTF-8, no BOM; avoids PowerShell redirect encoding)
 
 The server: STUDIO_MCP (its command line), else %LOCALAPPDATA%\\Roblox\\mcp.bat on Windows. studio_id is filled in
 (the server finds Studio a second or two after it starts, so it is polled), datamodel_type defaults to Edit, images
@@ -138,7 +139,11 @@ def inline_uses(src, datamodel='Edit'):
     return '\n'.join(pre) + '\n' + src
 
 
-def show(result, image):
+def show(result, image, output=None):
+    if output:
+        # Keep the same text as stdout, without shell-dependent redirection encoding.
+        with open(output, 'w', encoding='utf-8', newline='\n') as f:
+            f.write('\n'.join(c['text'] for c in result.get('content', []) if c.get('type') == 'text'))
     for c in result.get('content', []):
         if c.get('type') == 'text':
             print(c['text'])
@@ -160,13 +165,18 @@ def main():
     ap.add_argument('args', nargs='?', default='{}', help='call: JSON arguments or @file.json')
     ap.add_argument('--datamodel', default='Edit', choices=['Edit', 'Server', 'Client'])
     ap.add_argument('--image', help='where to write an image result (screen_capture)')
+    ap.add_argument('--output', help='write response text as UTF-8 without a BOM (use instead of shell redirection)')
     ap.add_argument('--studio', default=os.environ.get('STUDIO_ID'), help='place name part or studio id')
     ap.add_argument('--timeout', type=float, default=float(os.environ.get('STUDIO_MCP_TIMEOUT', 300)))
     a = ap.parse_args()
     s = Server()
     try:
         if a.command == 'list':
-            for t in s.request('tools/list', {}, 60)['tools']:
+            result = s.request('tools/list', {}, 60)
+            if a.output:
+                with open(a.output, 'w', encoding='utf-8', newline='\n') as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+            for t in result['tools']:
                 print('==', t['name'], '\n', t.get('description', '').strip(), '\n', json.dumps(t.get('inputSchema')))
             return 0
         if not a.target:
@@ -181,7 +191,7 @@ def main():
                 args.setdefault('datamodel_type', a.datamodel)
         if tool != 'list_roblox_studios':
             args.setdefault('studio_id', s.studio(a.studio))
-        return show(s.call(tool, args, a.timeout), a.image)
+        return show(s.call(tool, args, a.timeout), a.image, a.output)
     finally:
         s.close()
 

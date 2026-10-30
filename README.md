@@ -49,6 +49,9 @@ scripts/
 tests/
   run.luau               Lune specs for the pure-Luau scripts (PacingSim)
   codex/                 Node tests for the handoff wrapper against a fake Codex CLI
+  python/                MCP UTF-8 output and error-handling regressions (standard library)
+  blender/               isolated Blender geometry and material/bake regressions
+  studio/                engine regressions for animation inspection and capture-sheet redraw
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
 INSTALL.md               placement rules, options, manual steps
@@ -144,10 +147,17 @@ rokit install
 lune run tests/run.luau     # specs for the pure-Luau scripts
 selene scripts tests        # lint, std = roblox
 node --test tests/codex/handoff.test.mjs   # the Codex handoff wrapper (Node 20+, Git), against a fake CLI
+python -m unittest discover -s tests/python -v
+blender -b --factory-startup --python-exit-code 1 -P tests/blender/skin_kit_test.py
+python scripts/studio_mcp.py luau tests/studio/AnimationInspector.spec.luau --studio "PLACE NAME" --output animation-results.json
 luau-lsp analyze --platform=roblox --definitions=@roblox=<globalTypes.d.luau> <the Studio scripts>   # strict types; again with --flag:LuauSolverV2=true
 ```
 
 `export_place.luau` is a Lune script: type-check it with Lune's own definitions. The Studio scripts are proven in Studio (above); the specs cannot stand in for the engine's layout or physics.
+
+The Studio spec runs in Edit mode with temporary generated R6/R15 rigs and clips, then cleans them up. Use `studio_mcp.py --output FILE` for UTF-8 text/JSON files; PowerShell redirection can write UTF-16 despite the process's stdout encoding. Python regressions run in CI; Blender and Studio require those applications locally.
+
+On 2026-10-30 these regressions passed: four Python tests, four Blender 5.1.2 tests (including a real four-map bake), and 13 Studio checks repeated twice. Touching ornaments retain closed, separate topology; invalid bake inputs leave materials and scene settings unchanged. Stock R6/R15 walks infer locomotion, idle stays stationary, and deliberate planted slide/sink defects remain detectable. Stock clip/grid findings are retained. Consecutive colored capture sheets were also inspected without caller-added waits. Selene, 1,694 PacingSim checks, all 32 handoff tests and skill validation passed.
 
 ## Developing the skill
 

@@ -9,11 +9,13 @@
     P.put(a['lower'], 'Navy', kit.wrap(lo, hi, 0.07, gap=0.03, open_side=a['inner']))
     pieces = P.objects({'Navy': '#2B5AA6', 'Gold': '#E8B83A'})   # '<Part>__<Look>' objects, triangulated
     kit.render(out_dir, 'clay', clay=True)    # front, right, back and three-quarter views beside the reference
+    # Geometry QA with the replica body before UVs/bakes (references/rigs.md, step 4).
     # PBR (the default, references/modeling.md), after the clay check:
     skins, glow = kit.merge(pieces, emissive={'Glow'})   # one '<Part>__Skin' per body part; glow stays Neon
     kit.unwrap(skins); kit.unwrap(glow)       # one atlas, one texel density
     maps = kit.bake(skins, PBR, out_dir, 'MyStand_R6')   # color, normal, metal, rough PNGs at 1024
     kit.preview(skins, maps); kit.render(out_dir, 'pbr', pbr=True)
+    # Final geometry + UV QA before export, then verify the FBX by re-importing.
     rr.export_pieces(skins + glow, fbx_path)  # then RigSkin.apply(rig, skin, { looks = ... }) in Studio
 
 PBR: {look: {'base': '#rrggbb', 'metal': 0 or 1, 'rough': 0..1, 'rough_var': 0.08, 'edge': '#rrggbb' or None (worn
@@ -109,7 +111,9 @@ class Pieces:
         self.acc = {}
 
     def put(self, part, look, t, smooth=False):
-        """Merge bmesh t (freed) into part's look; smooth=None keeps its faces' own shading."""
+        """Gather bmesh t (freed); weld within this input only, never between separate ornaments.
+        smooth=None keeps its faces' own shading."""
+        bmesh.ops.remove_doubles(t, verts=t.verts[:], dist=1e-5)
         if smooth is not None:
             for f in t.faces:
                 f.smooth = smooth
@@ -123,7 +127,6 @@ class Pieces:
             bpy.context.scene.collection.children.link(col)
         mats, out = {}, []
         for (part, look), t in sorted(self.acc.items()):
-            bmesh.ops.remove_doubles(t, verts=t.verts[:], dist=1e-5)
             bmesh.ops.triangulate(t, faces=t.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
             name = f'{part}__{look}'
             me = bpy.data.meshes.new(name); t.to_mesh(me); t.free()
@@ -457,16 +460,31 @@ def _pbr_material(name, p):
 def bake(objs, looks, out_dir, prefix, size=1024, samples=16):
     """Bake the merged skin's four SurfaceAppearance maps into <out_dir>/<prefix>_{color,normal,metal,rough}.png
     (Cycles, CPU). `looks` maps each look (the 'M_<Look>' preview material from Pieces.objects) to PBR parameters."""
+    # Validate the whole batch before changing materials, render settings or images.
+    if not objs:
+        raise ValueError('bake: no skin objects')
+    slots = []
+    for ob in objs:
+        if ob.type != 'MESH' or not ob.material_slots:
+            raise ValueError(f'bake: {ob.name} needs a mesh with assigned materials')
+        for index, slot in enumerate(ob.material_slots):
+            if slot.material is None:
+                raise ValueError(f'bake: {ob.name} material slot {index} is empty; assign a material or remove the unused slot')
+            look = slot.material.name.split('M_', 1)[-1].split('.')[0]
+            if look not in looks:
+                raise ValueError(f'bake: {ob.name} material {slot.material.name!r} has no PBR look {look!r}')
+            missing = {'base', 'metal', 'rough'} - looks[look].keys()
+            if missing:
+                raise ValueError(f'bake: look {look!r} is missing {", ".join(sorted(missing))}')
+            slots.append((slot, look))
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = samples; sc.cycles.use_denoising = False
     sc.render.bake.margin = 8; sc.render.bake.target = 'IMAGE_TEXTURES'; sc.render.bake.use_clear = True
     mats = {}
-    for ob in objs:
-        for slot in ob.material_slots:
-            look = slot.material.name.split('M_', 1)[-1].split('.')[0]
-            if look not in mats:
-                mats[look] = _pbr_material(look, looks[look])
-            slot.material = mats[look]
+    for slot, look in slots:
+        if look not in mats:
+            mats[look] = _pbr_material(look, looks[look])
+        slot.material = mats[look]
     mats = list(mats.values())
     imgs = {}
     for key, cs in (('color', 'sRGB'), ('normal', 'Non-Color'), ('metal', 'Non-Color'), ('rough', 'Non-Color')):
