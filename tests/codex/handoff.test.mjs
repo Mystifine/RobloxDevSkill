@@ -89,6 +89,9 @@ test('completion requires a task result, completed turn, and successful infrastr
     ['recovered-command', [{ type: 'item.completed', item: { type: 'command_execution', exit_code: 1, aggregated_output: 'a recoverable test failed' } }, done], result, 0],
     // Recovered stream reconnects, a byte-order mark and tool noise in stderr are not failures.
     ['reconnects', [reconnect, { ...reconnect, message: 'Falling back from WebSockets to HTTPS transport.' }, done], result, 0],
+    // The CLI logs the transport fallback as an error item too (seen 2026-10-29).
+    ['fallback-item', [reconnect, { type: 'item.completed', item: { type: 'error', message: 'Falling back from WebSockets to HTTPS transport. stream disconnected before completion: websocket closed by server before response.completed' } }, done], result, 0],
+    ['tool-error-item', [{ type: 'item.completed', item: { type: 'error', message: 'apply_patch failed' } }, done], result, 1],
     ['bom', [done], null, 0, { rawResult: `\uFEFF${JSON.stringify(result)}` }],
     ['tool-noise', [done], result, 0, { stderr: 'Reading additional input from stdin...\nERROR codex_core::tools::router: error=image rate limit, retrying' }],
   ];
@@ -298,6 +301,30 @@ test('overlapping additional writable roots are rejected', async (t) => {
   await assert.rejects(reserve(f.root, { token: 'b', pid: process.pid, runDir: f.root, paths: [nested], resources: [] }), /busy/);
   await release(f.root, 'a');
 });
+test('runs share an --add-dir output folder; only checkouts are exclusive', async (t) => {
+  const f = fixture(t), shared = path.join(f.dir, 'Downloads'), inner = path.join(shared, 'models'), other = path.join(f.dir, 'other'), hold = path.join(f.dir, 'hold');
+  fs.mkdirSync(inner, { recursive: true }); fs.mkdirSync(other);
+  const first = f.launch([...f.args, '--add-dir', shared], { FAKE_HOLD: hold });
+  await until(() => f.invocations().length === 1, 'the first run did not start');
+  // One more run delivering to the same folder and one working inside it both start while the first holds it.
+  const second = f.launch(['--brief', f.brief, '--cd', other, '--add-dir', shared], { FAKE_HOLD: hold });
+  const third = f.launch(['--brief', f.brief, '--cd', inner], { FAKE_HOLD: hold });
+  await until(() => f.invocations().length === 3, 'a run sharing the output folder was refused');
+  fs.writeFileSync(hold, '');
+  for (const run of [first, second, third]) { const { code, stderr } = await run.done; assert.equal(code, 0, stderr); }
+});
+test('clean refuses while a delivered file still names the run directory; --discard deletes anyway', async (t) => {
+  const f = fixture(t), delivered = path.join(f.dir, 'build.py');
+  const run = await f.launch(f.args, { FAKE_DELIVER: delivered }).done;
+  assert.equal(run.code, 0, run.stderr);
+  const [dir] = f.runs();
+  const refused = await f.launch(['--clean', dir]).done;
+  assert.equal(refused.code, 4, refused.stdout);
+  assert.match(refused.stderr, /delivered files still name a run directory[\s\S]*build\.py/);
+  assert.ok(fs.existsSync(dir));
+  const discarded = await f.launch(['--clean', dir, '--discard']).done;
+  assert.equal(discarded.code, 0, discarded.stderr); assert.equal(fs.existsSync(dir), false);
+});
 test('MCP is disabled with a valid inert transport by default and enabled servers are locked', async (t) => {
   const f = fixture(t), servers = JSON.stringify([{ name: 'blender' }, { name: 'host-tool' }]);
   const plain = await f.launch(f.args, { FAKE_SERVERS: servers }).done;
@@ -351,7 +378,7 @@ test('usage is read live without a model turn, falls back to the session log, an
   const live = await f.launch(['--usage'], { FAKE_APP_LOG: appLog }).done;
   assert.equal(live.code, 0, live.stderr);
   assert.match(live.stdout, /codex usage \(live, plus plan\): 5h window 40% used, resets .*; weekly 5% used/);
-  assert.match(live.stdout, /room: 3 more runs now \(cap 3\)/);
+  assert.match(live.stdout, /room: 3 more code runs and 3 more image runs now \(cap 3\)/);
   assert.deepEqual(f.invocations(), []);
   const pid = Number(fs.readFileSync(appLog, 'utf8').trim());
   await until(() => !alive(pid), 'the app server outlived the usage read');
@@ -363,19 +390,30 @@ test('usage is read live without a model turn, falls back to the session log, an
     JSON.stringify({ timestamp: at, type: 'event_msg', payload: { type: 'token_count', rate_limits: null } })].join('\n'));
   const logged = await f.launch(['--usage']).done;
   assert.match(logged.stdout, /codex usage \(session log of .*\): 5h window 55% used/);
-  assert.match(logged.stdout, /room: 3 more runs now/);
+  assert.match(logged.stdout, /room: 3 more code runs and 3 more image runs now/);
   const saved = process.env.CODEX_HOME; process.env.CODEX_HOME = f.codexHome;
   t.after(() => { if (saved === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = saved; });
   assert.equal(readLogged().primary.used, 55);
 });
-test('room counts the measured run cost, active runs, resets and the cap', () => {
+test('room counts the measured run cost per kind, active runs, resets and the cap', () => {
   assert.deepEqual(runCost([]), { primary: { value: 10, measured: 0 }, secondary: { value: 2, measured: 0 } });
-  const cost = runCost([{ primary: 4, secondary: 1 }, { primary: 6, secondary: 1 }, { primary: 8, secondary: 2 }, { primary: 30, secondary: 9, overlap: true }, { primary: null, secondary: 1 }]);
-  assert.deepEqual(cost, { primary: { value: 6, measured: 3 }, secondary: { value: 1, measured: 4 } });
+  const code = (primary, secondary, overlap = false) => ({ kind: 'code', primary, secondary, overlap });
+  const cost = runCost([code(4, 1), code(6, 1), code(8, 2), code(30, 9, true), code(null, 1)], 'code');
+  // The upper quartile, not the median: the costlier runs of a kind set its room.
+  assert.deepEqual(cost, { primary: { value: 8, measured: 3 }, secondary: { value: 1, measured: 4 } });
+  // Kinds are measured apart: small image runs don't make a Blender build look cheap (a median of all said 4%).
+  const mixed = [code(2, 0), { kind: 'image', primary: 4, secondary: 1 }, { kind: 'image', primary: 6, secondary: 1 }, code(36, 6), code(36, 6), { kind: 'image', primary: 5, secondary: 1 }];
+  assert.equal(runCost(mixed, 'code').primary.value, 36);
+  assert.equal(runCost(mixed, 'image').primary.value, 6);
+  // Under three runs of a kind, the costliest measured run outweighs a smaller default.
+  assert.equal(runCost([code(2, 0), code(36, 6)], 'code').primary.value, 36);
+  assert.equal(runCost([code(2, 0)], 'code').primary.value, 10);
   const later = now() + 3600;
   const usage = (primary, secondary = 0, allowed = true) => normalize({ primary: { usedPercent: primary, resetsAt: later }, secondary: { usedPercent: secondary, resetsAt: later + 86400 } }, 'live', Date.now(), allowed);
-  assert.equal(room(usage(70), 0, cost, 9), 5);      // 30% left at 6% a run
-  assert.equal(room(usage(70), 2, cost, 9), 3);      // two runs already active
+  assert.equal(room(usage(79), 0, runCost(mixed, 'code'), 9), 0);   // 21% left: no Blender build fits
+  assert.equal(room(usage(79), 0, runCost(mixed, 'image'), 9), 3);  // three icon runs still do
+  assert.equal(room(usage(70), 0, cost, 9), 3);      // 30% left at 8% a run
+  assert.equal(room(usage(70), 2, cost, 9), 1);      // two runs already active
   assert.equal(room(usage(10, 98), 0, cost, 9), 2);  // the week binds
   assert.equal(room(usage(10), 0, cost, 3), 3);      // the cap binds
   assert.equal(room(usage(10, 0, false), 0, cost), 0);
@@ -478,7 +516,7 @@ test('--check lists every open handoff with the command for each choice', async 
   assert.equal(check.code, 0, check.stderr);
   assert.match(check.stdout, /open handoffs: 1 running, 1 waiting, 1 finished but not cleaned, 0 leftover worktree\(s\)\. Ask the user/);
   for (const pattern of [/running .* code /, /  stop: bash .* --cancel "/, /waiting .* queued, due /, /  launch: bash /, /finished .* FAILED /, /  when done: bash .* --clean /]) assert.match(check.stdout, pattern);
-  assert.match(check.stdout, /room: 0 more runs now/);
+  assert.match(check.stdout, /room: 0 more code runs and 0 more image runs now/);
   assert.equal((await running.done).code, 0);
 });
 test('the entry points run when the skill is reached through a junction or symlink, as installs are', (t) => {

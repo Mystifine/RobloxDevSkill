@@ -110,6 +110,16 @@ local function holder(): Folder
 	return folder
 end
 
+-- Disposes of a posed copy, and of the holding folder once it is empty, so an audit leaves nothing in the place (a sheet
+-- stays until clear()).
+local function dispose(model: Model)
+	model:Destroy()
+	local folder = workspace:FindFirstChild(HOLD)
+	if folder and #folder:GetChildren() == 0 then
+		folder:Destroy()
+	end
+end
+
 local function seconds(t: number): string
 	return string.format("%.2f s", t)
 end
@@ -969,7 +979,7 @@ function Inspector.audit(rig: Model, clip: any, options: Options?): Report
 		sample(opened)
 		return (analyse(opened, settings))
 	end)
-	opened.Rig.Model:Destroy()
+	dispose(opened.Rig.Model)
 	if not ok then
 		error(report, 0)
 	end
@@ -1218,7 +1228,7 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 			Camera = { eye.X, eye.Y, eye.Z }, LookAt = { center.X, center.Y, center.Z },
 		}
 	end)
-	opened.Rig.Model:Destroy()
+	dispose(opened.Rig.Model)
 	if not ok then
 		error(result, 0)
 	end

@@ -83,15 +83,18 @@ export function readLogged(maxFiles = 6) {
   return best;
 }
 
-// A run's share of each window: the median of the last 20 runs measured alone; until 3 exist, a cautious default.
-export function runCost(samples = []) {
-  const median = (key, fallback) => {
-    const values = samples.filter((sample) => !sample.overlap && Number.isFinite(sample[key])).slice(-20)
+// A run's share of each window: the upper quartile of the last 20 runs of its kind measured alone, since one code
+// run can be a 2% fix and the next a 36% Blender build (seen 2026-10-29, where a median said 4%); until 3 exist,
+// a cautious default or the costliest measured, whichever is larger. Without a kind, every kind counts.
+export function runCost(samples = [], kind) {
+  const quartile = (key, fallback) => {
+    const values = samples.filter((sample) => !sample.overlap && (!kind || sample.kind === kind) && Number.isFinite(sample[key])).slice(-20)
       .map((sample) => sample[key]).sort((a, b) => a - b);
-    return values.length >= 3 ? { value: Math.max(1, values[values.length >> 1]), measured: values.length } : { value: fallback, measured: values.length };
+    return { value: values.length >= 3 ? Math.max(1, values[Math.ceil(values.length * 3 / 4) - 1]) : Math.max(fallback, ...values), measured: values.length };
   };
-  return { primary: median('primary', 10), secondary: median('secondary', 2) };
+  return { primary: quartile('primary', 10), secondary: quartile('secondary', 2) };
 }
+export const runCosts = (samples) => ({ code: runCost(samples, 'code'), image: runCost(samples, 'image') });
 const fits = (w, per) => w ? Math.floor((100 - w.used) / per) : Infinity;
 // How many more runs fit now; unknown usage is limited by the cap alone.
 export function room(usage, active, cost, cap = maxRuns()) {
@@ -112,14 +115,17 @@ export function when(seconds) {
   const span = left >= 86400 ? `${Math.floor(left / 86400)}d${Math.floor((left % 86400) / 3600)}h` : `${Math.floor(left / 3600)}h${pad(Math.floor((left % 3600) / 60))}m`;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} (in ${span})`;
 }
-export function describeUsage(usage, active, cost, cap = maxRuns()) {
-  const free = room(usage, active, cost, cap);
+// `costs` is runCosts(samples): room is reported per kind.
+export function describeUsage(usage, active, costs, cap = maxRuns()) {
+  const free = { code: room(usage, active, costs.code, cap), image: room(usage, active, costs.image, cap) };
   const show = (name, w) => w ? `${name} ${w.used}% used, resets ${when(w.resetsAt)}` : `${name} unknown`;
-  const measured = cost.primary.measured >= 3 ? `median of ${cost.primary.measured} runs measured alone` : `a default; ${cost.primary.measured} of 3 runs measured alone so far`;
+  const measured = (cost, kind) => cost.primary.measured >= 3 ? `upper quartile of ${cost.primary.measured} ${kind} runs measured alone` : `a default or the costliest so far; ${cost.primary.measured} of 3 ${kind} runs measured alone`;
+  const runs = (n, kind) => `${n} more ${kind} run${n === 1 ? '' : 's'}`;
   const lines = [usage
     ? `codex usage (${usage.source}${usage.source === 'live' ? '' : ` of ${new Date(usage.at).toISOString()}`}${usage.plan ? `, ${usage.plan} plan` : ''}): ${show('5h window', usage.primary)}; ${show('weekly', usage.secondary)}${usage.allowed === false ? '; ordinary usage NOT allowed now' : ''}`
     : 'codex usage: unknown (no live read, no session log); only the cap limits launches',
-  `a run costs about ${cost.primary.value}% of the 5h window and ${cost.secondary.value}% of the week (${measured})`,
-  `active runs: ${active}; room: ${free} more run${free === 1 ? '' : 's'} now (cap ${cap})`];
+  `a code run costs about ${costs.code.primary.value}% of the 5h window and ${costs.code.secondary.value}% of the week (${measured(costs.code, 'code')}); ` +
+    `an image run about ${costs.image.primary.value}% and ${costs.image.secondary.value}% (${measured(costs.image, 'image')})`,
+  `active runs: ${active}; room: ${runs(free.code, 'code')} and ${runs(free.image, 'image')} now (cap ${cap})`];
   return { text: lines.join('\n'), room: free };
 }

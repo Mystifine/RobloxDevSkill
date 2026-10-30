@@ -95,7 +95,8 @@ export async function summarize(runDir, codexExit, start, end, cwd = '', extra =
       const key = `${item.server}.${item.tool}${item.status === 'failed' ? ' (failed)' : ''}`;
       mcp.set(key, (mcp.get(key) || 0) + 1);
       if (item.status === 'failed') toolText += `\n${JSON.stringify(item.error || item.result || '')}`;
-    } else if (item.type === 'error') errors.push(item.message || 'tool error');
+    // The CLI also reports its WebSocket-to-HTTPS fallback as an error item.
+    } else if (item.type === 'error') { if (TRANSIENT.test(item.message || '')) reconnects++; else errors.push(item.message || 'tool error'); }
   }
   const final = read('final.md').trim(), stderr = read('stderr.log').split('\n').filter((line) => !NOISE.test(line)).join('\n');
   if (turnFailed) errors.push(turnFailed);

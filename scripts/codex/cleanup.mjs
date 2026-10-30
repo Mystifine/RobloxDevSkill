@@ -117,6 +117,21 @@ export const describePending = (entry) => [`== ${entry.thread ? `thread ${entry.
   `goal: ${entry.goal || '(see brief)'}`, ...(entry.checkpoint ? [`codex progress: ${entry.checkpoint}`] : []), ...(entry.note ? [`note: ${entry.note}`] : []),
   `run dir: ${entry.runDir}`, `${entry.thread ? 'resume' : 'launch'}: ${entry.command}`].join('\n');
 
+// Files a run changed outside its directory that still name that directory, as "file -> run dir". Delivered rebuild
+// scripts that kept their intermediates in the run directory broke at cleanup (seen 2026-10-29).
+function namingRuns(targets) {
+  const found = [];
+  for (const run of targets) {
+    const names = [run.dir, run.dir.replaceAll('\\', '/'), run.dir.replaceAll('\\', '\\\\')].map((name) => name.toLowerCase());
+    for (const file of run.meta?.files || []) {
+      if (inside(run.dir, file)) continue;
+      let text;
+      try { if (fs.statSync(file).size > 4 << 20) continue; text = fs.readFileSync(file, 'utf8').toLowerCase(); } catch { continue; }
+      if (names.some((name) => text.includes(name))) found.push(`${file} -> ${run.dir}`);
+    }
+  }
+  return found;
+}
 // `--clean THREAD|RUN_DIR` after acceptance or takeover, or `--prune DAYS` (every launch and check).
 export async function cleanup(root, mode, arg, claudeTokens, { discard = false } = {}) {
   const byDir = mode === '--thread' && path.isAbsolute(arg || '');
@@ -143,6 +158,8 @@ export async function cleanup(root, mode, arg, claudeTokens, { discard = false }
       if (left.length) blocked.push(`${worktree}: ${left.slice(0, 6).join(', ')}${left.length > 6 ? `, ${left.length - 6} more` : ''}`);
     }
     if (blocked.length) fail(`clean refused, nothing removed: a worktree holds work its main checkout doesn't have:\n  ${blocked.join('\n  ')}\nIntegrate it (the run's changes.patch), or rerun with --discard to drop it.`, 4);
+    const named = discard ? [] : namingRuns(targets);
+    if (named.length) fail(`clean refused, nothing removed: delivered files still name a run directory this clean deletes:\n  ${named.slice(0, 8).join('\n  ')}${named.length > 8 ? `\n  ${named.length - 8} more` : ''}\nMove what they need beside the deliverables and update the paths, or rerun with --discard to delete anyway.`, 4);
     if (thread) {
       for (const project of new Set(targets.filter((run) => run.meta).map((run) => run.project))) {
         const subset = targets.filter((run) => run.project === project && run.meta), sum = (name) => subset.reduce((n, run) => n + (run.meta.usage?.[name] || 0), 0);

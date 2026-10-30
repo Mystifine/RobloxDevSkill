@@ -53,6 +53,11 @@ if (args[0] === 'app-server') {
   if (scenario === 'model-missing' && !args.includes('fallback-a')) { emit({ type: 'error', message: 'model_not_found' }); process.exit(1); }
   const probe = args.some((arg) => arg.includes('the two letters "OK"'));
   if (env.FAKE_EDIT) fs.writeFileSync(path.join(process.cwd(), env.FAKE_EDIT), 'after\n');
+  if (env.FAKE_DELIVER) {
+    // A delivered script that keeps its intermediates in the run directory.
+    fs.writeFileSync(env.FAKE_DELIVER, `SCRATCH = r'${dir}'\n`);
+    emit({ type: 'item.completed', item: { type: 'file_change', status: 'completed', changes: [{ path: env.FAKE_DELIVER, kind: 'add' }] } });
+  }
   if (scenario === 'sandbox') emit({ type: 'item.completed', item: { type: 'command_execution', exit_code: 1, aggregated_output: 'helper_unknown_error: setup refresh had errors' } });
   if (scenario === 'reconnect') for (const n of [2, 3]) emit({ type: 'error', message: `Reconnecting... ${n}/5 (stream disconnected before completion: IO error)` });
   if (scenario === 'fail') { emit({ type: 'turn.failed', error: { message: 'tool crashed' } }); process.exit(1); }

@@ -10,12 +10,12 @@ import { activeRuns, alive, atomicWrite, canonical, inside, isMain, liveReservat
 import { checkout, finishSnapshot, git, snapshot } from './snapshot.mjs';
 import { queueRun, summarize } from './summarize.mjs';
 import { cleanup, describePending, openHandoffs, removeWorktree } from './cleanup.mjs';
-import { bindingReset, describeUsage, readLive, readLogged, room, runCost, when } from './usage.mjs';
+import { bindingReset, describeUsage, readLive, readLogged, room, runCost, runCosts, when } from './usage.mjs';
 
 const HELP = `Usage: handoff.sh --brief FILE --cd DIR [--kind code|image] [--queue] [--resume THREAD] [--worktree]
   --check [--probe]             CLI, login, MCP, model (probe cached 12 h), usage and every open handoff
   --usage / --list              Codex usage and room now (no model turn) / open handoffs only
-  --image FILE / --add-dir DIR  repeatable references / writable roots
+  --image FILE / --add-dir DIR  repeatable references / shared writable roots (not locked)
   --mcp NAME / --resource NAME  repeatable MCP opt-in / exclusive app lock
   --sandbox MODE                danger-full-access (default), workspace-write, read-only
   --model MODEL / --effort LEVEL / --timeout-min N / --name SLUG
@@ -24,7 +24,8 @@ const HELP = `Usage: handoff.sh --brief FILE --cd DIR [--kind code|image] [--que
   --cancel RUN_DIR              stop a running handoff's process tree
   --clean THREAD|RUN_DIR [--discard] [--claude-tokens N]
                                 after acceptance or takeover: log usage; delete its runs, image
-                                originals and integrated worktree (--discard: any worktree)
+                                originals and integrated worktree (--discard: any worktree, and
+                                delivered files that still name the run directory)
   --ignore-limit                launch despite low usage or a remembered limit
 Exit: 0 ok, 1 failed, 2 usage limit/no room/queued, 3 timeout, 4 blocked/needs review,
       64 arguments, 69 missing CLI, 70 login, 71 no usable model/at capacity, 75 busy`;
@@ -106,12 +107,12 @@ async function usageReport(root, usage) {
   usage ??= await readUsage();
   let state;
   await withLock(root, () => { state = loadState(root); });
-  return { usage, ...describeUsage(usage, activeRuns(state).length, runCost(state.samples)) };
+  return { usage, ...describeUsage(usage, activeRuns(state).length, runCosts(state.samples)) };
 }
-// Why another run can't start now, or null. Runs only under the state lock, so parallel launches can't overshoot.
-function noRoom(state, usage, account) {
-  const cost = runCost(state.samples), active = activeRuns(state).length;
-  if (room(usage, active, cost) < 1) return { until: bindingReset(usage, active, cost), text: describeUsage(usage, active, cost).text };
+// Why another run of this kind can't start now, or null. Runs only under the state lock, so parallel launches can't overshoot.
+function noRoom(state, usage, account, kind) {
+  const cost = runCost(state.samples, kind), active = activeRuns(state).length;
+  if (room(usage, active, cost) < 1) return { until: bindingReset(usage, active, cost), text: describeUsage(usage, active, runCosts(state.samples)).text };
   // Without a live read, a limit an earlier run reported still holds.
   const remembered = usage?.source === 'live' ? 0 : state.limits[account]?.until || 0;
   return remembered * 1000 > Date.now() ? { until: remembered, text: `Codex reported a usage limit until ${when(remembered)}` } : null;
@@ -200,8 +201,11 @@ async function waitForRoom(root) {
     const due = entries.filter((entry) => entry.until * 1000 <= Date.now()).sort((a, b) => a.until - b.until);
     if (due.length && Date.now() >= nextRead) {
       const report = await usageReport(root);
-      if (report.room >= 1) {
-        const ready = due.slice(0, report.room);
+      // Each waiting job needs room for its own kind; the costliest one due sets how many may start.
+      const kinds = due.map((entry) => readJson(path.join(entry.runDir, 'invocation.json'))?.kind === 'image' ? 'image' : 'code');
+      const free = Math.min(...kinds.map((kind) => report.room[kind]));
+      if (free >= 1) {
+        const ready = due.slice(0, free);
         console.log(['handoff: Codex has room again. This context survives /clear.',
           'Authorized: run each command unchanged; it repeats its original brief and scope. Anything new or outward still needs the user.',
           ...ready.map(describePending), report.text,
@@ -252,7 +256,7 @@ async function run(root, options, ctx) {
   const usage = options.check ? null : await readUsage();
   if (!options.check && !options.ignoreLimit) {
     let refusal;
-    await withLock(root, () => { refusal = noRoom(loadState(root), usage, info.accountKey); });
+    await withLock(root, () => { refusal = noRoom(loadState(root), usage, info.accountKey, options.kind); });
     if (refusal) return refuse(root, options, ctx, refusal);
   }
   const name = (options.name || (options.check ? 'probe' : path.parse(options.brief).name)).replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 48);
@@ -271,9 +275,11 @@ async function run(root, options, ctx) {
       cwd = canonical(worktree);
     }
     const resources = [...new Set([...options.resource, ...options.mcp].map((n) => `app:${n.toLowerCase()}`).concat(options.resume ? [`thread:${options.resume}`] : [], options.check ? [`probe:${info.configKey}`] : []))];
-    const paths = options.check ? [] : [cwd, ...options.addDir.map(canonical)];
+    // Only the checkout is exclusive. --add-dir roots are shared output folders (each run writes its own files), so two
+    // runs delivering to one folder can run together (seen 2026-10-29: locking Downloads refused a parallel launch).
+    const paths = options.check ? [] : [cwd];
     const admit = options.check || options.ignoreLimit ? undefined : (state) => {
-      const refusal = noRoom(state, usage, info.accountKey);
+      const refusal = noRoom(state, usage, info.accountKey, options.kind);
       if (refusal) throw Object.assign(new Error(refusal.text), { exitCode: 2, refusal });
     };
     await reserve(root, { token, pid: process.pid, childPid: null, runDir, paths, resources, thread: options.resume || null }, admit);
@@ -300,7 +306,7 @@ async function run(root, options, ctx) {
     const images = options.kind === 'image' ? ` Image task: use the built-in image generator with at most 5 reference images per generation; save finals and any originals where the brief says, copying originals (never moving or editing them), and record each exact prompt; write prompts per ${path.join(skillRoot, 'references', 'characters.md')} and ${path.join(skillRoot, 'references', 'no-gore.md')}; if moderation blocks a prompt, reword it once within the brief's design, then report blocked.` : '';
     const prompt = options.check ? 'Reply with exactly the two letters "OK", without punctuation. Do not use tools.' :
       `Read ${path.join(runDir, 'brief.md')} and carry out the brief. Follow project AGENTS.md.${roblox}${fs.existsSync(lessons) ? ` Read standing lessons at ${lessons}.` : ''}${images} ` +
-      `The working directory is ${cwd}. Keep scratch and review media in ${runDir}. ` +
+      `The working directory is ${cwd}. Keep scratch and review media in ${runDir}; it is deleted at cleanup, so anything a deliverable still needs afterwards (files your delivered scripts read or write, sources) goes beside the deliverables, never in it, and no deliverable names its path. ` +
       (fs.existsSync(checkpoint) ? `Your last checkpoint is ${checkpoint}; continue from it. ` : '') +
       `After each phase in the brief (or each major milestone), overwrite ${checkpoint} with JSON {"done":["finished and verified steps"],"next":"the next step","notes":"state a resume needs"}. ` +
       `Finish with a report under 250 words and write ${path.join(runDir, 'result.json')} as UTF-8 JSON without a byte-order mark: ` +
