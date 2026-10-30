@@ -91,7 +91,7 @@ def build(dump, name=None, colors=None):
             _head_mesh(me, sx, sy, sz)
         else:
             verts = [(a * sx / 2, c * sz / 2, b * sy / 2) for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)]
-            faces = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
+            faces = [(2, 3, 1, 0), (5, 7, 6, 4), (1, 5, 4, 0), (6, 7, 3, 2), (4, 6, 2, 0), (3, 7, 5, 1)]  # wound outward
             me.from_pydata(verts, [], faces)
         for poly in me.polygons:
             poly.use_smooth = info.get('shape') == 'head'

@@ -69,10 +69,10 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
 
 **Build around the body** *(default)*. The rig's body parts stay visible and are part of the look; the skin adds what the body lacks.
 - **Color the body parts to fit** the design (`colors`), so where the body shows it reads as the character: a yellow Stand gets yellow limbs, a knight gets dark undercloth.
-  - Take the color from the painted skin: the median of its main color on the sides of its forms, with ink and hatching left out (a plain average counts the ink and comes out far too dark).
-  - Don't use the palette's base color. Baked shading darkens it in the texture, so a body in the base color looks pale beside the skin (seen 2026-10-30).
+  - Take the color from the skin's color map: the median of its main color on the sides of its forms, with ink and hatching left out (a plain average counts the ink and comes out far too dark).
+  - On a hand-painted map, don't use the palette's base color: baked shading darkens it in the texture, so a body in the base color looks pale beside the skin (seen 2026-10-30).
 - **Pieces sit around the parts:** armor, pads, a helmet, tubes, trims, belts, boots. They overlap the body at their edges or stand clear of it, never coplanar with a part's face (that flickers, [modeling.md](modeling.md)).
-- **A custom face is a face decal** on the rig's head (`face`), drawn for the head's front, not a modeled mask over the head. A helmet frames it.
+- **A custom face is a face decal** on the rig's head (`face`), drawn for the head's front, not a modeled mask over the head. A helmet frames it. A dynamic head (FaceControls, as on a generated R15) garbles a decal (seen 2026-10-30), so `face` puts it on a classic head piece there (`Head__Face`) and hides that head.
 - **Hide a body part only as a design choice:** when the design replaces it (a head that is not a head, a limb covered end to end by a piece of another shape). Never hide one to skip modeling around it.
 
 **Which kind:**
@@ -91,21 +91,26 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
 2. **Build its replica in Blender:** `rr.build(rr.load(path), colors=...)`. It makes the body as it looks in game, one solid part per body part (`RIG_<part>`: a box, or a rounded head), in the colors you will give it, plus an armature with one bone per part, each bone's head at its joint.
    - Blender space: the ground at 0, the character facing -Y, its left at +X, 1 unit = 1 stud.
 3. **Model around the replica** with [modeling.md](modeling.md)'s workflow (and [characters.md](characters.md)).
+   - [scripts/skin_kit.py](../scripts/skin_kit.py) has the R6/R15 layout (segment boxes, joint heights, the body part that owns each height), the shapes (bevelled boxes, limb wraps open toward the torso, squircle domes, outline prisms, lettering), the clay-check renders and the PBR stage.
    - The replica body stays in every clay check and render: it is part of what the player sees.
    - Cut at the joint pivots, not at the box edges.
    - Each piece covers one box and may overhang it (a helmet, a skirt), but it moves with that part only.
    - Read the wrist, ankle and other joint heights from the dump instead of guessing them.
 4. **Name and export:**
-   - **Welded:** name each piece after its body part (`LeftUpperArm`, `Left Arm`, or `Head__Halo` for a second piece), then `rr.export_pieces(pieces, path)`.
+   - **Welded:** name each piece after its body part (`LeftUpperArm`, `Left Arm`), or `<Part>__<Look>` for one piece per part and material (`Head__Gold`), then `rr.export_pieces(pieces, path)`.
+   - **PBR** (the default, [modeling.md](modeling.md)): after the clay check, `kit.merge` joins each part's pieces into one `<Part>__Skin` (glow looks stay apart, for Neon), `kit.unwrap` packs them into one atlas, `kit.bake` bakes the four SurfaceAppearance maps, and `kit.render(..., pbr=True)` shows them.
    - **Skinned:** give the mesh vertex groups named after the body parts (`rr.rigid_weights(mesh, rig, blend)`, or painted) and parent it to the replica's armature, then `rr.export_skinned(mesh, armature, path)`.
    - **Both** put every object's origin at the scene origin. Roblox's importer keeps a mesh's vertices but drops its object's own transform, so a piece exported with its origin at its centre imports at the file origin; the `astray` rule catches this.
 5. **Check and upload:** run blender-asset-qa and ZFight as for any model ([modeling.md](modeling.md)), then upload one Model asset ([assets.md](assets.md)) or bring it in with the 3D Importer.
+   - Pass `qa_check` the pieces with the replica body (`RIG_*` but the root) and `--tol 0.03` (pieces stand clear of the body). An R15 replica's boxes overlap at the joints as its meshes do: its `RIG_`<->`RIG_` z-fighting is expected.
+   - The importer drops textures embedded in the FBX (no TextureID or SurfaceAppearance, seen 2026-10-30): upload the four maps as images too.
 6. **Dress the rig:** insert the asset, then, before moving it, call one of:
    - welded: `RigSkin.apply(rig, skin, { colors = { Body = color }, face = faceImage })`;
    - skinned: `RigSkin.bind(rig, skinned, { colors = ..., face = ... })`.
 
    What they do and take:
-   - **The pieces** go in a `Skin` folder, massless, with CanCollide, CanTouch and CanQuery off.
+   - **The pieces** go in a `Skin` folder, massless, with CanCollide, CanTouch and CanQuery off. Dressing again is safe: weld attachments left by deleted pieces are removed first.
+   - **`looks`** styles pieces by the name after `__` (`{ Gold = { Color = c, Material = Enum.Material.Metal } }`): imported MeshParts arrive gray Plastic (seen 2026-10-30). An Instance value is cloned into each piece: for PBR, `{ Skin = { SurfaceAppearance = sa } }`, with `sa` made in Studio from the uploaded maps. Game scripts can neither set nor read a SurfaceAppearance's maps (they lack the Plugin capability) but can clone one, maps and all (seen 2026-10-30), so keep `sa` with the skin in ServerStorage.
    - **`colors`** sets the body's colors by BodyColors group (`Head`, `Torso`, `LeftArm`, `RightArm`, `LeftLeg`, `RightLeg`, or `Body` for all), on the parts and in BodyColors. `RigSkin.color(rig, colors)` does it alone.
    - **`face`** puts an image on the head's face decal (an `rbxassetid://` image id; a Decal asset's id resolves to its image through `InsertService:LoadAsset`).
    - **`hide`** makes every covered body part and the face invisible (they stay the hitbox): only when the design replaces them.
@@ -123,6 +128,6 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
    - The rules are `parts`, `joint`, `root`, `rig`, `anchored`, `unwelded`, `unseated`, `unmatched`, `layered`, `touch`, `default-face` and `script`.
    - `seat` and `clean` fix the generator's side effects. A `parts`, `joint` or `layered` error needs a rebuild.
 2. **A skinned rig:** `return select(2, RigSkin.audit(rig))` must also report 0 errors.
-   - The rules are `unwelded`, `unseated`, `astray` (a piece clear of its part, or a Bone outside it), `anchored`, `collision`, `mass`, `unbound`, `bare` (a part hidden with no skin over it) and `hidden` (a warning for every hidden body part: fine only when the design replaces it).
+   - The rules are `unwelded`, `unseated`, `astray` (a piece clear of its part, or a Bone outside it), `anchored`, `collision`, `mass`, `unbound`, `bare` (a part hidden with no skin over it), `hidden` (a warning for every hidden body part: fine only when the design replaces it) and `stale` (weld attachments left by deleted pieces: dress again).
    - Play-test one walk: the skin must stay on.
 3. **Look** at it front and side: nothing floats, it has a face, and the clothes sit on the body.

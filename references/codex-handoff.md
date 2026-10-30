@@ -1,6 +1,6 @@
 # Codex handoff (Claude only)
 
-Claude decides, briefs and accepts; Codex executes on its own quota, so Claude's tokens go to design and review. **If you are Codex, ignore this file: you never hand off.** Needs the Codex CLI, logged in (`codex login`), plus Git, Node 20+ and Bash (Git Bash on Windows); one-time setup in the README, "Codex handoff".
+When a handoff pays (section 2), Claude decides, briefs and accepts, and Codex executes on its own quota, so Claude's tokens go to design and review. **If you are Codex, ignore this file: you never hand off.** Needs the Codex CLI, logged in (`codex login`), plus Git, Node 20+ and Bash (Git Bash on Windows); one-time setup in the README, "Codex handoff".
 
 `handoff` below means `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh` (a project-local install: `bash .claude/skills/roblox-dev/scripts/codex/handoff.sh`). Call it exactly that way, with `--cd` rather than a `cd` prefix, so its permission rule matches. Run `--brief` and `--wait` in the background (`run_in_background: true`); their completion notifies you, so never poll.
 
@@ -17,11 +17,14 @@ Run `handoff --check` before the first handoff of a session. It checks the CLI, 
 
 `handoff --list` prints the same list without the checks and without calling Codex; SKILL.md runs it at the start of every session that uses this skill.
 
-## 2. What to hand off
+## 2. Whether to hand off
 
-Hand off decided work whose execution would cost more Claude tokens than briefing and reviewing it.
+Decide at the start of each sizable task, not once per session. Hand off only when all three hold; otherwise do the task yourself:
+1. **Decided:** a spec Codex can finish without asking (on ambiguity it blocks or guesses).
+2. **Cheaper than doing it yourself, overhead included.** The handoff costs orienting enough to brief (reading what Codex will change), the brief itself, waiting (minutes per run: a code run took 1m45s, an image run 3m20s, seen 2026-10-29), the review (the summary, every critical changed line, visuals at full size), usually one fix round for visual work, and the whole task again if it fails and you take over. It pays when your own execution would be long: many files or long scripts to write and read, a long build-and-verify loop whose renders and logs would fill your context, bulk mechanical edits, images. It does not pay for a tight loop that needs your judgment at every step (each step's brief and review cost what doing it does).
+3. **Room:** `handoff --usage` (section 3) shows room for its kind now. Without room, do code yourself; queue images.
 
-| To Codex | Stays with Claude |
+| Usually pays | Stays with Claude |
 |---|---|
 | Building a decided spec: features, systems, UI screens, refactors and ports across many files | Design, trade-offs, creative direction, talking with the user, acceptance |
 | Bulk and mechanical edits; config and data tables; docs, specs and tests | Small edits, where a brief and a review cost as much |

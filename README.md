@@ -12,7 +12,7 @@ references/
   rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, parity tests
   ui.md                  mobile first, in bounds (UIStroke), safe areas, centered anchors, Studio previews, state, world-space GUIs, icons
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
-  modeling.md            20k tri limit (18k for top tier), detailed cartoony by default, box modeling, clay check, no z-fighting
+  modeling.md            20k tri limit (18k for top tier), full PBR by default (other styles or Roblox materials when asked), box modeling, clay check, no z-fighting
   environment.md         Unified Lighting, atmosphere, sky, post-processing, terrain, custom materials
   rigs.md                character models: R15 from a HumanoidDescription (seat, clean), parts, joints, attachments, accessories, R6, skins (custom art on a standard rig: welded or skinned)
   characters.md          all-ages character rules (2D and 3D): modest covered chest, no cleavage, 70% in-character cover, a straight layer past the hips, prompts, review
@@ -36,6 +36,9 @@ scripts/
   RigAudit.luau          character model audit (R15/R6): parts, joints, root, seated accessories, cages, leftovers; seat, clean
   RigSkin.luau           skins: dump a rig for Blender, dress it around its visible body (welded pieces or a skinned mesh, body colors, a face decal; any pose), audit the skin
   roblox_rig.py          Blender side of skins: the rig's body as seen in game (solid, colored, a rounded head) and its armature, rigid weights, Roblox-ready exports
+  skin_kit.py            Blender: R6/R15 skin layout, armor shapes (wraps, squircle domes, prisms, lettering), '<Part>__<Look>' pieces, clay-check renders, PBR stage (merge, atlas, baked SurfaceAppearance maps)
+  studio_mcp.py          command-line client for Studio's own MCP server: runs .luau files with the skill's scripts inlined (--@use), any tool, captures
+  upload_asset.py        Open Cloud upload to the experience's owner, waiting for moderation
   AssetAudit.luau        Toolbox safety audit: report first, then strip
   TutorialGuide.luau     tutorial pointers: spotlight, 3D focus, arrow, elevated beam, camera assist, UI lock
   GameInventory.luau     Studio-to-Rojo inventory: scripts and what they touch, content counts, export, leftovers
@@ -69,7 +72,7 @@ Full rules, options and manual steps: [INSTALL.md](INSTALL.md).
 
 ## Codex handoff (Claude Code, optional)
 
-Claude decides and reviews while the local [Codex CLI](https://github.com/openai/codex) does the execution on its own quota: decided code, bulk edits, Studio and Blender work, and image generation. The wrapper reads the account's live usage before every launch (no model turn), refuses or queues runs that would not fit, takes failed code back to Claude (images stay with Codex), lists open handoffs for the user to settle, and cleans up after each task. Rules: `references/codex-handoff.md`. It merges the earlier CodexHandoffSkill.
+When it is cheaper than doing the task in Claude (the brief, review and fix rounds counted) and the account has room, Claude decides and reviews while the local [Codex CLI](https://github.com/openai/codex) does the execution on its own quota: decided code, bulk edits, Studio and Blender work, and image generation. The wrapper reads the account's live usage before every launch (no model turn), refuses or queues runs that would not fit, takes failed code back to Claude (images stay with Codex), lists open handoffs for the user to settle, and cleans up after each task. Rules: `references/codex-handoff.md`. It merges the earlier CodexHandoffSkill.
 
 One-time setup (Git Bash on Windows):
 
@@ -87,10 +90,11 @@ It hands off to Blender and animation skills when they are installed (`blender-d
 
 ## Using the scripts
 
-- **Loading:** the `.luau` files are plain Studio modules. Load one through a local static server and `loadstring` (Edit or server), or as a temporary ModuleScript (client), as `SKILL.md` describes.
+- **Loading:** the `.luau` files are plain Studio modules. Run them with `studio_mcp.py` (a `--@use` line inlines them through `loadstring`, Edit or server), load one through a local static server and `loadstring`, or use a temporary ModuleScript (client), as `SKILL.md` describes.
 - **Where they run:**
   - `UIBounds`, `AssetAudit`, `ZFight`, `RigAudit`, `AnimationInspector` and `GameInventory` run in Edit.
-  - `RigSkin` runs in Edit, or on a game's server to dress characters; `roblox_rig.py` runs inside Blender (`import roblox_rig`; tested on 5.1).
+  - `RigSkin` runs in Edit, or on a game's server to dress characters; `roblox_rig.py` and `skin_kit.py` run inside Blender (`import roblox_rig, skin_kit`; tested on 5.1).
+  - `studio_mcp.py` and `upload_asset.py` run locally with Python 3 (standard library only); `studio_mcp.py` starts Studio's MCP server (`STUDIO_MCP`, or `mcp.bat` on Windows).
   - `VFXInspector` lints in Edit and photographs in Play (`references/vfx.md` section 8).
   - `ParticlePlayer` and `UIParity` run on the client (Play); prefer the project's own particle player.
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
@@ -118,6 +122,17 @@ It hands off to Blender and animation skills when they are installed (`blender-d
     - Blender's `matrix_world` lags a script's location changes, which baked pieces at the origin. The exports now update the view layer first.
   - `RigSkin` type-checks clean in strict mode under both Luau type solvers and passes Selene with no warnings.
   - A second character, built from a user's reference (2026-10-30): R6 and R15 skins fitted to a generated R6 and R15 (whose R15 stands 0.19 studs taller than a Rig Builder one). The first attempt passed every audit and Play check yet did not look like the reference, so the clay check now renders the reference's own view and goes through a list of measured features. The second attempt was built around the visible body (colored to the painted skin's median tone, a face decal on the rig's head, nothing hidden): 0 findings from both audits, all 16 Play checks passed (walk, `MoveTo`, death). AnimationInspector audits no longer leave an empty `__AnimInspect` folder in the place.
+  - A third character from a user's concept sheet (2026-10-30, an armored stand): an 18-piece R6 and a 34-piece R15 skin (about 15,000 triangles each) on a generated R6 and R15, built headless in Blender and uploaded to the experience's group. Both audits 0 errors, AnimationInspector matching the bare rigs, and in Play a walk and a death with 0 studs of drift. It found five faults, all fixed and re-tested on fresh rigs in Studio:
+    - The generated R15 had a dynamic head (FaceControls), which garbled the face decal (magnified, offset, the mouth as a dark line). `face` now puts it on a classic head piece and hides that head: 0.000 studs and 0.00° from a head posed mid-turn, and audits 0 findings.
+    - A Studio call's reply was lost while its dressing still ran; dressing again left 52 orphaned `SkinWeld_` attachments. `apply` and `bind` now remove them, and the audit's `stale` rule reports them (35 and 18 found after deleting a Skin folder, 0 after dressing again).
+    - The importer leaves every MeshPart gray Plastic; `looks` styles pieces by name (34 and 18 styled).
+    - `roblox_rig.build`'s replica boxes were wound inward, which blender-asset-qa reported as inside-out parts and as z-fighting between the skin and the body. They are wound outward now (0 inside-out parts).
+    - Uploads went first to the key's user, whom neither the group-owned experience nor the Studio account could load; `assets.md` now has the owner check, its failure signs, what to try first (the same user key uploading to the group, which worked), the observed `Approved` state, and `upload_asset.py`.
+  - The session's own Blender builder, rebuilt on `skin_kit.py`, gave the same pieces and vertex positions as the uploaded skins. `studio_mcp.py` (no Studio MCP tool was connected) listed the tools, ran inlined `--@use` audits in Edit and on the Play server and client (loadstring is off in Play, so there a temporary ModuleScript, none left behind), captured, started and stopped Play, and exited non-zero on a tool error. `upload_asset.py` was checked dry and against the API with an invalid key (401), then made 14 live uploads (below), all approved.
+  - Two more stands the same day, built with the skill's scripts only (`studio_mcp.py`, `skin_kit.py`, `roblox_rig.py`, `upload_asset.py`, RigSkin): a 15-piece R6 and 27-piece R15 skin from a user's concept sheet (Roblox materials through `looks`), and an original stand in full PBR (one `<Part>__Skin` per body part plus Neon gems: 11 pieces on R6, 24 on R15, about 15,000 triangles each, four 1024 maps per rig). Both: QA clean (UV check on for PBR), both audits 0 findings, the R15's dynamic head given its face piece automatically, AnimationInspector matching the bare rigs, and in Play a walk and a death with 0 studs of drift. The concept image went to Codex by rule 10 (an image run, about 5% of the 5-hour window, in parallel with the rigs and the bake setup). Found and fixed:
+    - The importer dropped the FBX's embedded textures: the maps are uploaded as images and given to a SurfaceAppearance in Studio.
+    - A game Script cannot set or read a SurfaceAppearance's maps ("lacking capability Plugin") but can clone one, maps and all: `looks` now clones Instance values (6 of 6 PBR pieces textured, none doubled on dressing again).
+    - The bake stage (`skin_kit.merge`, `unwrap`, `bake`, `preview`, `render(pbr=True)`) bakes an R6 skin in about 45 s on CPU. Rebuilt on it, the original stand gave the same pieces and triangles and passed QA again; the maps are not byte-identical between runs, since island packing varies.
 - **Changed, not yet re-run in Studio** (2026-10-28): ParticlePlayer's frame-rate scaling. It type-checks clean under both solvers against that day's Roblox definitions, and Selene passes.
 
 ## Checks

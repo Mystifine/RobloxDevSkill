@@ -8,14 +8,22 @@
 --                               rootHeight (studs from the ground to the root's centre)
 --   apply(rig, skin, options)   welds every part of `skin` to the body part it is named after ("LeftUpperArm",
 --                               "Left Arm", or "Head__Halo" for several pieces on one part), placed as it was modeled
---                               around the replica; options.colors colors the body, options.face sets its face, and
---                               options.hide (a design choice, rarely) hides the body parts it covers
+--                               around the replica; options.looks styles each piece by the name after "__",
+--                               options.colors colors the body, options.face sets its face, and options.hide (a design
+--                               choice, rarely) hides the body parts it covers. Weld attachments left by deleted pieces
+--                               are removed first, so a rig can be dressed again (bind too)
 --   color(rig, colors)          body colors by BodyColors group (Head, Torso, LeftArm, RightArm, LeftLeg, RightLeg, or
 --                               Body for all), on the parts and in the rig's BodyColors
 --   bind(rig, skinned, options) a skinned MeshPart whose Bones are named after body parts: each Bone moves under its body
 --                               part, so the mesh bends with the rig's joints; the mesh is welded to the root
 --   audit(rig)                  findings: pieces unwelded, off their weld, astray from their part, anchored or collidable,
---                               Bones left unbound or astray, hidden body parts (with or without skin over them)
+--                               Bones left unbound or astray, hidden body parts (with or without skin over them), weld
+--                               attachments left by deleted pieces
+--
+-- A dynamic head (a MeshPart Head with FaceControls, as on a generated R15) maps a decal through its UV atlas: a face
+-- came out magnified and offset, its mouth showing as a dark line (seen 2026-10-30). There `face` puts the decal on a
+-- classic head piece ("Head__Face", sized to the head, welded like any piece) and hides the dynamic head, which stays
+-- the hitbox and keeps the Neck.
 --
 -- Insert the skin asset and call apply or bind before moving it: the pieces carry the coordinates of the Blender scene
 -- (ground at 0, the root at rootHeight, facing -Z). Everything is measured on the rig's rest pose (its joints without
@@ -31,7 +39,8 @@ export type Options = {
 	origin: CFrame?, -- where the root sat in the skin's file (default: CFrame.new(0, rootHeight, 0))
 	map: { [string]: string }?, -- piece or bone name -> body part name, for names that do not follow the convention
 	colors: { [string]: Color3 }?, -- body colors by BodyColors group, or Body for all (see color)
-	face: string?, -- an image for the head's face decal (rbxassetid://<image id>)
+	looks: { [string]: { [string]: any } }?, -- name after "__" -> properties for those pieces, e.g. { Gold = { Color = c, Material = Enum.Material.Metal } }: imported MeshParts arrive gray Plastic; an Instance value (a SurfaceAppearance made in Studio) is cloned into each piece, replacing one of its class
+	face: string?, -- an image for the head's face decal (rbxassetid://<image id>); a dynamic head gets a classic head piece for it
 	hide: boolean?, -- hide the body parts the skin covers (and their decals, such as the face): only when the design replaces them
 	hideAccessories: boolean?, -- hide the rig's own accessories (a player's hats would float over the skin's head)
 }
@@ -39,6 +48,7 @@ export type Options = {
 local SEATED = 0.05 -- studs a piece may sit from where its weld holds it
 local SKIN = "Skin" -- the folder under the rig that holds the pieces
 local WELD = "SkinWeld" -- the RigidConstraint that holds a piece (its attachments: SkinWeld_<piece> on the body part, SkinWeldAttachment on the piece)
+local FACE = "Head__Face" -- the classic head piece that carries the face on a dynamic head
 
 local function root(rig: Model): BasePart
 	local r = rig:FindFirstChild("HumanoidRootPart")
@@ -184,6 +194,32 @@ local function skinFolder(rig: Model): Folder
 	return folder
 end
 
+-- Weld attachments on the body parts whose RigidConstraint is gone: a Skin folder or piece deleted, or a dressing cut
+-- off midway (a Studio call's reply can be lost while its code still runs).
+local function stale(rig: Model): { Attachment }
+	local used = {}
+	for _, d in rig:GetDescendants() do
+		if d:IsA("RigidConstraint") and d.Name == WELD and d.Attachment0 then
+			used[d.Attachment0] = true
+		end
+	end
+	local found = {}
+	for _, part in bodyParts(rig) do
+		for _, c in part:GetChildren() do
+			if c:IsA("Attachment") and string.sub(c.Name, 1, #WELD + 1) == WELD .. "_" and not used[c] then
+				table.insert(found, c)
+			end
+		end
+	end
+	return found
+end
+
+local function prune(rig: Model)
+	for _, a in stale(rig) do
+		a:Destroy()
+	end
+end
+
 -- Holds a piece placed against the rest pose (`rest`: where `to` sits at rest, in world space) on `to`, and moves it
 -- onto `to` as it is posed now. A RigidConstraint, because a Humanoid's death (BreakJointsOnDeath) breaks every Weld
 -- and WeldConstraint in the character, which drops the pieces through the floor; the RigidConstraint keeps each piece
@@ -261,32 +297,92 @@ function RigSkin.color(rig: Model, colors: { [string]: Color3 }): number
 			end
 		end
 	end
+	local folder = rig:FindFirstChild(SKIN)
+	local standIn = folder and folder:FindFirstChild(FACE)
+	if standIn and standIn:IsA("BasePart") and (colors.Head or colors.Body) then
+		standIn.Color = colors.Head or colors.Body
+	end
 	return count
 end
 
-local function setFace(rig: Model, image: string)
+-- The part that shows the face: the head, or on a dynamic head a classic head piece welded to it (see the header).
+local function faceHolder(rig: Model, pose: { [BasePart]: CFrame }): (BasePart, boolean)
 	local head = bodyParts(rig).Head
 	assert(head, rig:GetFullName() .. " has no Head")
-	local found = head:FindFirstChild("face")
+	if not (head:IsA("MeshPart") and head:FindFirstChildOfClass("FaceControls")) then
+		return head, false
+	end
+	local folder = skinFolder(rig)
+	local found = folder:FindFirstChild(FACE)
+	if found and found:IsA("BasePart") then
+		return found, true
+	end
+	local piece = Instance.new("Part")
+	piece.Name = FACE
+	piece.Size = Vector3.new(2, 1, 1) -- as an R6 head, whose face decals map as drawn
+	piece.Color, piece.Material = head.Color, head.Material
+	piece.TopSurface, piece.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = head.Size / 0.96 -- a classic head is about 0.96 studs per unit of its scale
+	mesh.Parent = piece
+	local rest = root(rig).CFrame * pose[head]
+	piece.CFrame = rest
+	piece.Parent = folder
+	weld(piece, head, rest)
+	hide(head)
+	return piece, true
+end
+
+local function setFace(rig: Model, image: string, pose: { [BasePart]: CFrame }, keepHead: boolean): boolean
+	local holder, standIn = bodyParts(rig).Head, false
+	if not keepHead then
+		holder, standIn = faceHolder(rig, pose)
+	end
+	assert(holder, rig:GetFullName() .. " has no Head")
+	local found = holder:FindFirstChild("face")
 	local face: Decal = if found and found:IsA("Decal") then found else Instance.new("Decal")
 	face.Name = "face"
 	face.Face = Enum.NormalId.Front
 	face.Texture = image
 	face.Transparency = 0
-	face.Parent = head
+	face.Parent = holder
+	return standIn
 end
 
--- The body's colors and face, before anything is hidden.
-local function paintBody(rig: Model, options: Options?): string
+-- The body's colors and face, before anything is hidden. With options.hide the face stays on the head, to be hidden too.
+local function paintBody(rig: Model, pose: { [BasePart]: CFrame }, options: Options?): string
 	local notes = {}
 	if options and options.colors then
 		table.insert(notes, RigSkin.color(rig, options.colors) .. " body parts colored")
 	end
 	if options and options.face then
-		setFace(rig, options.face)
-		table.insert(notes, "face set")
+		local standIn = setFace(rig, options.face, pose, options.hide == true)
+		table.insert(notes, if standIn then "face set on a classic head piece (dynamic head hidden)" else "face set")
 	end
 	return if #notes > 0 then "; " .. table.concat(notes, ", ") else ""
+end
+
+-- A look's Instance values are cloned in: game scripts cannot set or read a SurfaceAppearance's maps (they lack the
+-- Plugin capability), but can clone one made in Studio, maps and all (seen 2026-10-30).
+local function style(piece: BasePart, options: Options?): boolean
+	local looks = options and options.looks
+	local look = looks and looks[(string.split(piece.Name, "__"))[2] or ""]
+	if look then
+		for property, value in look do
+			if typeof(value) == "Instance" then
+				local template = value :: Instance
+				local old = piece:FindFirstChildOfClass(template.ClassName)
+				if old then
+					old:Destroy()
+				end
+				template:Clone().Parent = piece
+			else
+				(piece :: any)[property] = value
+			end
+		end
+	end
+	return look ~= nil
 end
 
 local function hideAccessories(rig: Model): number
@@ -324,9 +420,10 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 	if skin:IsA("BasePart") then
 		table.insert(pieces, skin)
 	end
+	prune(rig)
 	local pose, r = restPose(rig), root(rig)
 	place(rig, pose, pieces, options)
-	local folder, covered, unmatched = skinFolder(rig), {}, {}
+	local folder, covered, unmatched, styled = skinFolder(rig), {}, {}, 0
 	for _, piece in pieces do
 		local target = parts[targetOf(piece.Name, options)]
 		if target then
@@ -334,11 +431,12 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 			piece.PivotOffset = CFrame.identity -- imported pieces pivot at the file origin
 			weld(piece, target, r.CFrame * pose[target])
 			covered[target] = true
+			styled += if style(piece, options) then 1 else 0
 		else
 			table.insert(unmatched, piece.Name)
 		end
 	end
-	local painted = paintBody(rig, options)
+	local painted = paintBody(rig, pose, options)
 	local hidden = 0
 	if options and options.hide then
 		for part in covered do
@@ -350,8 +448,8 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 	if skin.Parent and #skin:GetChildren() == 0 then
 		skin:Destroy()
 	end
-	return string.format("%s: %d pieces welded%s; %d body parts and %d accessories hidden%s", rig.Name, #pieces - #unmatched, painted, hidden, accessories,
-		if #unmatched > 0 then "; no body part for: " .. table.concat(unmatched, ", ") else "")
+	return string.format("%s: %d pieces welded (%d styled)%s; %d body parts and %d accessories hidden%s", rig.Name, #pieces - #unmatched, styled, painted, hidden,
+		accessories, if #unmatched > 0 then "; no body part for: " .. table.concat(unmatched, ", ") else "")
 end
 
 function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string
@@ -363,6 +461,7 @@ function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string
 			table.insert(bones, d)
 		end
 	end
+	prune(rig)
 	local pose, r = restPose(rig), root(rig)
 	place(rig, pose, { mesh }, options)
 	-- Bones follow their parent; record where each sits before moving any.
@@ -383,7 +482,7 @@ function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string
 			table.insert(loose, bone.Name)
 		end
 	end
-	local painted = paintBody(rig, options)
+	local painted = paintBody(rig, pose, options)
 	if options and options.hide then
 		for name, part in parts do
 			if name ~= "HumanoidRootPart" then
@@ -458,14 +557,19 @@ function RigSkin.audit(rig: Model): ({ Finding }, string)
 		end
 	end
 	local boundMesh = folder and folder:FindFirstChildWhichIsA("MeshPart", true)
+	local standIn = folder and folder:FindFirstChild(FACE)
 	for name, part in parts do
-		if name ~= "HumanoidRootPart" and part.Transparency >= 1 then
+		-- a dynamic head hidden under its classic head piece is by design (see the header)
+		if name ~= "HumanoidRootPart" and part.Transparency >= 1 and not (name == "Head" and standIn) then
 			if not dressed[part] and not boundMesh then
 				add("warn", part:GetFullName(), "bare", "hidden with no skin welded to it: that limb is invisible")
 			else
 				add("warn", part:GetFullName(), "hidden", "a hidden body part: fine only when the design replaces it; otherwise show it and color it to fit")
 			end
 		end
+	end
+	for _, a in stale(rig) do
+		add("warn", a:GetFullName(), "stale", "a weld attachment left by a deleted piece: apply or bind removes it")
 	end
 	local errors = 0
 	for _, f in findings do
