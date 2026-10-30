@@ -6,6 +6,8 @@ Everything here applies to **ScreenGui, BillboardGui and SurfaceGui** alike; the
 
 Read the project's existing UI controllers/components, theme or style constants (colors, fonts, corner radius, stroke, padding, tween styles), and its image-asset table. New UI reuses those; do not introduce a second visual language unless the user asks for one. Reuse existing components before building new ones.
 
+Before building UI, check installed plugins' asset libraries for reusable imagery, including background textures ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)).
+
 ## Mobile first
 
 Roblox is a phone platform: **design, build and verify for the phone first**, then scale up to tablet and desktop, unless the user says otherwise. The smallest case is the case.

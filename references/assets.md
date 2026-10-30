@@ -16,9 +16,15 @@ Code never (a security rule). Any other Toolbox asset may stay as a placeholder 
 
 **Moderation risk sits in uploads** ([no-gore.md](no-gore.md)). An asset already on Roblox has passed moderation, so using it by id adds none. Downloading and re-uploading it, or saving it into a new model or package, is a new upload under your account and goes through the gate below.
 
+## Plugin asset libraries
+
+Before building UI or VFX, check installed Studio plugins for accessible asset libraries. Users may already have free-to-use effect templates, particle/flipbook textures and UI background textures; consider suitable assets alongside the project's own before generating or sourcing replacements. Plugin libraries may be browsable through their UI even when their assets are absent from the game hierarchy.
+
+Confirm the library's reuse terms for the intended use; installation alone does not grant asset rights. Keep source/plugin names and asset ids in the project's asset table. Imported visual assets follow Safe intake below; do not copy bundled Scripts, LocalScripts or ModuleScripts. If the library cannot be inspected with the available tools, state that limitation and continue with accessible sources.
+
 ## Safe intake (every asset, no exceptions)
 
-1. Search with Studio MCP `search_asset`; read the result list and prefer trusted creators and plain results.
+1. For Toolbox assets, search with Studio MCP `search_asset`; read the result list and prefer trusted creators and plain results. For plugin assets, browse the installed library and identify the source.
 2. Insert into an isolated container (not Workspace or a running game; Edit mode), never parented under live gameplay.
 3. Run [scripts/AssetAudit.luau](../scripts/AssetAudit.luau) on the inserted root. It rejects any `LuaSourceContainer`, flags remotes, behaviour instances (Tool, ClickDetector, ProximityPrompt, Explosion, seats), suspicious source strings (`require(<number>)`, `loadstring`, `getfenv`/`setfenv`, `InsertService`, `HttpService`), odd names (zero-width, whitespace-only, very long), unexpected asset ids, invisible junk parts, and empty Models/Folders.
 4. Read the findings. Strip rejects and junk (`AssetAudit.strip`), then re-run until clean. Then inspect what remains: instance count, hierarchy, names, every referenced asset id.
