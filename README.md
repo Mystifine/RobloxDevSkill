@@ -6,6 +6,7 @@ A token-efficient agent skill for Roblox game development (Claude Code, Codex an
 
 ```
 SKILL.md                 dispatcher (always loaded, about 50 lines)
+.mcp.json                repository-only Studio/Blender MCP access (excluded by installers)
 references/
   coding.md              dependencies, structure, backend performance, security, data limits and erasure, pitfalls, verification
   gameplay.md            physics movers, network ownership, NPC pathfinding, playing animations in game
@@ -49,7 +50,7 @@ scripts/
 tests/
   run.luau               Lune specs for the pure-Luau scripts (PacingSim)
   codex/                 Node tests for the handoff wrapper against a fake Codex CLI
-  python/                MCP UTF-8 output and error-handling regressions (standard library)
+  python/                MCP UTF-8 output/error handling and installer exclusion regressions (standard library)
   blender/               isolated Blender geometry and material/bake regressions
   studio/                engine regressions for animation inspection and capture-sheet redraw
 install/
@@ -90,6 +91,12 @@ Configure the MCP servers Codex needs (Roblox Studio, Blender) once in Codex (`c
 ## Companion skills
 
 It hands off to Blender and animation skills when they are installed (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `animate-roblox-characters`, `find-skills`, and others named in `SKILL.md`). Without them it falls back to the rules in each reference.
+
+## Repository MCP access
+
+The tracked `.mcp.json` enables Roblox Studio and Blender MCP while developing this repository in a client that reads project MCP files. It copies the existing Windows setup: Studio's `%LOCALAPPDATA%\Roblox\mcp.bat` through `cmd`, and Blender through `uvx --python 3.11 mcp-for-blender`. Studio needs its MCP server enabled; Blender needs its MCP add-on running. Adapt the Studio command for other operating systems. The config contains no credentials.
+
+The installers exclude `.mcp.json` from skill copies and global updates. Developer junctions/symlinks to the full repository still expose it; see [INSTALL.md](INSTALL.md).
 
 ## Using the scripts
 

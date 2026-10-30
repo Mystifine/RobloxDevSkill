@@ -16,7 +16,7 @@ Never overwrite an existing `.claude/skills/roblox-dev` that is not already the 
 
 ## Scripts (recommended)
 
-They apply the rule above, update an existing install, and refuse to clobber foreign content. Needs `git`.
+They apply the rule above, update an existing install, and refuse to clobber foreign content. Needs `git` with `sparse-checkout` support.
 
 Windows (PowerShell):
 
@@ -40,10 +40,14 @@ Options: `-Project <dir>` / `--project <dir>` (local target, default: current fo
 - **Local** installs drop `.git` so the project can commit the skill; re-run with `-Force` / `--force` to refresh it (without it the script stops rather than replace the copy). Claude's link in a local install is relative on macOS/Linux and a junction on Windows.
 - On Windows use the `.ps1` (junctions need no special rights; symlinks do). `install.sh` is for macOS/Linux/WSL.
 
+Both installers exclude the repository's development-only `.mcp.json` with Git sparse checkout, on fresh installs and global updates. It remains tracked on GitHub for work in the repository. A developer-created junction/symlink to a full working checkout exposes that checkout's files; the installer leaves such links untouched.
+
 ## Manual steps (what an agent without the scripts should do)
 
 ```sh
-git clone --depth 1 https://github.com/Mystifine/RobloxDevSkill.git <base>/.agents/skills/roblox-dev
+git clone --depth 1 --no-checkout https://github.com/Mystifine/RobloxDevSkill.git <base>/.agents/skills/roblox-dev
+git -C <base>/.agents/skills/roblox-dev sparse-checkout set --no-cone '/*' '!/.mcp.json'
+git -C <base>/.agents/skills/roblox-dev checkout --quiet
 # then, only if <base>/.claude exists:
 mkdir -p <base>/.claude/skills
 ln -s <base>/.agents/skills/roblox-dev <base>/.claude/skills/roblox-dev          # Windows: New-Item -ItemType Junction -Path ... -Target ...

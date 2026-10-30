@@ -9,6 +9,7 @@ Installs the roblox-dev skill with a single source of truth.
   3. Else                              -> create <base>\.agents\skills and install there.
 
 Global installs keep their git history (update by re-running). Local installs drop .git so the project can commit them.
+Installed checkouts exclude the repository's development-only .mcp.json.
 An existing install is updated, an existing foreign link is left untouched, and -Force reinstalls a non-git copy.
 #>
 param(
@@ -53,6 +54,7 @@ if (Test-Path -LiteralPath $target) {
     if ($linkedTo) {
         Write-Output "Already installed: $target is a link to $linkedTo (left untouched)."
     } elseif (Test-Path -LiteralPath (Join-Path $target '.git')) {
+        Invoke-Git -C $target sparse-checkout set --no-cone '/*' '!/.mcp.json'
         Invoke-Git -C $target pull --ff-only --quiet
         Write-Output "Updated $target"
     } elseif ($Force) {
@@ -63,7 +65,9 @@ if (Test-Path -LiteralPath $target) {
 }
 if (-not (Test-Path -LiteralPath $target)) {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
-    Invoke-Git clone --depth 1 --quiet $repo $target
+    Invoke-Git clone --depth 1 --no-checkout --quiet $repo $target
+    Invoke-Git -C $target sparse-checkout set --no-cone '/*' '!/.mcp.json'
+    Invoke-Git -C $target checkout --quiet
     if ($Local) { Remove-Item -LiteralPath (Join-Path $target '.git') -Recurse -Force }
     Write-Output "Installed $target"
 }

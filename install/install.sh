@@ -9,6 +9,7 @@
 #   3. Else                              -> create <base>/.agents/skills and install there.
 #
 # Global installs keep their git history (update by re-running). Local installs drop .git so the project can commit them.
+# Installed checkouts exclude the repository's development-only .mcp.json.
 # An existing install is updated, an existing foreign link is left untouched, and --force reinstalls a non-git copy.
 set -eu
 
@@ -53,6 +54,7 @@ if [ -L "$TARGET" ]; then
 	echo "Already installed: $TARGET is a link to $(readlink "$TARGET") (left untouched)."
 elif [ -e "$TARGET" ]; then
 	if [ -d "$TARGET/.git" ]; then
+		printf '%s\n' '/*' '!/.mcp.json' | git -C "$TARGET" sparse-checkout set --no-cone --stdin
 		git -C "$TARGET" pull --ff-only --quiet
 		echo "Updated $TARGET"
 	elif [ "$FORCE" = 1 ]; then
@@ -64,7 +66,9 @@ elif [ -e "$TARGET" ]; then
 fi
 if [ ! -e "$TARGET" ] && [ ! -L "$TARGET" ]; then
 	mkdir -p "$(dirname "$TARGET")"
-	git clone --depth 1 --quiet "$REPO" "$TARGET"
+	git clone --depth 1 --no-checkout --quiet "$REPO" "$TARGET"
+	printf '%s\n' '/*' '!/.mcp.json' | git -C "$TARGET" sparse-checkout set --no-cone --stdin
+	git -C "$TARGET" checkout --quiet
 	[ "$LOCAL" = 1 ] && rm -rf "$TARGET/.git"
 	echo "Installed $TARGET"
 fi
