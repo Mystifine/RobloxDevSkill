@@ -4,7 +4,7 @@ Goal: an effect that is unique to the ability and reads clearly, not a remix of 
 
 ## 1. Research before building
 
-1. Find the project's VFX player/utility, existing templates, and VFX packs (search Workspace, ServerStorage, ReplicatedStorage, the repo's `assets/`). Also check installed plugins' asset libraries ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)) before creating effects or textures. Read how existing effects are authored so yours plays through the same path.
+1. Find the project's VFX player/utility, existing templates, and VFX packs (search Workspace, ServerStorage, ReplicatedStorage, the repo's `assets/`). Also check installed plugins' asset libraries ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)) before creating effects, and generate a texture or model a mesh only when none of these has one that fits: generation is the costly path. Read how existing effects are authored so yours plays through the same path.
 2. Inspect the available textures and pack emitters: list their texture ids, flipbook layouts and original settings. Render flipbooks as contact sheets (Roblox thumbnails API) or preview them in Studio; do not pick a texture by name alone. Reference unnamed carriers by texture id.
 3. Decide the beats (anticipation, release, impact, residue) and the layers per beat (core flash, body, edge, sparks, smoke/dust, light, ground mark). Give each layer its own texture, size curve and timing.
 
@@ -46,7 +46,7 @@ An effect that appears in the air, on a head or inside a body is a placement bug
 
 ## 6. Meshes
 
-Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones) or as a flipbook carrier. Keep it low-poly, one material, `CanCollide/CanTouch/CanQuery = false`, `Massless`, and fade it like any other layer.
+Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones) or as a flipbook carrier. Take one from the project's packs or installed plugins' libraries before modeling one: VFX plugins sometimes ship these meshes ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)). Keep it low-poly, one material, `CanCollide/CanTouch/CanQuery = false`, `Massless`, and fade it like any other layer.
 
 ## 7. Budget and gotchas
 

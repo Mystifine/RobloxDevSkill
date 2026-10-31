@@ -24,6 +24,8 @@ Decide at the start of each sizable task (a skin, a piece of gear, a face or ima
 2. **Cheaper than doing it yourself, overhead included.** The handoff costs orienting enough to brief (reading what Codex will change), the brief itself, waiting (minutes per run: a code run took 1m45s, an image run 3m20s), the review (the summary, every critical changed line, visuals at full size), usually one fix round for visual work, and the whole task again if it fails and you take over. It pays when your own execution would be long: many files or long scripts to write and read, a long build-and-verify loop whose renders and logs would fill your context, bulk mechanical edits, images. It does not pay for a tight loop that needs your judgment at every step (each step's brief and review cost what doing it does).
 3. **Room:** `handoff --usage` (section 3) shows room for its kind now. Without room, do code yourself; queue images.
 
+**An image is generated only when nothing existing fits:** check the project's image table and packs, then installed plugins' libraries (`references/assets.md`, Plugin asset libraries), before deciding.
+
 | Usually pays | Stays with Claude |
 |---|---|
 | Building a decided spec: features, systems, UI screens, refactors and ports across many files | Design, trade-offs, creative direction, talking with the user, acceptance |

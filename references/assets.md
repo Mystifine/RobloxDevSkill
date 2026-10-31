@@ -18,9 +18,14 @@ Code never (a security rule). Any other Toolbox asset may stay as a placeholder 
 
 ## Plugin asset libraries
 
-Before building UI or VFX, check installed Studio plugins for accessible asset libraries. Users may already have free-to-use effect templates, particle/flipbook textures and UI background textures; consider suitable assets alongside the project's own before generating or sourcing replacements. Plugin libraries may be browsable through their UI even when their assets are absent from the game hierarchy.
+Before building UI or VFX, check installed Studio plugins for accessible asset libraries. Users may already have free-to-use effect templates, effect meshes (slash arcs, rings, cones), particle/flipbook textures and UI background textures; consider suitable assets alongside the project's own before sourcing replacements. Plugin libraries may be browsable through their UI even when their assets are absent from the game hierarchy.
 
-Confirm the library's reuse terms for the intended use; installation alone does not grant asset rights. Keep source/plugin names and asset ids in the project's asset table. Imported visual assets follow Safe intake below; do not copy bundled Scripts, LocalScripts or ModuleScripts. If the library cannot be inspected with the available tools, state that limitation and continue with accessible sources.
+**Check them before generating any image** (a VFX texture or flipbook, an icon, a UI background or frame). Generation is the costly path (a Codex image run, a review at full size and an upload through moderation), and a plugin may already ship the common ones: sparks, glows, smoke, gradients, panel frames.
+1. **List them.** On Windows, Studio keeps installed plugins at `%LOCALAPPDATA%\Roblox\<userId>\InstalledPlugins\<pluginAssetId>\<version>\Plugin.rbxm` and local ones in `%LOCALAPPDATA%\Roblox\Plugins`; each `Plugin.rbxm`'s root instance names its plugin. Effect, particle and UI libraries are the candidates.
+2. **Read what is on disk.** Lune's `roblox.deserializeModel` opens a `Plugin.rbxm`. Read image ids from the Content properties (`ImageContent`, `TextureContent`, `ColorMapContent`): Lune 0.11 fails on `Image`, `Texture`, `TextureID` and `ColorMap` ("missing default value"). Most bundled images are the plugin's own interface, so preview a candidate before using it. A `settings.json` beside the versions can list the user's saved items with their ids (VFX Studio keeps saved effects there).
+3. **Ask when only its window shows it.** A library that loads its catalog online shows it only in the plugin's window: ask the user to look there before you generate, since a question costs less than a run.
+
+Confirm the library's reuse terms for the intended use; installation alone does not grant asset rights. Keep source/plugin names and asset ids in the project's asset table. Imported visual assets follow Safe intake below; do not copy bundled Scripts, LocalScripts or ModuleScripts. If neither you nor the user can inspect a library, say so and continue with accessible sources.
 
 ## Safe intake (every asset, no exceptions)
 

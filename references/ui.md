@@ -66,11 +66,12 @@ Nothing leaks out of its box unless the design says so. **A border stroke's band
 
 ## Icons and images
 
+- **Reuse before generating** (generation costs a run, a review and an upload): look in the project's image table, then installed plugins' libraries ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)). Generate only when neither has a fit.
 - Generate icons as **512x512, 1:1 (square), transparent-background PNG** *(default)* (smaller memory on clients); downscale a generator's larger square output with premultiplied-alpha LANCZOS. If a generator cannot output transparency, remove the background and confirm the alpha channel before upload. Use a different size or aspect only for non-icon art (banners, hero art), with the user's agreement.
 - **Outlines match the set.** Before generating, measure the siblings' edge with [scripts/icon_outlines.py](../scripts/icon_outlines.py): a viewer shows transparency as white, which hides a white sticker border. Give every new or edited icon the same edge (a dark ink line, a white sticker border of the same width, or none). An edit never adds or drops a border, and a brief states the measured style, never one remembered.
 - **Character art** follows [characters.md](characters.md): put its garment line in the prompt and review at full size before upload.
 - **Damage, health and defeat icons** are uploads and follow [no-gore.md](no-gore.md): a burst or star for damage, a heart for health, a cartoon skull or KO stars for defeats; never blood drops, splatter or wounds.
 - **Uploads** use the project's cloud API key and must load in the experience: [assets.md](assets.md), Uploading.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
-- When an image is needed and not supplied: look in the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; each is swapped later for supplied art (a new upload, through the gate in [assets.md](assets.md)) or a predefined asset id, whichever fits.
+- When an image is needed and not supplied: look in installed plugins' libraries, then the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; each is swapped later for supplied art (a new upload, through the gate in [assets.md](assets.md)) or a predefined asset id, whichever fits.
 - Preload important images (`ContentProvider:PreloadAsync`) before showing a screen that depends on them.
