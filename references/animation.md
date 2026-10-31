@@ -1,8 +1,17 @@
 # Animation (Blender to Roblox)
 
+For **R6-style motion on an R15 rig**, first read the bundled [animate-r15-like-r6 skill](../skills/animate-r15-like-r6/SKILL.md). It defines the six moving joints and nine locked joints, rigid-limb retargeting, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
+
 ## Roblox characters (R15 / R6): check for the skill first
 
 When the task animates a Roblox character, first look for the **`animate-roblox-characters`** skill (check the available-skills list; use `find-skills` if unsure) and load it for the R15/R6 details: rig import, joint names, export format and Blender-side audits. If it is not available, proceed with the rest of this reference and the Blender rigging/animation skills. Either way, section 4 is the check on the real Roblox rig.
+
+## Authoring workflow: Blender first, Studio fallback
+
+1. **Check Blender MCP first.** Discover the available Blender tools and test Python execution in the connected interactive Blender session. Confirm that the intended rig is accessible; having Blender open or an MCP tool listed is not proof that the connection works.
+2. **Attempt to animate in Blender at 60 FPS.** Set `scene.render.fps = 60` and `scene.render.fps_base = 1.0` before keying. Inspect the rig, then author and verify an initial pose or motion batch through MCP. Resolve routine connection, context or rig-mapping errors before abandoning that path; do not skip straight to Studio when Blender authoring is available.
+3. **Fall back to Roblox Studio at 60 FPS** if Blender MCP is unavailable, cannot connect to a usable interactive session, or an actual authoring blocker remains after a reasonable repair attempt. State what failed and continue in Studio rather than stopping solely because Blender MCP is missing. Use the actual target rig and retain the same motion brief, joint restrictions and validation requirements. The companion Blender skill supplies rig/export guidance; its Blender-only workflow must not prevent this Studio fallback.
+4. **Keep the Studio authoring grid at 60 FPS.** Set the Animation Editor timeline to 60 FPS when using the editor. For scripted KeyframeSequences, place keys at `Keyframe.Time = frame / 60` and audit with `{ Fps = 60 }`. Preserve durations, loop seams and this timebase through import/export. This is the animation authoring rate, not a guarantee of viewport or game rendering speed; a 30 FPS GIF can still preview a 60 FPS clip.
 
 ## 1. Non-negotiables
 
@@ -13,6 +22,7 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 
 ## 2. Route
 
+- R6-style animation on R15: bundled [animate-r15-like-r6](../skills/animate-r15-like-r6/SKILL.md) for motion restrictions, then the Roblox character toolchain below.
 - Roblox R6/R15 actions (walk, run, idle, attacks, emotes): `animate-roblox-characters` when available.
 - Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
 - Nothing fitting installed: search `find-skills`, then do it yourself.

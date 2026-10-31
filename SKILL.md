@@ -54,6 +54,7 @@ Model-bound decals, emblems and textures inherit the model's style; other visual
 | Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
 | Generating or uploading assets (moderation margin, neutral textures), reusing existing ones; blood and gore: stylized hits, injuries, defeat, monsters, horror | [references/no-gore.md](references/no-gore.md) |
 | Toolbox, free models, images, sounds, any imported asset; the upload gate, uploads and the cloud API key | [references/assets.md](references/assets.md) |
+| R6-style motion on an R15 rig (fake R6, stiff limbs, only root/neck/shoulders/hips move) | [animate-r15-like-r6](skills/animate-r15-like-r6/SKILL.md), then [references/animation.md](references/animation.md) for the toolchain |
 | Rigging, skinning, Blender animation, import, inspection, publishing (R15/R6: `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
 | Onboarding, tutorials, guidance pointers; analytics funnels (onboarding, post-tutorial progression) | [references/onboarding.md](references/onboarding.md) |
 | Game design: a new game, a redesign or audit, a new gameplay system; fantasy, loops, progression, depth, retention; the design plan | [references/game-design.md](references/game-design.md) |

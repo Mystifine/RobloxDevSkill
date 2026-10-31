@@ -91,6 +91,8 @@ Configure the MCP servers Codex needs (Roblox Studio, Blender) once in Codex (`c
 
 ## Companion skills
 
+The bundled [animate-r15-like-r6](skills/animate-r15-like-r6/SKILL.md) companion covers stiff R6-style motion on real R15 rigs: six moving joints, nine locked joints, smooth locomotion, compact jump/fall arcs, and validation. The dispatcher routes matching requests to it; it ships with the existing install.
+
 It hands off to Blender and animation skills when they are installed (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `animate-roblox-characters`, `find-skills`, and others named in `SKILL.md`). Without them it falls back to the rules in each reference.
 
 ## Repository MCP access
