@@ -33,9 +33,10 @@ local function rigType(model: Model): string
 	return if model:FindFirstChild("UpperTorso") then "R15" elseif model:FindFirstChild("Torso") then "R6" else "custom"
 end
 
--- Where the accessory's weld holds its handle (a Weld, or a RigidConstraint between two attachments).
+-- Where the accessory's weld holds its handle. Humanoid:AddAccessory makes it about a dozen frames after the call: a Weld
+-- named AccessoryWeld on R6, a RigidConstraint named AccessoryRigidConstraint on R15.
 local function seatOf(handle: BasePart): CFrame?
-	local weld = handle:FindFirstChild("AccessoryWeld")
+	local weld = handle:FindFirstChild("AccessoryWeld") or handle:FindFirstChild("AccessoryRigidConstraint")
 	if weld and weld:IsA("Weld") and weld.Part0 and weld.Part1 then
 		return if weld.Part0 == handle then (weld.Part1 :: BasePart).CFrame * weld.C1 * weld.C0:Inverse() else (weld.Part0 :: BasePart).CFrame * weld.C0 * weld.C1:Inverse()
 	elseif weld and weld:IsA("RigidConstraint") and weld.Attachment0 and weld.Attachment1 then
@@ -174,7 +175,7 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 		end
 		local seat = seatOf(handle)
 		if not seat then
-			add("error", name, "unwelded", "no AccessoryWeld: Humanoid:AddAccessory(accessory) makes one")
+			add("error", name, "unwelded", "no AccessoryWeld (R6) or AccessoryRigidConstraint (R15): Humanoid:AddAccessory(accessory) makes one a few frames later")
 		elseif (seat.Position - handle.Position).Magnitude > SEATED then
 			add("error", name, "unseated", string.format("handle sits %.2f studs from its weld: it floats in anchored models, viewports and previews (seat)",
 				(seat.Position - handle.Position).Magnitude))

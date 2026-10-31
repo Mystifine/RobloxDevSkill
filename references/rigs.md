@@ -13,7 +13,7 @@ Describe the base rig as a HumanoidDescription (hair, colors, scales; the skin i
 ```lua
 local desc = Instance.new("HumanoidDescription")
 desc:SetAccessories({
-	{ AssetId = hairId, AccessoryType = Enum.AccessoryType.Hair },
+	{ AssetId = hairId, AccessoryType = Enum.AccessoryType.Hair }, -- the asset's own type: many catalog hairs are Face
 	{ AssetId = jacketId, AccessoryType = Enum.AccessoryType.Jacket, IsLayered = true, Order = 3 },
 }, true)
 desc.HeadColor = skin -- and TorsoColor, LeftArmColor, RightArmColor, LeftLegColor, RightLegColor
@@ -23,9 +23,11 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 - **What a description can set:** body part ids (`Head`, `Torso`, ...), scales (`HeightScale`, `WidthScale`, `DepthScale`, `HeadScale`, `BodyTypeScale`, `ProportionScale`), classic `Shirt`/`Pants`, and per-accessory `Position`, `Rotation`, `Scale` and `Puffiness`.
 - **Catalog clothing only when the request asks for it:** layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps without a Humanoid; never classic 2D Shirt/Pants, which show only with one.
 - **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place.
+- **Give each accessory its asset's own type.** The generator silently drops an entry whose `AccessoryType` differs from the asset's, with no error. Read the type first (`MarketplaceService:GetProductInfo(id).AssetTypeId`: 8 Hat, 41 Hair, 42 Face, 43 Neck, 44 Shoulder, 45 Front, 46 Back, 47 Waist), then count the Accessories on the built rig.
+  - Catalog hairs are often uploaded as face accessories. Four black messy hairs from the catalog's hair category were all type 42; declared as `Hair`, each left the rig bald.
 
 **Then fix what the generator leaves** (`RigAudit.seat` and `RigAudit.clean` do 1-4):
-1. **Seat every accessory.** Set each Handle's CFrame to where its AccessoryWeld holds it. The generator leaves handles where the catalog asset sat (seen 13 to 2,800 studs away), and only physics pulls them in. Anchored models, viewports and previews then show floating hair and clothes.
+1. **Seat every accessory.** Set each Handle's CFrame to where its joint holds it. The generator leaves handles where the catalog asset sat (seen 13 to 2,800 studs away), and only physics pulls them in. Anchored models, viewports and previews then show floating hair and clothes.
 2. **Remove the generated scripts** (Animate, Health) when the project animates characters itself.
 3. **Remove the default face under a face accessory:** the Head's Decal and the head MeshPart's TextureID (the default head texture is a face, which shows through as two dots). `clean` handles Face accessories; a hair or hat with a face built in needs the same by hand.
 4. **Remove the handles' TouchInterests** unless the game listens for Touched on accessories. Catalog accessories arrive with one saved in, and it stays until removed.
@@ -43,7 +45,10 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
   - UpperTorso: Neck, BodyFront, BodyBack, LeftCollar, RightCollar;
   - LowerTorso: WaistFront, WaistCenter, WaistBack;
   - upper arms: Left/RightShoulder; hands: Left/RightGrip; feet: Left/RightFoot; root: Root.
-- **Accessory:** a Handle holding one Attachment named like a body point, and an AccessoryWeld (Handle to that body part) that brings the two together. `Humanoid:AddAccessory` makes the weld. Layered clothing adds a WrapLayer on the Handle, which wraps the WrapTarget cage inside each body part.
+- **Accessory:** a Handle holding one Attachment named like a body point, and a joint from the Handle to that body part that brings the two together.
+  - The joint is a Weld named AccessoryWeld on R6, and a RigidConstraint named AccessoryRigidConstraint on R15.
+  - `Humanoid:AddAccessory` makes it 12 to 18 frames after the call, in Workspace or out of it. Wait for it before `seat` or an audit; building one yourself in the meantime gives the handle two joints.
+  - Layered clothing adds a WrapLayer on the Handle, which wraps the WrapTarget cage inside each body part.
 - **Humanoid:** an Animator, the HumanoidDescription (the applied look), six scale NumberValues with AutomaticScalingEnabled, and HipHeight (2.19 at default scale; the floor sits at the root's bottom minus HipHeight).
 - **Scaler records:** OriginalSize and OriginalPosition (Vector3Values on parts and attachments) and AvatarPartScaleType (a StringValue on handles). Resize through the description's scales, never by resizing parts.
 - **Looks:** BodyColors (skin per part) and FaceControls (dynamic heads).
@@ -149,6 +154,7 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
 
 **Found before it is modeled** *(default)*: a catalog hair matching the reference (an accessory in the base rig's HumanoidDescription) or an audited Toolbox hair comes first ([assets.md](assets.md)).
 - **Search the catalog** yourself (`search_asset` covers the Creator Store only): `catalog.roblox.com/v1/search/items/details?Category=11&Subcategory=19&Keyword=...`, thumbnails from `thumbnails.roblox.com/v1/assets?assetIds=...&size=420x420&format=Png`. Search by the character's name as well as its look: a named character's search came much closer than descriptive keywords.
+- **Enter it with its own asset type,** often Face rather than Hair (R15, above); otherwise the generator drops it without a word.
 - **A hair with a face built in** needs the default face removed by hand (R15, step 3).
 
 Model one only when none fits. A skin's hair is a `Head__Hair` piece built with `kit.Hair` ([skin_kit.py](../scripts/skin_kit.py)). A style the reference draws as one smooth volume with a jagged hem, such as a bob, is built with `H.shell`, not locks, which come out as a comb of teeth around a dome: a darker shell whose `H.points` and `H.teeth` make the fringe and hem, and a lighter one over it (`off=.035`), shorter, for two tones. `H.bob` keeps it against the cheeks, or the face sits in a dark hood. Read from 48 anime hair meshes on the classic head (in studs for a head 1.2 tall):

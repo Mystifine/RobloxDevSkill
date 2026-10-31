@@ -88,6 +88,30 @@ local ok, failure = pcall(function()
 			check(audit(model).untinted ~= nil, kind .. ": an untinted textured head is caught")
 		end
 
+		-- AddAccessory's joint comes a few frames late, and differs by rig: the audit and seat must find both kinds.
+		local worn = rig()
+		worn.Parent = workspace
+		local accessory = Instance.new("Accessory")
+		local handle = Instance.new("Part")
+		handle.Name, handle.Size, handle.Anchored = "Handle", Vector3.new(1, 1, 1), false
+		handle.Parent = accessory
+		Instance.new("Attachment", handle).Name = "HairAttachment"
+		;(worn:FindFirstChildOfClass("Humanoid") :: Humanoid):AddAccessory(accessory)
+		local joint
+		for _ = 1, 120 do
+			joint = handle:FindFirstChild("AccessoryWeld") or handle:FindFirstChild("AccessoryRigidConstraint")
+			if joint then
+				break
+			end
+			task.wait()
+		end
+		local expected = if kind == "R6" then "Weld" else "RigidConstraint"
+		check(joint ~= nil and joint:IsA(expected), kind .. ": AddAccessory joins the handle with a " .. expected)
+		-- In Edit a joint snaps its handle in when it is made or re-parented, so only the generator leaves one off its seat.
+		local wornFound = audit(worn)
+		check(wornFound.unwelded == nil and wornFound.unseated == nil and Audit.seat(worn) == 0, kind .. ": the audit and seat find the " .. expected)
+		worn.Parent = nil
+
 		local loose = rig()
 		Audit.controller(loose, { Anchored = false })
 		check(audit(loose).standing ~= nil, kind .. ": an unanchored root with nothing holding it is caught")
