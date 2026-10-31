@@ -1,4 +1,5 @@
 """Run in an isolated headless Blender: blender -b --factory-startup --python-exit-code 1 -P tests/blender/skin_kit_test.py"""
+import math
 from pathlib import Path
 import sys
 import tempfile
@@ -91,6 +92,61 @@ class SkinKitTests(unittest.TestCase):
                 image = bpy.data.images.load(path, check_existing=False)
                 self.assertEqual(tuple(image.size), (32, 32))
                 self.assertGreater(max(list(image.pixels)[::4]), 0)
+
+    def crescent(self, inner_end):
+        """An outline whose inner arc runs to inner_end degrees. At 72 it ends where it meets the outer arc; at 50 it runs past it."""
+        outer = [(.15 * math.cos(math.radians(d)), .15 * math.sin(math.radians(d))) for d in range(50, 311, 13)]
+        inner = [(.06 + .12 * math.cos(math.radians(d)), .12 * math.sin(math.radians(d))) for d in range(360 - inner_end, inner_end - 1, -13)]
+        return outer + inner
+
+    def folded(self, size=1):
+        """Two triangles sharing an edge, one lying over the other in the same plane."""
+        me = bpy.data.meshes.new('Head__Skin')
+        me.from_pydata([(0, 0, 0), (size, 0, 0), (size / 2, 0, size), (size / 2, 0, size / 2)], [], [(0, 1, 2), (1, 0, 3)])
+        ob = bpy.data.objects.new('Head__Skin', me)
+        bpy.context.scene.collection.objects.link(ob)
+        return ob
+
+    def test_prism_refuses_an_outline_that_crosses_itself(self):
+        with self.assertRaisesRegex(ValueError, 'crosses itself'):
+            kit.prism(self.crescent(50), kit.X * 0, kit.X, kit.Z, -kit.Y, 0, .05)
+
+    def test_prism_keeps_a_concave_outline_without_folding_it(self):
+        pieces = kit.Pieces()
+        pieces.put('Head', 'Gold', kit.prism(self.crescent(72), kit.X * 0, kit.X, kit.Z, -kit.Y, 0, .05, b=.012))
+        self.assertEqual(kit.folds(pieces.objects({'Gold': '#C9A23A'})), {})
+
+    def test_folds_finds_a_mesh_overlapping_itself(self):
+        found = kit.folds([self.folded()])
+        self.assertEqual(list(found), ['Head__Skin'])
+        self.assertGreater(found['Head__Skin'][0], 0)
+
+    def test_folds_leaves_separate_islands_that_touch(self):
+        pieces = kit.Pieces()
+        pieces.put('Head', 'Gold', cube())
+        pieces.put('Head', 'Gold', cube(1))
+        self.assertEqual(kit.folds(pieces.objects({'Gold': '#C9A23A'})), {})
+
+    def test_folds_leaves_a_fold_nothing_can_see(self):
+        ob = self.folded()
+        pieces = kit.Pieces()
+        pieces.put('Torso', 'Gold', kit.box((-1, .1, -1), (2, .4, 2), 0, 1))
+        pieces.put('Torso', 'Gold', kit.box((-1, -.4, -1), (2, -.1, 2), 0, 1))
+        pieces.objects({'Gold': '#C9A23A'})
+        self.assertEqual(kit.folds([ob]), {})
+
+    def test_folds_leaves_a_speck(self):
+        self.assertEqual(kit.folds([self.folded(.05)]), {})
+
+    def test_exports_refuse_a_mesh_overlapping_itself(self):
+        ob = self.folded()
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / 'skin.fbx')
+            with self.assertRaisesRegex(ValueError, 'overlaps itself'):
+                kit.rr.export_pieces([ob], path)
+            with self.assertRaisesRegex(ValueError, 'overlaps itself'):
+                kit.rr.export_skinned(ob, None, path)
+            self.assertFalse(Path(path).exists())
 
 
 if __name__ == '__main__':

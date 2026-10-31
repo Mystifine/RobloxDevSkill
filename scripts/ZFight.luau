@@ -10,7 +10,8 @@
 --                  opens; between equals, the later one. Tied decals get distinct ZIndex. Repeats until nothing moves;
 --                  running it twice moves nothing.
 --
--- Analyses Parts (blocks, cylinder ends), WedgeParts and CornerWedgeParts. MeshParts, unions and terrain are not.
+-- Analyses Parts (blocks, cylinder ends), WedgeParts and CornerWedgeParts. MeshParts, unions and terrain are not: audit
+-- counts the MeshParts and unions it skipped, so its 0 is not read as covering them (references/modeling.md).
 -- Load: loadstring(game:GetService("HttpService"):GetAsync(url, true))(), or a temporary ModuleScript. Edit mode.
 
 local ZFight = {}
@@ -715,8 +716,15 @@ function ZFight.audit(root: Instance, limit: number?)
 		table.insert(lines, string.format("DECAL %s and %s share the %s face at ZIndex %d", relative(root, tie.first), relative(root, tie.second),
 			tie.first.Face.Name, tie.first.ZIndex))
 	end
-	table.insert(lines, string.format("%d fighting face pairs (%d flicker, %d shimmer, %d hidden), %d decal ties%s", #fights, counts.flicker, counts.shimmer,
-		counts.hidden, #ties, if #fights + #ties > 0 then ": ZFight.settle(root), then audit again" else ""))
+	local unread = 0
+	for _, part in root:GetDescendants() do
+		if part:IsA("MeshPart") or part:IsA("UnionOperation") then
+			unread += 1
+		end
+	end
+	table.insert(lines, string.format("%d fighting face pairs (%d flicker, %d shimmer, %d hidden), %d decal ties%s%s", #fights, counts.flicker, counts.shimmer,
+		counts.hidden, #ties, if #fights + #ties > 0 then ": ZFight.settle(root), then audit again" else "",
+		if unread > 0 then string.format("; %d MeshParts and unions not read", unread) else ""))
 	return #fights + #ties, table.concat(lines, "\n"), pairs
 end
 

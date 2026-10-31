@@ -8,6 +8,7 @@
     rr.export_pieces([pieces...], r"skin.fbx")   # welded skin: RigSkin.apply(rig, skin) in Studio
     rr.rigid_weights(mesh, rig, blend=0.08)      # skinned skin: weight each vertex to the body part it sits in
     rr.export_skinned(mesh, rig["armature"], r"skin_skinned.fbx")   # RigSkin.bind(rig, skinned) in Studio
+    print(rr.folds(objects))                     # {}, or where a mesh overlaps itself: both exports refuse one
 
 Space: Roblox root-relative (x, y, z) -> Blender (-x, z, y + rootHeight): the ground at 0, the character facing -Y,
 its left at +X. Roblox's FBX importer maps Blender (x, y, z) back to (-x, z, y) for meshes whose origin is the scene
@@ -15,8 +16,10 @@ origin, which both exports use (checked 2026-10-29: 1 Blender unit = 1 stud, fac
 transform is dropped)."""
 import json
 import math
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
 
 M = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))  # Roblox axes -> Blender axes (a proper rotation)
 
@@ -175,6 +178,77 @@ def _fbx(path, objects, types, **extra):
                              path_mode='COPY', embed_textures=True, add_leaf_bones=False, bake_anim=False, use_tspace=False, **extra)
 
 
+def folds(objects, min_area=.002, eps=1e-4):
+    """Where a mesh visibly overlaps itself in one plane, as {object name: (area in studs², point)}; {} when none does. A cap folded
+    over itself draws one triangle over another: it flickers and fills what should be hollow (references/modeling.md). An overlap
+    counts when a ray along its normal, either way, meets nothing in the scene within 0.6 studs, so creases buried in armor pass
+    (keep the replica body in the scene). Under min_area is a speck. Faces of separate islands that touch are blender-asset-qa's
+    to report. Both exports refuse what this finds."""
+    bpy.context.view_layer.update()
+    scene, polygons = [], []
+    for ob in {*objects, *(o for o in bpy.context.scene.objects if o.type == 'MESH')}:
+        base = len(scene)
+        scene += [ob.matrix_world @ v.co for v in ob.data.vertices]
+        polygons += [[base + i for i in p.vertices] for p in ob.data.polygons]
+    world = BVHTree.FromPolygons(scene, polygons, epsilon=0.0)
+    found = {}
+    for ob in objects:
+        t = bmesh.new(); t.from_mesh(ob.data)
+        bmesh.ops.triangulate(t, faces=t.faces[:])
+        t.verts.index_update()
+        island = {}
+        for seed in t.verts:
+            if seed.index in island:
+                continue
+            island[seed.index] = seed.index
+            stack = [seed]
+            while stack:
+                v = stack.pop()
+                for e in v.link_edges:
+                    o = e.other_vert(v)
+                    if o.index not in island:
+                        island[o.index] = seed.index
+                        stack.append(o)
+        verts = [ob.matrix_world @ v.co for v in t.verts]
+        tris = [[v.index for v in f.verts] for f in t.faces]
+        t.free()
+        normals = [(verts[b] - verts[a]).cross(verts[c] - verts[a]) for a, b, c in tris]
+        tree = BVHTree.FromPolygons(verts, tris, epsilon=0.0)
+        pairs, at = set(), None
+        for i, (a, b, c) in enumerate(tris):
+            if normals[i].length < 1e-9:
+                continue
+            A, B, C = verts[a], verts[b], verts[c]
+            m = normals[i].normalized()
+            middle = (A + B + C) / 3
+            # Points well inside this triangle: inside a neighbour in its plane only if the two truly overlap.
+            for p in (middle, middle.lerp(A, .6), middle.lerp(B, .6), middle.lerp(C, .6)):
+                for _, _, j, _ in tree.find_nearest_range(p, eps):
+                    if j is None or j == i or normals[j].length < 1e-9 or island[tris[j][0]] != island[a]:
+                        continue
+                    n = normals[j].normalized()
+                    if abs(n.dot(m)) < .999:
+                        continue
+                    P, Q, R = (verts[k] for k in tris[j])
+                    q = p - n * n.dot(p - P)
+                    weights = ((Q - P).cross(q - P).dot(n), (R - Q).cross(q - Q).dot(n), (P - R).cross(q - R).dot(n))
+                    if not all(w > 1e-3 * normals[j].length for w in weights):
+                        continue
+                    if any(world.ray_cast(p + m * s * 2e-3, m * s, .6)[0] is None for s in (1, -1)):
+                        pairs.add((min(i, j), max(i, j)))
+                        at = at or p
+        area = sum(min(normals[i].length, normals[j].length) / 2 for i, j in pairs)
+        if area >= min_area:
+            found[ob.name] = (round(area, 4), tuple(round(x, 3) for x in at))
+    return found
+
+
+def _refuse_folds(objects):
+    found = folds(objects)
+    if found:
+        raise ValueError(f'export: a mesh overlaps itself in one plane, which flickers in game: {found}. Fix its geometry (references/modeling.md)')
+
+
 def export_pieces(pieces, path):
     """Welded skin: each piece keeps its name (its body part) and has its transform applied, its origin at the scene
     origin. Roblox's importer keeps a mesh's vertices relative to its object's origin but drops the object's own
@@ -182,6 +256,7 @@ def export_pieces(pieces, path):
     only the scene origin puts every piece where it was modeled. The MeshPart sits at its centre; RigSkin.apply moves
     its pivot there too."""
     bpy.context.view_layer.update()  # matrix_world lags a script's location changes until the next update
+    _refuse_folds(pieces)
     for ob in pieces:
         if ob.data.users > 1:
             ob.data = ob.data.copy()
@@ -192,4 +267,5 @@ def export_pieces(pieces, path):
 def export_skinned(mesh, armature, path):
     """Skinned skin: the mesh and its armature (bones named after body parts) in one FBX; Roblox imports it as a skinned
     MeshPart with Bone instances, which RigSkin.bind moves onto the rig."""
+    _refuse_folds([mesh])
     _fbx(path, [armature, mesh], {'ARMATURE', 'MESH'}, use_armature_deform_only=True)

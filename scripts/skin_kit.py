@@ -44,7 +44,9 @@ the side that would cut into the torso or the other leg; revolve(center, prof, s
 of revolution (n > 2: a squircle that hugs a box; keep(angle, z, x, y) drops faces); shell(t, thick, outward) gives an
 open surface thickness; prism(outline, origin, u, v, n, d0, d1) an extruded outline; cyl(center, axis, r, d0, d1);
 text(body, height, depth, origin, u, v, n, d0, shear, font) extruded lettering; head_profile(r, h, off, zmin) the
-classic head's outline grown by `off`, for a helmet that hugs it."""
+classic head's outline grown by `off`, for a helmet that hugs it.
+
+Checks: folds(objs) where a mesh overlaps itself in one plane, which both rr exports refuse."""
 import math
 import os
 import bmesh
@@ -53,6 +55,7 @@ from mathutils import Matrix, Vector
 import roblox_rig as rr
 
 X, Y, Z = Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))
+folds = rr.folds  # a check, kept in roblox_rig so its exports can refuse a fold
 
 
 def _box_of(dump, name):
@@ -254,8 +257,26 @@ def head_profile(r, h, off, zmin, round_=0.58):
     return p + [((r - e) * .5, h + off), (0, h + off)]
 
 
+def _crossing(outline):
+    """Two edges of the closed outline [(a, c)] that cross, or None. Outlines that only touch at a shared point pass."""
+    def side(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    n = len(outline)
+    for i in range(n):
+        p, q = outline[i], outline[(i + 1) % n]
+        for j in range(i + 2, n - (i == 0)):
+            r, s = outline[j], outline[(j + 1) % n]
+            if side(p, q, r) * side(p, q, s) < 0 and side(r, s, p) * side(r, s, q) < 0:
+                return (p, q), (r, s)
+    return None
+
+
 def prism(outline, origin, u, v, n, d0, d1, b=0.015):
-    """Polygon [(a, c)] in the plane origin + a*u + c*v, extruded along n from d0 to d1 (concave is fine)."""
+    """Polygon [(a, c)] in the plane origin + a*u + c*v, extruded along n from d0 to d1. Concave is fine; an outline that crosses
+    itself is refused, because its cap would fold over itself (references/modeling.md): end two arcs where they meet."""
+    crossed = _crossing(outline)
+    if crossed:
+        raise ValueError(f'prism: the outline crosses itself, between edges {crossed[0]} and {crossed[1]}')
     t = bmesh.new()
     lo = [t.verts.new(origin + a * u + c * v + d0 * n) for a, c in outline]
     hi = [t.verts.new(origin + a * u + c * v + d1 * n) for a, c in outline]
