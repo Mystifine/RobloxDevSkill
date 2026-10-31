@@ -50,7 +50,7 @@ Model-bound decals, emblems and textures inherit the model's style; other visual
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
 | 3D models, meshes, textures, building with parts (maps), z-fighting, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | [references/environment.md](references/environment.md) |
-| Character models: R15/R6 rigs (no Humanoid by default), skins (custom art on a standard rig, the default), hair, weapons and shields, NPCs, accessories, clothing, scaling | [references/rigs.md](references/rigs.md) |
+| Character models: R15/R6 rigs (no Humanoid by default), skins (custom Blender meshes on a standard rig, the default; Toolbox only without Blender), hair (found before modeled), weapons and shields, NPCs, accessories, clothing, scaling | [references/rigs.md](references/rigs.md) |
 | Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
 | Generating or uploading assets (moderation margin, neutral textures), reusing existing ones; blood and gore: stylized hits, injuries, defeat, monsters, horror | [references/no-gore.md](references/no-gore.md) |
 | Toolbox, free models, images, sounds, any imported asset; the upload gate, uploads and the cloud API key | [references/assets.md](references/assets.md) |

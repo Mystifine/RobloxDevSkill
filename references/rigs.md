@@ -2,13 +2,13 @@
 
 For NPCs, enemies, vendors, collectibles and any character template. A character that could read as female also follows [characters.md](characters.md); animating one is [animation.md](animation.md).
 
-- **A look from catalog items** (hair, clothing, body parts): generate an R15 from a HumanoidDescription (below).
-- **A character with its own art** (a monster, a boss, a stand, a costume): a **skin** on a standard R6 or R15 rig (Skins, below). This is the default for building a custom R6 or R15 character.
-- **Either way, no Humanoid** *(default)*: build it with one, then swap it for an AnimationController (Without a Humanoid, below). Keep the Humanoid only for what needs one.
+- **Custom meshes from Blender** *(default)*: every character is a **skin** modeled in Blender on a standard R6 or R15 rig (Skins, below), even when catalog clothing comes close to the reference; so is its gear (Gear, below). Hair is the exception: found before it is modeled (Hair, below).
+- **Blender unavailable** ([find_blender.py](../scripts/find_blender.py) exits 1): build from audited Toolbox assets instead ([assets.md](assets.md), Safe intake): meshes dressed on as skin pieces (`RigSkin.apply`, `map` for their names), gear through `equip`. Say which parts came from the Toolbox.
+- **No Humanoid** *(default)*: every R6 and R15 build ends with its Humanoid swapped for an AnimationController, unless the request or project keeps it (Without a Humanoid, below).
 
 ## R15: generate it, never assemble it by hand
 
-Describe the look as a HumanoidDescription and let Roblox build the rig (Edit mode or server):
+Describe the base rig as a HumanoidDescription (hair, colors, scales; the skin is the look) and let Roblox build it (Edit mode or server):
 
 ```lua
 local desc = Instance.new("HumanoidDescription")
@@ -21,7 +21,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 ```
 
 - **What a description can set:** body part ids (`Head`, `Torso`, ...), scales (`HeightScale`, `WidthScale`, `DepthScale`, `HeadScale`, `BodyTypeScale`, `ProportionScale`), classic `Shirt`/`Pants`, and per-accessory `Position`, `Rotation`, `Scale` and `Puffiness`.
-- **Prefer layered clothing** (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside) to classic 2D Shirt/Pants; it reads better on 3D bodies.
+- **Catalog clothing only when the request asks for it:** layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps without a Humanoid; never classic 2D Shirt/Pants, which show only with one.
 - **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place.
 
 **Then fix what the generator leaves** (`RigAudit.seat` and `RigAudit.clean` do 1-4):
@@ -71,9 +71,9 @@ A Humanoid is costly; a rig that only animates plays the same clips through an A
 - **Unchanged** (generated R6 and R15 in Play): parts, joints, attachments, cages, accessories, layered clothing (bending with the limbs), skins, gear, and every R6 or R15 clip, replicated to clients, with AnimationInspector findings equal to the Humanoid rig's.
 - **Place the root at `RootHeight`:** unanchored and unheld it sank about 2 studs, legs through the floor (only the root, head and torso collide). Move an anchored root by CFrame, or hold an unanchored one with AlignPosition and AlignOrientation. Walking NPCs: [gameplay.md](gameplay.md).
 - **BodyColors no longer recolors the parts:** set their colors (`RigSkin.color` sets both).
-- **Keep the Humanoid** (skip `controller`) for a player's character, and for one that needs `MoveTo`, walking physics, jumping, climbing, a Seat or a Tool (gear on a Motor6D works without); `Health`, `Died`, `BreakJointsOnDeath` or the name and health display; classic Shirt and Pants (they stop showing; layered clothing and skins still show); or `AddAccessory`, `ApplyDescription` or automatic scaling after the build.
+- **Keep the Humanoid** (skip `controller`) only when the request or project asks for one, or for something that needs one: a player's character; `MoveTo`, walking physics, jumping, climbing, a Seat or a Tool (gear on a Motor6D works without); `Health`, `Died`, `BreakJointsOnDeath` or the name and health display; or `AddAccessory`, `ApplyDescription` or automatic scaling after the build. Classic Shirt and Pants are no reason: they stop showing, while layered clothing and skins still show, so dress the rig with a skin.
 
-## Skins: custom art on a standard rig (the default)
+## Skins: custom meshes on a standard rig (the default)
 
 A skin dresses a standard R6 or R15 rig and never replaces it. The rig keeps its parts, joints, HipHeight, scale values, cages and hitbox, so these all work unchanged: every R6 or R15 animation, the Humanoid's movement and the game's hit detection. The art rides on top, massless and with no collision. One rig can wear many skins, and a player's own character can wear one.
 
@@ -147,7 +147,11 @@ Build a custom body only when the shape cannot fit the standard proportions: ext
 
 ## Hair
 
-A skin's hair is a `Head__Hair` piece built with `kit.Hair` ([skin_kit.py](../scripts/skin_kit.py)). A style the reference draws as one smooth volume with a jagged hem, such as a bob, is built with `H.shell`, not locks, which come out as a comb of teeth around a dome: a darker shell whose `H.points` and `H.teeth` make the fringe and hem, and a lighter one over it (`off=.035`), shorter, for two tones. `H.bob` keeps it against the cheeks, or the face sits in a dark hood. Read from 48 anime hair meshes on the classic head (in studs for a head 1.2 tall):
+**Found before it is modeled** *(default)*: a catalog hair matching the reference (an accessory in the base rig's HumanoidDescription) or an audited Toolbox hair comes first ([assets.md](assets.md)).
+- **Search the catalog** yourself (`search_asset` covers the Creator Store only): `catalog.roblox.com/v1/search/items/details?Category=11&Subcategory=19&Keyword=...`, thumbnails from `thumbnails.roblox.com/v1/assets?assetIds=...&size=420x420&format=Png`. Search by the character's name as well as its look: a named character's search came much closer than descriptive keywords.
+- **A hair with a face built in** needs the default face removed by hand (R15, step 3).
+
+Model one only when none fits. A skin's hair is a `Head__Hair` piece built with `kit.Hair` ([skin_kit.py](../scripts/skin_kit.py)). A style the reference draws as one smooth volume with a jagged hem, such as a bob, is built with `H.shell`, not locks, which come out as a comb of teeth around a dome: a darker shell whose `H.points` and `H.teeth` make the fringe and hem, and a lighter one over it (`off=.035`), shorter, for two tones. `H.bob` keeps it against the cheeks, or the face sits in a dark hood. Read from 48 anime hair meshes on the classic head (in studs for a head 1.2 tall):
 - **A volume, not a helmet.** The hair is a dome over the head: its top stands about 0.42 above the head's (at least 0.2), it sits about 0.22 off the scalp and bulges about 0.33 behind but only 0.14 at the temples, so the head reads taller, not wider. The skill's monster hair, a cap 0.09 off the head and 0.13 over it, read as a helmet.
 - **A cap and locks.** A smooth cap over the crown (`cap`), and locks rooted in it that hide its edge. A lock (`lock`) is a flat blade, a flattened diamond about a quarter as thick as wide, broad, ending in a sharp point; a flowing lock keeps its width until near the tip. Never a round tube with a blunt end: identical rounded tubes read as sausages or a comb, and narrow locks as noodles.
 - **Locks overlap like shingles** (`layer`): each wider than its spacing, alternate ones a little further out, an outer layer over the roots of the one under it, no scalp between them.
@@ -157,13 +161,12 @@ A skin's hair is a `Head__Hair` piece built with `kit.Hair` ([skin_kit.py](../sc
 - **Budget:** one mesh of 1,000 to 4,800 triangles (2,250 typical).
 - **Check at the clay stage:** `kit.hair_check(L['head'], hair_pieces)` must return `{}`; `leave=` names what the design leaves bare or straight (`'nape'`, `'back'`, `'fringe'`). It measures volume and coverage, not shape, so also render the head close up from the front, side, back and three-quarter view beside the reference (noodle locks and a sea urchin of spikes both passed it).
 
-A catalog or Toolbox hair whose style fits beats modeling one ([assets.md](assets.md)).
-
 ## Gear: weapons and shields
 
 A weapon or shield is **always its own model**, never part of a skin: it swaps freely, spends its own map on a small object, and animates. One mesh serves R6 and R15.
 
 - **Model it around its own origin,** in its own Blender scene, with the gear's name as the part: `P.put('Halberd', 'Gold', ...)`, then `kit.sharpen`, `merge`, `unwrap` and `paint` as for a skin, and `rr.export_pieces`. In a held weapon the origin is the middle of the handle, on its axis, where the hand closes; its length runs forward (-Y in Blender, the way the rig faces), thin across X. In a shield the origin is the centre of its face.
+- **Without Blender, an audited Toolbox weapon:** set its CFrame to that file space (its grip at the origin, its length along -Z) before `equip`. `equip` moves only the part it is given, so place any other parts after it and hold them to that part with a RigidConstraint.
 - **Held at the base of the arm, perpendicular to it,** the way a Roblox tool sits: the shaft runs forward through the fist, and a blade hangs below it. Size it to the ground: a 4.8-stud axe with 1.9 studs under the grip clears the floor at rest.
 - **Built to the fist.** A block hand is about a stud deep and the handle passes through it, so only the handle enters the fist: at most 0.13 studs from its axis, for 0.62 studs ahead of and behind the grip (half the hand and a glove). The guard, blade and pommel start at least 0.67 studs from the grip, and the handle runs past that at the back, so a one-handed handle is at least 1.35 studs long. A knuckle bow or ring under the hand is fine. At the clay stage `kit.grip_fit(pieces)` must return `{}`; for a glove thicker than 0.1, pass `fist=kit.fist(arm, skin_pieces)`. A sword's guard and blade began 0.3 studs ahead of the grip and cut into the hand, and its handle ran along the outside of the fist.
 - **On a Motor6D,** so animations can move it: `RigSkin.equip(rig, gear, { side = "Right", name = "Halberd" })`, called with the asset as inserted, before it moves. The joint runs from the hand (`Right Arm` on R6) to the gear, with the handle's axis 0.16 studs above the hand's end, inside the fist (the grip attachment sits on the end face; `seat` changes it). The gear's name is what a clip keys. A plain weld cannot be animated. An AnimationConstraint also works.
