@@ -40,13 +40,20 @@ def read_key(var, env_file):
 
 
 def call(key, method, url, body=None, headers=None):
-    req = urllib.request.Request(url, data=body, method=method, headers={'x-api-key': key, **(headers or {})})
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return json.loads(r.read() or b'{}')
-    except urllib.error.HTTPError as e:
-        print(f'HTTP {e.code} {method} {url}: {e.read().decode(errors="replace")[:800]}', file=sys.stderr)
-        sys.exit(1)
+    # Polling is safe to repeat, so a dropped connection is retried there: one reset ended a long batch (seen 2026-10-30). A POST
+    # is not, since it may have gone through: it fails, and a rerun of the batch decides.
+    for attempt in range(5 if method == 'GET' else 1):
+        req = urllib.request.Request(url, data=body, method=method, headers={'x-api-key': key, **(headers or {})})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read() or b'{}')
+        except urllib.error.HTTPError as e:
+            print(f'HTTP {e.code} {method} {url}: {e.read().decode(errors="replace")[:800]}', file=sys.stderr)
+            sys.exit(1)
+        except urllib.error.URLError as e:
+            print(f'{method} {url}: {e.reason}', file=sys.stderr)
+            time.sleep(3 * (attempt + 1))
+    sys.exit(1)
 
 
 def main():

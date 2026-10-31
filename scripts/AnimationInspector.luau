@@ -251,8 +251,11 @@ local function build(source: Model, at: Vector3): Rig
 		elseif model:FindFirstChild("Torso") and model:FindFirstChild("Left Leg") then "R6"
 		else "custom"
 	local ground = math.huge
+	local standing = model:GetAttribute("RootHeight") -- where a rig without its Humanoid stands its root (RigAudit.controller)
 	if humanoid and kind == "R15" and base.Name == "HumanoidRootPart" then
 		ground = base.Position.Y - base.Size.Y / 2 - humanoid.HipHeight
+	elseif not humanoid and typeof(standing) == "number" and base.Name == "HumanoidRootPart" then
+		ground = base.Position.Y - standing
 	else
 		for _, part in parts do
 			if part.Transparency < 1 then

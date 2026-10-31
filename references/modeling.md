@@ -8,12 +8,24 @@
 
 ## Style
 
-*(default)* **Full PBR**: a `SurfaceAppearance` with color, normal, metalness and roughness maps on clean UVs at consistent texel density, with high-poly detail baked to normals. The project's existing models come first (SKILL.md rule 2). Another style only when the user asks for it (detailed cartoony, anime, low-poly, voxel, or Roblox materials instead of PBR); a concept drawn in ink, hatching or cel shading shows the design and is built in PBR. References always set the proportions, palette and materials (Workflow, step 1).
+*(default)* **Anime ink in full PBR**: a hand-painted look with strong brush lines, on a `SurfaceAppearance` with color, normal, metalness and roughness maps, **each 1024x1024**. The project's existing models come first (SKILL.md rule 2). A style the user names replaces it (realistic, low-poly, voxel, Roblox materials). References always set the proportions, palette and materials (Workflow, step 1), and a reference in another style, a render for instance, still shows the design: it is painted in this one.
 
-- **ColorMap is albedo:** each material's own color, with no light or shadow painted in, except a light ambient-occlusion multiply, since `SurfaceAppearance` has no AO slot.
-- **Metalness** is 1 on bare metal only, 0 on paint, cloth, skin, gems and plastic; **roughness** varies with the material and its wear (polished edges, scratches, grime in cavities).
-- **The normal map** carries bevels, panel lines, seams and surface detail.
-- **Glowing details** stay separate Neon parts.
+Read from seven reference skins the user chose (2026-10-30):
+- **Painted, not rendered.** Flat, saturated local colors, one per material. Metal is paint too: gold is flat yellow with an ochre shadow, black panel lines and a few white glints. Light and shadow are in the color map, so the look holds under any lighting; metalness stays low (0 to 0.3), since a full 1 washes the paint out under a bright sky (seen 2026-10-30). The normal map carries the folds and line work as relief, and roughness separates cloth from metal.
+- **Ink on every edge, in smooth curves.** Near-black brush lines that swell slowly and taper, on every rim, hem, seam, panel edge and border between materials: about 0.02 studs, finer on small ornaments. A line follows the form as one curve, never mesh edge by mesh edge: straight segments, fast width changes and lines thresholded from ambient occlusion all read as rough (seen 2026-10-30).
+- **Folds are the detail.** A fold is a stroke, thick at its pinch and running out to a point, with a soft shadow on one side and a light streak on the other, over a painted shadow shape. They fan out from where cloth gathers: under a belt or hem, at a joint. Capes and coats hang in long verticals; sleeves wrinkle across. Strokes scattered at random read as scratches (seen 2026-10-30).
+- **Two or three tones** with soft painted edges: the local color, its shadow tone (same hue, darker), a highlight. Light from above and in front; ink pooled in crevices.
+- **Small detail is drawn, not modeled:** muscle, stitching, belt holes, dashes along a seam. Metal stays clean: its detail is panel lines, not scratches.
+- **Chunky, angular forms:** fur in spikes, hems torn, armor in faceted plates with crisp rims, cloth with real volume around the limbs. The body is wrapped: no bare rig box shows, including the end of the hand and the sole.
+- **Sharpness takes texels, not a bigger number:** a map can be 1024x1024 and still look low-res if one map covers a whole character. Aim for about 100 pixels a stud on a chest: that takes a set per region (`kit.regions`, [rigs.md](rigs.md)), a set for each piece of gear, and no hollow UV islands. One atlas gave 30 to 50 (seen 2026-10-30).
+
+[scripts/skin_kit.py](../scripts/skin_kit.py) makes this set: `kit.paint` bakes the tones per look, inks every sharp edge, traces the folds, then bakes their relief and each look's roughness and metalness. A hand-painted color map works just as well.
+
+- **Glowing details** stay separate Neon parts, in every style.
+- **Realistic PBR,** when asked: the same four maps on clean UVs at consistent texel density, with high-poly detail baked to normals (`kit.bake`), and no light in the color map.
+  - **ColorMap is albedo:** each material's own color, with no light or shadow painted in, except a light ambient-occlusion multiply, since `SurfaceAppearance` has no AO slot.
+  - **Metalness** is 1 on bare metal only, 0 on paint, cloth, skin, gems and plastic; **roughness** varies with the material and its wear (polished edges, scratches, grime in cavities).
+  - **The normal map** carries bevels, panel lines, seams and surface detail. A weak one leaves the surface looking smooth: a median tilt of 2 out of 127 on flat areas read as plastic (seen 2026-10-30).
 - **Detailed cartoony,** when asked: stylized game art with real detail.
   - Shapes carry it: exaggerated, readable proportions (big heads, hands, claws, horns, tails, weapon heads), a clear big, medium and small shape hierarchy, and a silhouette that reads on a phone.
   - Detail is modeled, not noise: fur clumps, scale plates, armor bevels and trims, cloth folds and torn hems are shapes with bevelled edges and a few loops each.
@@ -22,7 +34,7 @@
 - **Low-poly** (flat-shaded facets, colors from a palette texture), when asked.
 - **Roblox materials,** when asked: no textures or UVs; one piece per material, each styled by `Color` and `Material` (a skin's `looks`, [rigs.md](rigs.md)), glow as Neon.
 
-Roblox caps texture maps at 1024x1024: paint or bake at 1024 (512 for small props) and spend the texels on what is seen.
+Roblox caps texture maps at 1024x1024, and every map is made at that size by default: spend the texels on what is seen.
 
 ## Workflow
 
@@ -38,14 +50,16 @@ Roblox caps texture maps at 1024x1024: paint or bake at 1024 (512 for small prop
    - Go through the feature list and the measured proportions one at a time. Texturing waits until each one matches.
    - A glance at thumbnails is not a check: one passed a slanted crest built as a rounded column, with the head a stud too high (2026-10-29).
 4. **UVs:** few islands, seams where they hide, islands straightened where strokes run; one texture set per model where it fits.
-5. **Texture:** bake normal, ambient occlusion and curvature (the edge mask) from the high-poly; build each material's albedo, metalness and roughness on them (edge wear on curvature, grime in the AO), multiply a little AO into the albedo, and export the four maps. A stylized look instead combines the AO and edge mask with the base colors, the gradient and painted strokes into the color map, with roughness and metalness as flat values or simple masks.
+5. **Texture:** the default paints each look, inks its edges and folds, and exports the four maps (Style, above). Realistic PBR instead bakes normal, ambient occlusion and curvature (the edge mask) from the high-poly, builds each material's albedo, metalness and roughness on them (edge wear on curvature, grime in the AO), multiplies a little AO into the albedo, and exports the four maps.
 6. **Finish:** optimize, QA and export.
 
-Blender skills when installed: `blender-director` (plan) -> `blender-modeler` / `blender-hardsurface-modeling` -> `blender-retopology-uv` (UVs) -> `blender-texture-baking` and `blender-pbr-materials` -> `blender-game-optimization` -> `blender-asset-qa` -> `blender-export-pipelines`. Organic detail adds `blender-sculpting`; a stylized look swaps the PBR materials for `hand-painted-style`, `stylized-style` or `lowpoly-style`. Search for further skills (`find-skills`) when the asset type is unusual (creatures, vehicles, vegetation).
+Blender skills when installed: `blender-director` (plan) -> `blender-modeler` / `blender-hardsurface-modeling` -> `blender-retopology-uv` (UVs) -> `hand-painted-style`, `anime-style` and `blender-pbr-materials` (realistic: `blender-texture-baking`) -> `blender-game-optimization` -> `blender-asset-qa` -> `blender-export-pipelines`. Organic detail adds `blender-sculpting`. Search for further skills (`find-skills`) when the asset type is unusual (creatures, vehicles, vegetation).
 
 Rules:
+- **Every MeshPart has `DoubleSided = true`, always.** Set it when the mesh enters the place; `RigSkin` does on what it touches and `RigSkin.audit` reports any it finds off.
+- Crisp rims: mark edges past about 40 degrees sharp (`kit.sharpen`). Smooth shading across a plate's rim makes the whole plate look inflated (seen 2026-10-30).
 - Real-world scale, applied transforms, sensible origin/pivot, clear naming.
-- No hidden or interior faces that never render; no coplanar overlaps (z-fighting); consistent normals; no n-gons left unintended.
+- No hidden or interior faces that never render (a side a joint can swing into view does render: [rigs.md](rigs.md), Skins); no coplanar overlaps (z-fighting); consistent normals; no n-gons left unintended.
 - Character models (R15/R6 rigs, NPCs) follow [rigs.md](rigs.md), where a custom character is a skin on a standard rig; any that could read as female also follow [characters.md](characters.md), renders included.
 - Every model, texture and decal you make is an upload: no blood or gore in it, and weapons, claws and tools carry no blood, though wear, rust and grime are fine ([no-gore.md](no-gore.md)).
 - Run `blender-asset-qa` before calling a model done. Verify triangle count, UVs, normals and materials after export.

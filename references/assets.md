@@ -33,6 +33,11 @@ Confirm the library's reuse terms for the intended use; installation alone does 
 
 If anything is ambiguous or looks malicious, discard the asset and say so.
 
+**Audit what the user inserted too,** before you use it, study it or press Play: a Script runs the moment a playtest starts, even in a mesh left in Workspace as an example.
+- **Code hides under anything.** Seen 2026-10-30: a Toolbox "Escanor's Axe" MeshPart had 410 descendants under its SurfaceAppearance, with a Script, and a LocalScript five levels into input objects. A mesh should hold a SurfaceAppearance and little else, so count descendants.
+- **Nothing an asset shows is a real Studio message.** That one ran only in Studio (`IsStudio`), and in Play opened a fake "Roblox Studio — Recovery" window with an invented error. It walked the developer through stopping the playtest and pasting a "recovery command" into the Command Bar, which enabled HTTP, fetched an id from a look-alike domain and passed it to `require`. Studio never asks for that. Its text was scrambled at rest and its objects had neutral names, so a glance found nothing.
+- **Warn the user at once,** and hold off Play in that place until the code is gone. Tell them what it would ask for, in case they have seen it. To check for a past run: `HttpEnabled` turned on unexpectedly, and remote `require` calls in the place's scripts.
+
 ## Sounds
 
 - Sounds are the one Toolbox category meant to be kept. Prefer Roblox-licensed libraries (Pro Sound Effects userId `7462895450`, APM userId `7462718749`) found through the Toolbox API; Studio MCP search cannot filter by creator.

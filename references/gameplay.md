@@ -14,11 +14,12 @@
 - Walk waypoint by waypoint; a waypoint whose `Action` is `Enum.PathWaypointAction.Jump` sets the Humanoid jumping. `path.Blocked` gives the blocked waypoint's index: recompute only when it is ahead of the NPC.
 - `PathfindingModifier` labels with matching `Costs` entries (`math.huge` forbids an area, a high cost makes it a last resort, `PassThrough` lets paths cross a door); `PathfindingLink` connects two attachments for boats, teleporters and ladders.
 - `Humanoid:MoveTo` gives up after 8 seconds and `MoveToFinished` fires with `false`: re-issue it every few seconds on long walks (the Humanoid reference's sample refreshes every 6 s), or move per waypoint.
+- **An NPC with no Humanoid** (the default rig, [rigs.md](rigs.md)) has no `MoveTo`: compute the path the same way and move its anchored root along the waypoints by CFrame, facing the way it goes, its centre `RootHeight` above the floor (raycast for it), with the walk clip playing.
 - NPCs belong to the server (network owner nil), share one update loop ([coding.md](coding.md)), and idle when no player is near.
 
 ## Playing animations in game
 
-- **Load each animation once per Animator and keep the track.** Calling `animator:LoadAnimation(animation)` on every use piles up tracks until Roblox warns, and the old ones keep their memory.
+- **Load each animation once per Animator (the Humanoid's, or the AnimationController's) and keep the track.** Calling `animator:LoadAnimation(animation)` on every use piles up tracks until Roblox warns, and the old ones keep their memory.
 - The local player's character animates from the client (it replicates); NPCs animate from the server.
 - `track:Play(fadeTime, weight, speed)`. Priorities, low to high: `Core`, `Idle`, `Movement`, `Action`, then `Action2` to `Action4`. Time gameplay to `track:GetMarkerReachedSignal("Hit")`, never to `task.wait` guesses ([animation.md](animation.md)).
 - Stop tracks with the same fade on death, unequip and teardown, through the project's maid.

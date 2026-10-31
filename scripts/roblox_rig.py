@@ -173,9 +173,10 @@ def _fbx(path, objects, types, **extra):
     for o in objects:
         o.select_set(True)
     bpy.context.view_layer.objects.active = objects[0]
-    # Roblox: FBX unit scale, textures embedded, no leaf bones, no animation (blender-export-pipelines' roblox preset).
+    # Roblox: FBX unit scale, no leaf bones, no animation (blender-export-pipelines' roblox preset). Textures stay out: embedded,
+    # they arrive as a SurfaceAppearance on every piece, beside the maps you upload (seen 2026-10-30).
     bpy.ops.export_scene.fbx(filepath=str(path), use_selection=True, object_types=set(types), apply_scale_options='FBX_SCALE_UNITS',
-                             path_mode='COPY', embed_textures=True, add_leaf_bones=False, bake_anim=False, use_tspace=False, **extra)
+                             path_mode='AUTO', embed_textures=False, add_leaf_bones=False, bake_anim=False, use_tspace=False, **extra)
 
 
 def folds(objects, min_area=.002, eps=1e-4):

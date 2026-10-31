@@ -16,9 +16,15 @@
 --                               Body for all), on the parts and in the rig's BodyColors
 --   bind(rig, skinned, options) a skinned MeshPart whose Bones are named after body parts: each Bone moves under its body
 --                               part, so the mesh bends with the rig's joints; the mesh is welded to the root
+--   equip(rig, gear, options)   a weapon or shield, its own model, on a Motor6D, so animations can move it: at the hand by
+--                               default, its origin at the grip, seated inside the fist (options.seat); or anywhere on a
+--                               body part (options.part, options.at)
+--   doubleSided(root)           DoubleSided on every MeshPart under root (apply, bind and equip do it for what they touch)
 --   audit(rig)                  findings: pieces unwelded, off their weld, astray from their part, anchored or collidable,
 --                               Bones left unbound or astray, hidden body parts (with or without skin over them), weld
---                               attachments left by deleted pieces
+--                               attachments left by deleted pieces, MeshParts not double sided, gear off its Motor6D, a held
+--                               weapon that does not fit the hand, read from its mesh and the skin's (needs a mesh this
+--                               place may read, as its own uploads are)
 --
 -- A dynamic head (a MeshPart Head with FaceControls, as on a generated R15) maps a decal through its UV atlas: a face
 -- came out magnified and offset, its mouth showing as a dark line (seen 2026-10-30). There `face` puts the decal on a
@@ -30,6 +36,7 @@
 -- the animation's Transform), so a player's character can be dressed on the server mid-animation. Load as SKILL.md
 -- (Scripts) describes, or require it from ServerScriptService in a game.
 
+local AssetService = game:GetService("AssetService")
 local HttpService = game:GetService("HttpService")
 
 local RigSkin = {}
@@ -44,11 +51,25 @@ export type Options = {
 	hide: boolean?, -- hide the body parts the skin covers (and their decals, such as the face): only when the design replaces them
 	hideAccessories: boolean?, -- hide the rig's own accessories (a player's hats would float over the skin's head)
 }
+export type Gear = {
+	side: string?, -- "Right" (default) or "Left": the hand it is held in
+	seat: number?, -- studs from the hand's end up to the handle's axis (default SEAT)
+	part: string?, -- a body part instead of a hand, for gear worn on the arm or back
+	at: CFrame?, -- with part: where the gear's origin sits, in the skin's file space (ground at 0, the root at rootHeight)
+	name: string?, -- the gear's name, which is also its joint's: what an animation keys
+}
 
 local SEATED = 0.05 -- studs a piece may sit from where its weld holds it
 local SKIN = "Skin" -- the folder under the rig that holds the pieces
 local WELD = "SkinWeld" -- the RigidConstraint that holds a piece (its attachments: SkinWeld_<piece> on the body part, SkinWeldAttachment on the piece)
 local FACE = "Head__Face" -- the classic head piece that carries the face on a dynamic head
+local GEAR = "Gear" -- the folder under the rig that holds weapons and shields
+-- A held weapon against the hand, as skin_kit.grip_fit measures it in Blender (references/rigs.md, Gear).
+local SEAT = 0.16 -- studs from the hand's end up to the handle's axis: inside the fist, not along its underside
+local HANDLE = 0.13 -- the widest a handle may be and stay inside the fist
+local CLEAR = 0.05 -- what the guard and the butt stand clear of the fist
+local WRIST = 0.3 -- how far above the hand's end the fist goes on
+local ARM = 2 -- how far above the hand's end nothing but the handle may go: the arm's length on R6
 
 local function root(rig: Model): BasePart
 	local r = rig:FindFirstChild("HumanoidRootPart")
@@ -133,8 +154,9 @@ end
 function RigSkin.dump(rig: Model): string
 	local pose = restPose(rig)
 	local humanoid = rig:FindFirstChildOfClass("Humanoid")
+	local named = bodyParts(rig)
 	local out = {
-		rigType = if humanoid then humanoid.RigType.Name else "custom",
+		rigType = if humanoid then humanoid.RigType.Name elseif named.UpperTorso then "R15" elseif named.Torso then "R6" else "custom",
 		rootHeight = rootHeight(rig, pose),
 		parts = {},
 		joints = {},
@@ -409,6 +431,78 @@ local function place(rig: Model, pose: { [BasePart]: CFrame }, items: { BasePart
 	end
 end
 
+function RigSkin.doubleSided(model: Instance): number
+	local count = 0
+	local function set(item: Instance)
+		if item:IsA("MeshPart") then
+			-- Guarded because apply also runs in game scripts, which may lack the capability: a template made in Studio already has it.
+			local done = pcall(function()
+				if not item.DoubleSided then
+					item.DoubleSided = true
+					count += 1
+				end
+			end)
+			if not done then
+				return
+			end
+		end
+	end
+	set(model)
+	for _, d in model:GetDescendants() do
+		set(d)
+	end
+	return count
+end
+
+-- A weapon or shield stays its own model, one MeshPart outside the skin: it swaps without touching the skin, and its Motor6D is
+-- a joint like any other, so an animation can key it. By default it is held at the base of the arm, perpendicular to the arm:
+-- a gear's file origin is its grip, its length along -Z (the way the rig faces), so the same asset fits R6 and R15. The grip
+-- attachment sits on the hand's end face, where a handle would run along the outside of the fist, so the handle is seated
+-- above it. The joint's rotation stays at the rig's own, whichever way the grip attachment turns. Part1's name is what
+-- animations address.
+function RigSkin.equip(rig: Model, gear: BasePart, options: Gear?): Motor6D
+	local parts, pose = bodyParts(rig), restPose(rig)
+	local opts: Gear = options or {}
+	local side = opts.side or "Right"
+	local part = parts[opts.part or (side .. "Hand")] or parts[side .. " Arm"]
+	assert(part, rig:GetFullName() .. " has no " .. (opts.part or side .. " hand"))
+	local c0: CFrame
+	if opts.at then
+		local origin = CFrame.new(0, rootHeight(rig, pose), 0)
+		c0 = pose[part]:ToObjectSpace(origin:Inverse() * opts.at)
+	else
+		local grip = part:FindFirstChild(side .. "GripAttachment")
+		assert(grip and grip:IsA("Attachment"), part:GetFullName() .. " has no " .. side .. "GripAttachment")
+		c0 = CFrame.new(grip.Position + Vector3.new(0, opts.seat or SEAT, 0))
+	end
+	local c1 = gear.CFrame:Inverse() -- the file's origin, in the gear's own space: its grip
+	local found = rig:FindFirstChild(GEAR)
+	local folder: Folder = if found and found:IsA("Folder") then found else Instance.new("Folder")
+	folder.Name = GEAR
+	folder.Parent = rig
+	gear.Name = opts.name or gear.Name
+	local old = folder:FindFirstChild(gear.Name)
+	if old then
+		old:Destroy()
+	end
+	local stale_ = part:FindFirstChild(gear.Name)
+	if stale_ and stale_:IsA("Motor6D") then
+		stale_:Destroy()
+	end
+	gear.Anchored, gear.Massless = false, true
+	gear.CanCollide, gear.CanTouch, gear.CanQuery = false, false, false
+	gear.PivotOffset = c1
+	gear.CFrame = part.CFrame * c0 * c1:Inverse()
+	gear.Parent = folder
+	RigSkin.doubleSided(gear)
+	local joint = Instance.new("Motor6D")
+	joint.Name = gear.Name
+	joint.Part0, joint.Part1 = part, gear
+	joint.C0, joint.C1 = c0, c1
+	joint.Parent = part
+	return joint
+end
+
 function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 	local parts = bodyParts(rig)
 	local pieces: { BasePart } = {}
@@ -437,6 +531,7 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 		end
 	end
 	local painted = paintBody(rig, pose, options)
+	RigSkin.doubleSided(rig)
 	local hidden = 0
 	if options and options.hide then
 		for part in covered do
@@ -483,6 +578,7 @@ function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string
 		end
 	end
 	local painted = paintBody(rig, pose, options)
+	RigSkin.doubleSided(rig)
 	if options and options.hide then
 		for name, part in parts do
 			if name ~= "HumanoidRootPart" then
@@ -498,6 +594,134 @@ function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string
 	end
 	return string.format("%s: %d bones bound to body parts%s%s", rig.Name, bound, painted,
 		if #loose > 0 then "; left on the mesh (rigid): " .. table.concat(loose, ", ") else "")
+end
+
+-- A MeshPart's triangle edges, at its size, in its own space; nil for a mesh this place may not read.
+local function meshEdges(part: MeshPart): { { Vector3 } }?
+	local ok, mesh: any = pcall(function()
+		return AssetService:CreateEditableMeshAsync(part.MeshContent)
+	end)
+	if not ok then
+		return nil
+	end
+	local scale, edges = part.Size / part.MeshSize, {}
+	for _, face in mesh:GetFaces() do
+		local ids = mesh:GetFaceVertices(face)
+		for i, id in ids do
+			table.insert(edges, { mesh:GetPosition(id) * scale, mesh:GetPosition(ids[i % #ids + 1]) * scale })
+		end
+	end
+	mesh:Destroy()
+	return edges
+end
+
+-- The stretch of segment a..b inside the box lo..hi, or nothing.
+local function clip(a: Vector3, b: Vector3, lo: Vector3, hi: Vector3): { Vector3 }
+	local t0, t1 = 0, 1
+	for _, axis in { "X", "Y", "Z" } do
+		local from, step = (a :: any)[axis], (b :: any)[axis] - (a :: any)[axis]
+		local low, high = (lo :: any)[axis], (hi :: any)[axis]
+		if math.abs(step) < 1e-9 then
+			if from < low or from > high then
+				return {}
+			end
+		else
+			local enter, leave = (low - from) / step, (high - from) / step
+			t0, t1 = math.max(t0, math.min(enter, leave)), math.min(t1, math.max(enter, leave))
+			if t0 > t1 then
+				return {}
+			end
+		end
+	end
+	return { a:Lerp(b, t0), a:Lerp(b, t1) }
+end
+
+-- The hand's grip attachment when a joint holds its gear there, not worn elsewhere on the part.
+local function gripOf(joint: Motor6D): Attachment?
+	local part = joint.Part0
+	for _, side in { "Right", "Left" } do
+		local grip = part and part:FindFirstChild(side .. "GripAttachment")
+		if grip and grip:IsA("Attachment") and (joint.C0.Position - grip.Position).Magnitude <= 0.5 then
+			return grip
+		end
+	end
+	return nil
+end
+
+-- How far the hand and the skin on it reach around the grip, in the hand's space: ahead, behind and to the side.
+local function fistOf(rig: Model, part: BasePart, grip: Vector3): (number, number, number)
+	local half = part.Size / 2
+	local ahead, behind, side = half.Z, half.Z, half.X
+	local folder = rig:FindFirstChild(SKIN)
+	local lo, hi = Vector3.new(-math.huge, grip.Y, -math.huge), Vector3.new(math.huge, grip.Y + WRIST, math.huge)
+	for _, piece in if folder then folder:GetDescendants() else {} do
+		local rigid = piece:FindFirstChild(WELD)
+		local a0 = rigid and rigid:IsA("RigidConstraint") and rigid.Attachment0
+		if piece:IsA("MeshPart") and a0 and a0.Parent == part then
+			local offset = part.CFrame:ToObjectSpace(piece.CFrame)
+			for _, edge in meshEdges(piece) or {} do
+				-- Edges, not vertices: a coarse glove can have none at the fist's height
+				for _, p in clip(offset * edge[1], offset * edge[2], lo, hi) do
+					ahead, behind, side = math.max(ahead, -p.Z), math.max(behind, p.Z), math.max(side, math.abs(p.X))
+				end
+			end
+		end
+	end
+	return ahead, behind, side
+end
+
+-- A held weapon against the hand: the handle sits inside the fist, nothing else enters it, the handle comes out the back, and
+-- the weapon runs forward and clears the ground at rest.
+local function checkHold(rig: Model, item: MeshPart, joint: Motor6D, grip: Vector3, add: (string, string, string, string) -> ())
+	local path = item:GetFullName()
+	local edges = meshEdges(item)
+	if not edges then
+		add("warn", path, "unread", "its mesh cannot be read here, so its fit in the hand is unmeasured: look at the hand from below")
+		return
+	end
+	local part = joint.Part0 :: BasePart
+	local axis = joint.C0.Position
+	if axis.Y - grip.Y < HANDLE then
+		add("error", path, "seat", string.format("the handle's axis is %.2f above the hand's end, so it runs along the outside of the fist: equip seats it at %.2f", axis.Y - grip.Y, SEAT))
+	end
+	local ahead, behind, side = fistOf(rig, part, grip)
+	local lo = Vector3.new(-side - CLEAR, grip.Y, -ahead - CLEAR)
+	local hi = Vector3.new(side + CLEAR, grip.Y + ARM, behind + CLEAR)
+	local held = joint.C0 * joint.C1:Inverse()
+	local pose = restPose(rig)
+	local ground, lowest = -rootHeight(rig, pose), math.huge
+	local inAhead, inBehind = math.huge, math.huge
+	local low, high = Vector3.one * math.huge, Vector3.one * -math.huge
+	for _, edge in edges do
+		local a, b = held * edge[1], held * edge[2]
+		low, high = low:Min(a), high:Max(a)
+		lowest = math.min(lowest, pose[part]:PointToWorldSpace(a).Y)
+		for _, p in clip(a, b, lo, hi) do
+			if Vector2.new(p.X - axis.X, p.Y - axis.Y).Magnitude > HANDLE + 1e-3 then
+				if p.Z < axis.Z then
+					inAhead = math.min(inAhead, axis.Z - p.Z)
+				else
+					inBehind = math.min(inBehind, p.Z - axis.Z)
+				end
+			end
+		end
+	end
+	if inAhead < math.huge then
+		add("error", path, "fist", string.format("wider than the handle %.2f ahead of the grip, inside the fist: start the guard and blade past %.2f", inAhead, ahead + CLEAR))
+	end
+	if inBehind < math.huge then
+		add("error", path, "fist", string.format("wider than the handle %.2f behind the grip, inside the fist: start the pommel past %.2f", inBehind, behind + CLEAR))
+	end
+	if high.Z - axis.Z < behind + CLEAR then
+		add("error", path, "handle", string.format("the handle ends %.2f behind the grip, inside the fist: it runs past %.2f", high.Z - axis.Z, behind + CLEAR))
+	end
+	local size = high - low
+	if axis.Z - low.Z <= high.Z - axis.Z or size.Z < math.max(size.X, size.Y) then
+		add("error", path, "facing", string.format("%.2f ahead of the grip and %.2f behind it, %.2f long: its length runs forward from the hand", axis.Z - low.Z, high.Z - axis.Z, size.Z))
+	end
+	if lowest < ground then
+		add("warn", path, "floor", string.format("%.2f studs under the floor at rest", ground - lowest))
+	end
 end
 
 function RigSkin.audit(rig: Model): ({ Finding }, string)
@@ -570,6 +794,31 @@ function RigSkin.audit(rig: Model): ({ Finding }, string)
 	end
 	for _, a in stale(rig) do
 		add("warn", a:GetFullName(), "stale", "a weld attachment left by a deleted piece: apply or bind removes it")
+	end
+	for _, d in rig:GetDescendants() do
+		if d:IsA("MeshPart") and not d.DoubleSided then
+			add("warn", d:GetFullName(), "single-sided", "every MeshPart stays DoubleSided: doubleSided(rig) sets them")
+		end
+	end
+	local gear = rig:FindFirstChild(GEAR)
+	if gear then
+		local held: { [BasePart]: Motor6D } = {}
+		for _, d in rig:GetDescendants() do
+			if d:IsA("Motor6D") and d.Part1 then
+				held[d.Part1] = d
+			end
+		end
+		for _, item in gear:GetChildren() do
+			if item:IsA("BasePart") then
+				local joint = held[item]
+				local grip = joint and gripOf(joint)
+				if not joint then
+					add("error", item:GetFullName(), "gear", "no Motor6D to the rig: animations cannot move it (equip makes one)")
+				elseif grip and item:IsA("MeshPart") then
+					checkHold(rig, item, joint, grip.Position, add)
+				end
+			end
+		end
 	end
 	local errors = 0
 	for _, f in findings do

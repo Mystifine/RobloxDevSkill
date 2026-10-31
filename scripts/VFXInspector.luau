@@ -275,8 +275,8 @@ local function animatorOf(model: Model): Animator
 end
 
 -- A scriptless copy of `rig` standing on the floor at `spot`, facing `toward`, its root anchored. A Humanoid stands as
--- the engine stands it (R15: the root's bottom HipHeight above the floor; R6: on its legs); any other rig rests its
--- lowest body part (accessories excluded) on the floor.
+-- the engine stands it (R15: the root's bottom HipHeight above the floor; R6: on its legs), a rig without its Humanoid
+-- at its RootHeight attribute; any other rig rests its lowest body part (accessories excluded) on the floor.
 local function standIn(rig: Model, spot: Vector3, toward: Vector3, parent: Instance): Model
 	local archivable = rig.Archivable
 	rig.Archivable = true
@@ -294,12 +294,15 @@ local function standIn(rig: Model, spot: Vector3, toward: Vector3, parent: Insta
 	local humanoid = copy:FindFirstChildOfClass("Humanoid")
 	local leg = copy:FindFirstChild("Left Leg")
 	local height: number? = nil -- of the root's centre above the floor
+	local standing = copy:GetAttribute("RootHeight") -- where a rig without its Humanoid stands its root (RigAudit.controller)
 	if humanoid and root.Name == "HumanoidRootPart" then
 		if humanoid.RigType == Enum.HumanoidRigType.R15 then
 			height = humanoid.HipHeight + root.Size.Y / 2
 		elseif leg and leg:IsA("BasePart") then
 			height = leg.Size.Y + root.Size.Y / 2
 		end
+	elseif typeof(standing) == "number" and root.Name == "HumanoidRootPart" then
+		height = standing
 	end
 	if height then
 		copy:PivotTo(copy:GetPivot() + Vector3.yAxis * (spot.Y + height - root.Position.Y))

@@ -36,6 +36,7 @@ local SOURCE_MARKERS: { { Label: string, Pattern: string } } = {
 	{ Label = "string.reverse (obfuscation)", Pattern = "string%.reverse" },
 	{ Label = "decimal escapes (obfuscation)", Pattern = "\\%d%d%d" },
 	{ Label = "url", Pattern = "https?://" },
+	{ Label = "IsStudio (behaves differently for the developer)", Pattern = "IsStudio" },
 }
 
 -- Properties that reference other assets, by class.
@@ -150,6 +151,9 @@ function AssetAudit.run(root: Instance): Report
 				if instance.ClassName == class then
 					add("reject", instance, "remote or bindable", class .. " has no place in a content asset")
 				end
+			end
+			if instance:IsA("LayerCollector") and root:IsA("BasePart") then
+				add("reject", instance, "hidden ui", "a screen UI inside a mesh: seen as a fake Studio dialog, see references/assets.md")
 			end
 			for _, class in BEHAVIOUR do
 				if instance:IsA(class) then

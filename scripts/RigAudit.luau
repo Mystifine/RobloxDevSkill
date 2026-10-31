@@ -4,10 +4,13 @@
 --   audit(model)          findings: missing parts or joints, the root and PrimaryPart, anchored limbs, accessories off
 --                         their welds (they float in anchored models, viewports and previews), unmatched attachments,
 --                         layered clothing without cages, leftover scripts, TouchInterests, a default face under a face
---                         accessory
+--                         accessory; with no Humanoid, a root nothing holds up, classic clothing and untinted textures
 --   seat(model)           puts every accessory handle where its weld holds it; returns how many moved
 --   clean(model, keep?)   removes generated scripts (unless keep.Scripts), the handles' TouchInterests and the default
 --                         face under a face accessory, and makes the root the PrimaryPart; returns what it did
+--   controller(model, options?)  replaces the Humanoid with an AnimationController holding its Animator, keeping what
+--                         the Humanoid did for the rig (see controller); anchors the root unless options.Anchored is
+--                         false; returns what it did. Studio only, last, once accessories are on
 --
 -- Load as SKILL.md (Scripts) describes.
 
@@ -72,11 +75,13 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 	end
 	local kind = rigType(model)
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local controller = model:FindFirstChildOfClass("AnimationController")
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not humanoid and not model:FindFirstChildOfClass("AnimationController") then
+	local animates = humanoid or controller
+	if not animates then
 		add("error", model.Name, "rig", "no Humanoid or AnimationController")
-	elseif humanoid and not humanoid:FindFirstChildOfClass("Animator") then
-		add("warn", "Humanoid", "rig", "no Animator: add one so animations load and replicate")
+	elseif not animates:FindFirstChildOfClass("Animator") then
+		add("warn", animates.Name, "rig", "no Animator: add one so animations load and replicate")
 	end
 	for _, name in PARTS[kind] or {} do
 		if not model:FindFirstChild(name) then
@@ -92,6 +97,9 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 		if root.Transparency < 1 then
 			add("warn", root.Name, "root", "the root is visible: Transparency 1")
 		end
+		if not humanoid and not root.Anchored and not model:FindFirstChildWhichIsA("AlignPosition", true) then
+			add("warn", root.Name, "standing", "no Humanoid holds it up and its legs do not collide, so it sinks about 2 studs: anchor the root and move it by CFrame, or hold it with AlignPosition and AlignOrientation")
+		end
 	end
 
 	-- every body part hangs from the root through animated joints (Motor6D or AnimationConstraint)
@@ -100,8 +108,13 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 		if child:IsA("BasePart") then
 			body[child] = true
 			if child.Anchored and child ~= root then
-				add("warn", child.Name, "anchored", "an anchored body part cannot animate; anchor only the root, and only for a display")
+				add("warn", child.Name, "anchored", "an anchored body part cannot animate: anchor only the root (a display, or a rig with no Humanoid)")
 			end
+			if not humanoid and child:IsA("MeshPart") and child.TextureID ~= "" and child.Transparency < 1 and not child:FindFirstChildOfClass("SurfaceAppearance") then
+				add("warn", child.Name, "untinted", "its texture shows untinted with no Humanoid (a dynamic head turns white): controller gives it an Overlay SurfaceAppearance")
+			end
+		elseif child:IsA("Clothing") and not humanoid then
+			add("warn", child.Name, "clothing", "classic Shirt and Pants show only on a rig with a Humanoid: use layered clothing or a skin, or the Humanoid build")
 		end
 	end
 	local links: { [BasePart]: { BasePart } } = {}
@@ -198,7 +211,7 @@ function RigAudit.audit(model: Model): ({ Finding }, string)
 		errors += if finding.Severity == "error" then 1 else 0
 		table.insert(lines, string.format("%s [%s] %s: %s", string.upper(finding.Severity), finding.Rule, finding.Path, finding.Detail))
 	end
-	table.insert(lines, string.format("%s %s: %d findings (%d errors)", model.Name, kind, #findings, errors))
+	table.insert(lines, string.format("%s %s%s: %d findings (%d errors)", model.Name, kind, if humanoid then "" else " (no Humanoid)", #findings, errors))
 	return findings, table.concat(lines, "\n")
 end
 
@@ -247,6 +260,75 @@ function RigAudit.clean(model: Model, keep: { Scripts: boolean? }?): string
 		table.insert(done, "PrimaryPart set to the root")
 	end
 	return table.concat(done, "; ")
+end
+
+-- A Humanoid costs every frame; a rig that only animates plays the same clips through an AnimationController. Kept from
+-- the Humanoid (seen 2026-10-30 on generated R6 and R15):
+--   - the height it stood the root at, as the RootHeight attribute (studs from the floor to the root's centre: R15
+--     HipHeight plus half the root, R6 on its legs): place the root there, since nothing else holds it up;
+--   - the skin color under a body part's texture: without a Humanoid a dynamic head showed its texture untinted (white
+--     skin) though its Color was unchanged. An Overlay SurfaceAppearance on the texture shows the Color through it again,
+--     as the Humanoid did. Game scripts cannot set its map (they lack the Plugin capability), so convert in Studio.
+-- Removed with it: the Animate and Health scripts (they wait for a Humanoid), Status, the scale values and the
+-- HumanoidDescription. Accessories keep their welds and layered clothing still wraps; classic Shirt and Pants stop showing.
+function RigAudit.controller(model: Model, options: { Anchored: boolean? }?): string
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return model.Name .. ": no Humanoid to replace"
+	end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	assert(root and root:IsA("BasePart"), model:GetFullName() .. " has no HumanoidRootPart")
+	local done = {}
+	local leg = model:FindFirstChild("Left Leg")
+	local height = if humanoid.RigType == Enum.HumanoidRigType.R6 and leg and leg:IsA("BasePart") then leg.Size.Y + root.Size.Y / 2
+		else humanoid.HipHeight + root.Size.Y / 2
+	model:SetAttribute("RootHeight", height)
+	table.insert(done, string.format("Humanoid replaced by an AnimationController; RootHeight %.2f", height))
+
+	local controller = Instance.new("AnimationController")
+	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+	animator.Parent = controller
+	controller.Parent = model
+	humanoid:Destroy()
+	for _, name in { "Animate", "Health" } do
+		local script = model:FindFirstChild(name)
+		if script and script:IsA("LuaSourceContainer") then
+			script:Destroy()
+			table.insert(done, name .. " script removed")
+		end
+	end
+
+	local tinted, untinted = 0, 0
+	for _, part in model:GetChildren() do
+		if part:IsA("MeshPart") and part.TextureID ~= "" and not part:FindFirstChildOfClass("SurfaceAppearance") then
+			local made = pcall(function()
+				local look = Instance.new("SurfaceAppearance")
+				look.AlphaMode = Enum.AlphaMode.Overlay
+				look.ColorMap = part.TextureID
+				look.Parent = part
+			end)
+			tinted += if made then 1 else 0
+			untinted += if made then 0 else 1
+		end
+	end
+	if tinted > 0 then
+		table.insert(done, tinted .. " textured body parts tinted by their Color (Overlay SurfaceAppearance)")
+	end
+	if untinted > 0 then
+		table.insert(done, untinted .. " textured body parts left untinted: no Plugin capability here, so convert in Studio")
+	end
+
+	root.Anchored = not (options and options.Anchored == false)
+	model.PrimaryPart = root
+	table.insert(done, if root.Anchored then "root anchored" else "root left unanchored: hold it with AlignPosition and AlignOrientation")
+	local clothing = 0
+	for _, child in model:GetChildren() do
+		clothing += if child:IsA("Clothing") then 1 else 0
+	end
+	if clothing > 0 then
+		table.insert(done, clothing .. " classic Shirt/Pants no longer show")
+	end
+	return model.Name .. ": " .. table.concat(done, "; ")
 end
 
 return RigAudit
