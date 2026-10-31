@@ -18,7 +18,7 @@ Code never (a security rule). Any other Toolbox asset may stay as a placeholder 
 
 ## Plugin asset libraries
 
-Before building UI or VFX, check installed Studio plugins for accessible asset libraries. Users may already have free-to-use effect templates, effect meshes (slash arcs, rings, cones), particle/flipbook textures and UI background textures; consider suitable assets alongside the project's own before sourcing replacements. Plugin libraries may be browsable through their UI even when their assets are absent from the game hierarchy.
+Before building UI or VFX, check installed Studio plugins for accessible libraries: effect templates/meshes (slash arcs, rings, cones), particle/flipbook textures and UI backgrounds. Search for assets compatible with the style already resolved by [SKILL.md](../SKILL.md#visual-style-precedence); a library's look never overrides references or a matching project theme. Catalogs may be visible only in the plugin UI, outside the game hierarchy.
 
 **Check them before generating any image** (a VFX texture or flipbook, an icon, a UI background or frame). Generation is the costly path (a Codex image run, a review at full size and an upload through moderation), and a plugin may already ship the common ones: sparks, glows, smoke, gradients, panel frames.
 1. **List them.** On Windows, Studio keeps installed plugins at `%LOCALAPPDATA%\Roblox\<userId>\InstalledPlugins\<pluginAssetId>\<version>\Plugin.rbxm` and local ones in `%LOCALAPPDATA%\Roblox\Plugins`; each `Plugin.rbxm`'s root instance names its plugin. Effect, particle and UI libraries are the candidates.

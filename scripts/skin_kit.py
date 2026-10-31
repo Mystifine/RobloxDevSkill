@@ -12,7 +12,7 @@
     print(kit.gaps(rig, pieces))              # {}, or the sides a wrap leaves bare (references/rigs.md, Skins)
     kit.render(out_dir, 'apart', views=kit.INNER, apart=1.5, res=(900, 900))   # those sides, limbs pulled clear
     # Geometry QA with the replica body before UVs/textures (references/rigs.md, step 4).
-    # The default, references/modeling.md: a full PBR set at 1024x1024, painted in anime ink, after the clay check:
+    # Anime-ink skin fallback, only when selected by SKILL.md's style precedence; 1024x1024 PBR after the clay check:
     kit.sharpen(pieces)                       # crisp rims: a plate shaded smooth looks inflated
     skins, glow = kit.merge(pieces, emissive={'Glow'})   # one '<Part>__Skin' per body part; glow stays Neon
     for region, obs in kit.regions(skins).items():   # a 1024 map for each of head, torso, arms and legs
@@ -20,7 +20,7 @@
         maps = kit.paint(obs, LOOKS, out_dir, f'MyStand_R6_{region}', strokes=P.strokes)
         kit.preview(obs, maps)
     kit.render(out_dir, 'paint', pbr=True)
-    # A realistic material instead, when asked: maps = kit.bake(skins, PBR, out_dir, 'MyStand_R6').
+    # A realistic material instead, when selected: maps = kit.bake(skins, PBR, out_dir, 'MyStand_R6').
     # Final geometry + UV QA before export, then verify the FBX by re-importing.
     rr.export_pieces(skins + glow, fbx_path)  # then RigSkin.apply(rig, skin, { looks = ... }) in Studio
     # A weapon or shield is its own model, built the same way in its own scene: references/rigs.md, Gear. A held one:
@@ -1358,7 +1358,7 @@ def hair_check(head, obs, leave=(), mins=HAIR):
     return found
 
 
-# ---------------------------------------------------------------- the anime ink paint (the default style)
+# ---------------------------------------------------------------- the anime ink paint recipe
 
 
 def _hexlin(c):
@@ -1682,7 +1682,7 @@ def _folds(ob, surface, looks, hidden, size, rng, tones, shadow, light):
 
 
 def paint(objs, looks, out_dir, prefix, size=1024, samples=24, strokes=None, seed=1, line_scale=1.0):
-    """The default texture: a full PBR set painted in anime ink (see LOOKS above). Paints each look, inks it, then bakes the
+    """Anime-ink PBR recipe (see LOOKS above). Paints each look, inks it, then bakes the
     relief of the line work and folds into the normal map, and each look's roughness and metalness. Writes
     <out_dir>/<prefix>_{color,normal,metal,rough}.png at `size` and returns their paths, for a SurfaceAppearance. Materials are
     the 'M_<Look>' previews from Pieces.objects; strokes come from Pieces.ink. line_scale thins the ink on something small and

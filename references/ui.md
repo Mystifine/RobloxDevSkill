@@ -4,9 +4,17 @@ Everything here applies to **ScreenGui, BillboardGui and SurfaceGui** alike; the
 
 ## Match first
 
-Read the project's existing UI controllers/components, theme or style constants (colors, fonts, corner radius, stroke, padding, tween styles), and its image-asset table. New UI reuses those; do not introduce a second visual language unless the user asks for one. Reuse existing components before building new ones.
+Apply [SKILL.md's visual style precedence](../SKILL.md#visual-style-precedence). Inspect reference layouts and comparable project UI, controllers, theme tokens (colors, fonts, corners, strokes, spacing, tweens) and image tables. Reuse components compatible with the chosen design.
 
 Before building UI, check installed plugins' asset libraries for reusable imagery, including background textures ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)).
+
+## Style
+
+**Simulator cartoon fallback.** The reference HUD (`StarterGui.SimulatorReferenceHUD`, `SimulatorReferenceTopbar` and `SimulatorReferenceStatus`, when available) uses:
+
+- Rounded, saturated plates with dark plum outlines (`#301C30`), soft vertical gradients and diagonal shine stripes contained by the rounded face.
+- Bold rounded lettering, such as FredokaOne: white or pale text with a strong dark outline. Keep captions, values and newly needed labels as editable native text, rather than baking them into button images; choose wording for the requested feature.
+- Large, glossy cartoon icons, distinct functional colors, compact status cards and a restrained rainbow progression strip. Notification badges may overlap their own card; independent components still need clearance (below).
 
 ## Mobile first
 
@@ -75,12 +83,12 @@ Nothing leaks out of its box unless the design says so. **A border stroke's band
 
 ## Icons and images
 
-- **Reuse before generating** (generation costs a run, a review and an upload): look in the project's image table, then installed plugins' libraries ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)). Generate only when neither has a fit.
+- **Fallback imagery:** match the simulator HUD with readable silhouettes, saturated colors, two or three clean shade planes, small glossy highlights and consistent deep plum/navy outlines; no extra sticker border. UI labels stay native text, except artwork intrinsic to an icon, such as a calendar's number.
+- **Reuse before generating:** search matching project images, then compatible plugin libraries and Toolbox art ([assets.md](assets.md)). Source availability never changes the selected style. Generate missing art when possible; otherwise mark a temporary placeholder (`Placeholder = true`) and report what is missing and how to replace it with supplied art, a new upload or a predefined asset id.
 - Generate icons as **512x512, 1:1 (square), transparent-background PNG** *(default)* (smaller memory on clients); downscale a generator's larger square output with premultiplied-alpha LANCZOS. If a generator cannot output transparency, remove the background and confirm the alpha channel before upload. Use a different size or aspect only for non-icon art (banners, hero art), with the user's agreement.
 - **Outlines match the set.** Before generating, measure the siblings' edge with [scripts/icon_outlines.py](../scripts/icon_outlines.py): a viewer shows transparency as white, which hides a white sticker border. Give every new or edited icon the same edge (a dark ink line, a white sticker border of the same width, or none). An edit never adds or drops a border, and a brief states the measured style, never one remembered.
 - **Character art** follows [characters.md](characters.md): put its garment line in the prompt and review at full size before upload.
 - **Damage, health and defeat icons** are uploads and follow [no-gore.md](no-gore.md): a burst or star for damage, a heart for health, a cartoon skull or KO stars for defeats; never blood drops, splatter or wounds.
 - **Uploads** use the project's cloud API key and must load in the experience: [assets.md](assets.md), Uploading.
 - All image ids live in the project's image-asset table (or one new constants module), never inline in controllers, so a replacement is a one-line change.
-- When an image is needed and not supplied: look in installed plugins' libraries, then the Toolbox if available (audit per [assets.md](assets.md)), otherwise use a temporary placeholder and mark it (comment or attribute `Placeholder = true`). Tell the user which ids are placeholders; each is swapped later for supplied art (a new upload, through the gate in [assets.md](assets.md)) or a predefined asset id, whichever fits.
 - Preload important images (`ContentProvider:PreloadAsync`) before showing a screen that depends on them.

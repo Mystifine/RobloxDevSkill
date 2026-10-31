@@ -2,18 +2,18 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: ten always-on rules plus a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
+`SKILL.md` is a short dispatcher: ten always-on rules, shared visual-style precedence and a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
 ```
-SKILL.md                 dispatcher (always loaded, about 50 lines)
+SKILL.md                 dispatcher: request/reference -> matching project theme -> asset-specific fallback
 .mcp.json                repository-only Studio/Blender MCP access (excluded by installers)
 references/
   coding.md              dependencies, structure, backend performance, security, data limits and erasure, pitfalls, verification
   gameplay.md            physics movers, network ownership, NPC pathfinding, playing animations in game
   rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, parity tests
-  ui.md                  mobile first, in bounds (UIStroke), safe areas, centered anchors, Studio previews, state, world-space GUIs, icons
+  ui.md                  simulator-cartoon UI/icon fallback, mobile first, in bounds (UIStroke), safe areas, centered anchors, Studio previews, state, world-space GUIs
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
-  modeling.md            20k tri limit (18k for top tier), anime ink in full PBR at 1024x1024 by default (other styles when asked), DoubleSided always, box modeling, clay check, no z-fighting
+  modeling.md            stud-style model / anime-ink skin fallbacks, 1024x1024 maps, 20k tri limit (18k for top tier), DoubleSided always, box modeling, clay check, no z-fighting
   environment.md         Unified Lighting, atmosphere, sky, post-processing, terrain, custom materials
   rigs.md                character models: R15 from a HumanoidDescription (seat, clean), parts, joints, attachments, accessories, R6, no Humanoid by default (AnimationController), skins (custom art on a standard rig: welded or skinned)
   characters.md          all-ages character rules (2D and 3D): modest covered chest, no cleavage, 70% in-character cover, a straight layer past the hips, prompts, review

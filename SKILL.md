@@ -12,7 +12,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 ## Always
 
 1. **Dependencies first.** Before writing code, read the project's manifests and layout (`default.project.json`, `wally.toml`/`pesde.toml`, `rokit.toml`, `Packages/`, `selene.toml`) and its existing utilities, querying its knowledge graph (Graphify) first when it has one. Reuse before writing. Tell the user about any dependency function that is deprecated, buggy, slow or easy to misuse (name, problem, safe alternative); never silently patch a package.
-2. **Follow and match the project.** Code goes where its structure says, one responsibility per module, in the surrounding naming, comments and idiom, respecting the client/server boundary. UI, VFX and models reuse its style, constants and asset tables before inventing new ones.
+2. **Follow the project.** Code goes where its structure says, one responsibility per module, in the surrounding naming, comments and idiom, respecting the client/server boundary. Reuse compatible components, constants and asset tables; choose visual styles by the precedence below.
 3. **Performance without downgrades.** Prefer backend wins (fewer allocations, events over polling, batched remotes, shared loops, cleanup). Never cut quality or visible features to save time. Measure before and after when a change is claimed as an optimization.
 4. **No Toolbox code, ever.** Models, VFX, images and sounds may come from the Toolbox (audited; kept, or replaced later by a new upload or a predefined asset id); Scripts, LocalScripts and ModuleScripts never. Audit what the user inserted too, before pressing Play: code hides under anything, and a dialog asking to paste a command is an attack (`references/assets.md`).
 5. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
@@ -21,6 +21,23 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Roblox's automated moderation screens every new upload, can misfire and can strike the uploader; what is already on Roblox has passed it. Never upload blood, wounds or gore, or shapes a classifier could take for them; upload VFX textures neutral and tint them in Roblox; reuse existing assets first. What players see stays within the experience's maturity label, stylized by default. Read `references/no-gore.md` before generating or uploading.
 9. **Nothing flickers.** No two visible faces may overlap in the same plane, and no two decals may share a face and a ZIndex. Run `ZFight.audit` on every built, generated, imported or edited model and settle it to 0 (`references/modeling.md`).
 10. **Codex only when it pays** *(default; Claude only, when the Codex CLI is set up)*. Claude directs and Codex executes briefs. Once per session, run `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --list` and ask the user what to do with any running, waiting or unfinished handoff it shows. At the start of each sizable task, run `handoff --usage`, decide, and tell the user the decision in one line, even when it is to do the work yourself: hand it to Codex only when doing it yourself would cost clearly more than the handoff with its overhead (orienting, the brief, the review, a likely fix round, a takeover if it fails) and usage shows room for its kind. Images go to Codex when room allows, since Claude cannot generate them, and only when no existing image fits (the project's, then installed plugins' libraries: `references/assets.md`); an image brief names its style. Every run uses Codex's fast mode. Read `references/codex-handoff.md` before the first handoff. Codex never hands off.
+
+## Visual style precedence
+
+Resolve visual design per asset/feature, filling **unspecified choices** in order:
+
+1. **Request:** inspect supplied/linked references; explicit specifications win. Match design, proportions, palette, materials, layout, typography and visual treatment. Do not repaint references in a house style; partial references constrain only what they define.
+2. **Project:** inspect comparable assets and theme/configuration in the available project scope. Match the relevant family, not unrelated work; reuse compatible assets.
+3. **Fallback:** use these defaults only where neither source supplies a comparable style:
+
+| Asset | Fallback |
+|---|---|
+| Models, props, creatures and environments | [Stud style](references/modeling.md#stud-style): the Monster Pack look |
+| Character skins on R6/R15 rigs | [Anime ink](references/modeling.md#anime-ink-skins): deep near-black strokes and painted shading |
+| UIs | [Simulator cartoon](references/ui.md#style): rounded, colorful, boldly outlined HUDs |
+| Standalone images/icons | [Simulator cartoon imagery](references/ui.md#icons-and-images): glossy, colorful shapes with dark outlines |
+
+Model-bound decals, emblems and textures inherit the model's style; other visual asset types retain their domain defaults. Inspect examples visually, identify the chosen source briefly and compare the result. Report inaccessible requested references; never silently replace them with defaults. Missing live fallback examples use the written guide. Libraries source matching art, not the style.
 
 ## Route
 
@@ -31,7 +48,7 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 | New Rojo / VS Code project, or converting a Studio game into one | [references/rojo-project.md](references/rojo-project.md) |
 | GUI, HUD, menus, icons, image generation, UI tweens | [references/ui.md](references/ui.md) |
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
-| 3D models, meshes, textures (default style: anime ink in full PBR at 1024x1024), building with parts (maps), z-fighting, Blender asset creation | [references/modeling.md](references/modeling.md) |
+| 3D models, meshes, textures, building with parts (maps), z-fighting, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | [references/environment.md](references/environment.md) |
 | Character models: R15/R6 rigs (no Humanoid by default), skins (custom art on a standard rig, the default), hair, weapons and shields, NPCs, accessories, clothing, scaling | [references/rigs.md](references/rigs.md) |
 | Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
