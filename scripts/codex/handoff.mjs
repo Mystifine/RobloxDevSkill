@@ -10,9 +10,10 @@ import { activeRuns, alive, atomicWrite, canonical, inside, isMain, liveReservat
 import { checkout, finishSnapshot, git, snapshot } from './snapshot.mjs';
 import { queueRun, summarize } from './summarize.mjs';
 import { cleanup, describePending, openHandoffs, removeWorktree } from './cleanup.mjs';
-import { bindingReset, describeUsage, readLive, readLogged, room, runCost, runCosts, when } from './usage.mjs';
+import { bindingReset, describeUsage, FAST_TIER, readLive, readLogged, room, runCost, runCosts, when } from './usage.mjs';
 
 const HELP = `Usage: handoff.sh --brief FILE --cd DIR [--kind code|image] [--queue] [--resume THREAD] [--worktree]
+  Every run uses Codex's fast mode. An image brief needs a "## Style" section (a --resume follow-up does not).
   --check [--probe]             CLI, login, MCP, model (probe cached 12 h), usage and every open handoff
   --usage / --list              Codex usage and room now (no model turn) / open handoffs only
   --image FILE / --add-dir DIR  repeatable references / shared writable roots (not locked)
@@ -100,6 +101,15 @@ export function configInfo(cwd, model, effort) {
   const home = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
   return { servers: [...servers], accountKey: hash(path.resolve(home)), configKey: hash(JSON.stringify([files, text, model, effort,
     process.env.CODEX_HANDOFF_CLI || 'codex', process.env.CODEX_HANDOFF_FALLBACK_MODELS || ''])) };
+}
+// Codex drops a tier its model does not offer without a word, so --check reads the model list for the fast tier.
+export function fastReport(override, home = process.env.CODEX_HOME || path.join(os.homedir(), '.codex')) {
+  const config = path.join(home, 'config.toml'), cache = readJson(path.join(home, 'models_cache.json'));
+  const model = override || (fs.existsSync(config) ? /^\s*model\s*=\s*"([^"]+)"/m.exec(fs.readFileSync(config, 'utf8'))?.[1] : '');
+  const entry = cache?.models?.find((item) => item.slug === model);
+  if (!entry) return `fast mode: service_tier=${FAST_TIER} on every run (${model || 'the default model'} is not in the local model list, so not confirmed)`;
+  return entry.service_tiers?.some((tier) => tier.id === FAST_TIER) ? `fast mode: on (${model}, service_tier=${FAST_TIER})` :
+    `fast mode: NOT AVAILABLE on ${model}: its runs use the default tier`;
 }
 // Live limits first (no model turn); the newest session-log snapshot when the account can't be read.
 const readUsage = async () => (await readLive(cliCommand(['app-server']))) || readLogged();
@@ -276,7 +286,7 @@ async function run(root, options, ctx) {
     }
     const resources = [...new Set([...options.resource, ...options.mcp].map((n) => `app:${n.toLowerCase()}`).concat(options.resume ? [`thread:${options.resume}`] : [], options.check ? [`probe:${info.configKey}`] : []))];
     // Only the checkout is exclusive. --add-dir roots are shared output folders (each run writes its own files), so two
-    // runs delivering to one folder can run together (seen 2026-10-29: locking Downloads refused a parallel launch).
+    // runs delivering to one folder can run together (locking Downloads refused a parallel launch).
     const paths = options.check ? [] : [cwd];
     const admit = options.check || options.ignoreLimit ? undefined : (state) => {
       const refusal = noRoom(state, usage, info.accountKey, options.kind);
@@ -303,7 +313,7 @@ async function run(root, options, ctx) {
     }
     const lessons = path.join(project, 'LESSONS.md');
     const roblox = fs.existsSync(path.join(skillRoot, 'SKILL.md')) ? ` For Roblox work the roblox-dev skill at ${skillRoot} applies: its SKILL.md rules and the references the brief names.` : '';
-    const images = options.kind === 'image' ? ` Image task: use the built-in image generator with at most 5 reference images per generation; save finals and any originals where the brief says, copying originals (never moving or editing them), and record each exact prompt; write prompts per ${path.join(skillRoot, 'references', 'characters.md')} and ${path.join(skillRoot, 'references', 'no-gore.md')}; if moderation blocks a prompt, reword it once within the brief's design, then report blocked.` : '';
+    const images = options.kind === 'image' ? ` Image task: use the built-in image generator with at most 5 reference images per generation; save finals and any originals where the brief says, copying originals (never moving or editing them), and record each exact prompt; write prompts per ${path.join(skillRoot, 'references', 'characters.md')} and ${path.join(skillRoot, 'references', 'no-gore.md')}; if moderation blocks a prompt, reword it once within the brief's design, then report blocked. The brief's Style section is binding and every prompt carries it: judge each result by eye at full size and at 128 px against that section and any style example attached, line weight first; a reference attached for content does not set the style. Generate again when the look has drifted, at most twice, then deliver the closest and say what still differs. A generator's slight tonal noise inside a flat color is normal and is not drift, and clearing it is not a reason to generate again or to report failed. Say in your report how the result meets the Style section.` : '';
     const prompt = options.check ? 'Reply with exactly the two letters "OK", without punctuation. Do not use tools.' :
       `Read ${path.join(runDir, 'brief.md')} and carry out the brief. Follow project AGENTS.md.${roblox}${fs.existsSync(lessons) ? ` Read standing lessons at ${lessons}.` : ''}${images} ` +
       `The working directory is ${cwd}. Keep scratch and review media in ${runDir}; it is deleted at cleanup, so anything a deliverable still needs afterwards (files your delivered scripts read or write, sources) goes beside the deliverables, never in it, and no deliverable names its path. ` +
@@ -312,7 +322,7 @@ async function run(root, options, ctx) {
       `Finish with a report under 250 words and write ${path.join(runDir, 'result.json')} as UTF-8 JSON without a byte-order mark: ` +
       '{"status":"completed|blocked|failed","verification":"checks run and results","reason":"remaining work or empty"}. ' +
       'Use completed only when every requirement and required verification is satisfied. A tool/sandbox failure that prevents finishing means blocked. Do not change setup, permissions, or sandbox to get around a failure.';
-    const configs = ['-c', 'approval_policy="never"'];
+    const configs = ['-c', 'approval_policy="never"', '-c', `service_tier=${JSON.stringify(FAST_TIER)}`];
     for (const server of info.servers) {
       const enabled = !options.check && options.mcp.includes(server);
       if (enabled) configs.push('-c', `mcp_servers.${server}.enabled=true`, '-c', `mcp_servers.${server}.default_tools_approval_mode="approve"`);
@@ -377,6 +387,10 @@ export async function main(argv = process.argv.slice(2)) {
   if (!options.check && !options.brief) fail(HELP);
   if (!fs.existsSync(options.cd) || !fs.statSync(options.cd).isDirectory()) fail('--cd directory does not exist');
   if (!options.check && (!fs.existsSync(options.brief) || !fs.statSync(options.brief).isFile())) fail('Brief file does not exist');
+  // Without a named style Codex invents one: the brief decides the look, and a follow-up keeps its thread's.
+  if (options.brief && options.kind === 'image' && !options.resume && !/^#{1,6}\s*style\b/im.test(fs.readFileSync(options.brief, 'utf8'))) {
+    fail('An image brief needs a "## Style" section: the style by name, line weight, finish and an example to match (references/codex-handoff.md, 4)');
+  }
   for (const image of options.image) if (!fs.existsSync(image) || !fs.statSync(image).isFile()) fail(`Image does not exist: ${image}`);
   for (const dir of options.addDir) if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) fail(`Writable directory does not exist: ${dir}`);
   const version = cliSync(['--version']);
@@ -410,6 +424,7 @@ export async function main(argv = process.argv.slice(2)) {
   const ctx = { source, info, project };
   if (!options.check) return run(root, options, ctx);
   console.log(`mcp servers (enable per run with --mcp): ${enabled.join(', ') || 'none'}`);
+  console.log(fastReport(options.model));
   let cached, code = 0;
   if (!options.probe) await withLock(root, () => { cached = loadState(root).probes[info.configKey]; });
   if (cached?.at > Date.now() - 43200000) console.log(`handoff: Codex ready (${version.stdout.trim()}, cached model probe)`);

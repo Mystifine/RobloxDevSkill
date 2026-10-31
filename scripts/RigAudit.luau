@@ -263,7 +263,7 @@ function RigAudit.clean(model: Model, keep: { Scripts: boolean? }?): string
 end
 
 -- A Humanoid costs every frame; a rig that only animates plays the same clips through an AnimationController. Kept from
--- the Humanoid (seen 2026-10-30 on generated R6 and R15):
+-- the Humanoid (on generated R6 and R15):
 --   - the height it stood the root at, as the RootHeight attribute (studs from the floor to the root's centre: R15
 --     HipHeight plus half the root, R6 on its legs): place the root there, since nothing else holds it up;
 --   - the skin color under a body part's texture: without a Humanoid a dynamic head showed its texture untinted (white

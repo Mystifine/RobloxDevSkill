@@ -12,7 +12,7 @@
 
 Space: Roblox root-relative (x, y, z) -> Blender (-x, z, y + rootHeight): the ground at 0, the character facing -Y,
 its left at +X. Roblox's FBX importer maps Blender (x, y, z) back to (-x, z, y) for meshes whose origin is the scene
-origin, which both exports use (checked 2026-10-29: 1 Blender unit = 1 stud, facing -Z, maps kept; an object's own
+origin, which both exports use (1 Blender unit = 1 stud, facing -Z, maps kept; an object's own
 transform is dropped)."""
 import json
 import math
@@ -174,7 +174,7 @@ def _fbx(path, objects, types, **extra):
         o.select_set(True)
     bpy.context.view_layer.objects.active = objects[0]
     # Roblox: FBX unit scale, no leaf bones, no animation (blender-export-pipelines' roblox preset). Textures stay out: embedded,
-    # they arrive as a SurfaceAppearance on every piece, beside the maps you upload (seen 2026-10-30).
+    # they arrive as a SurfaceAppearance on every piece, beside the maps you upload.
     bpy.ops.export_scene.fbx(filepath=str(path), use_selection=True, object_types=set(types), apply_scale_options='FBX_SCALE_UNITS',
                              path_mode='AUTO', embed_textures=False, add_leaf_bones=False, bake_anim=False, use_tspace=False, **extra)
 
@@ -253,7 +253,7 @@ def _refuse_folds(objects):
 def export_pieces(pieces, path):
     """Welded skin: each piece keeps its name (its body part) and has its transform applied, its origin at the scene
     origin. Roblox's importer keeps a mesh's vertices relative to its object's origin but drops the object's own
-    transform (checked 2026-10-29: pieces with their origins at their centres all imported at the file origin), so
+    transform (pieces with their origins at their centres all imported at the file origin), so
     only the scene origin puts every piece where it was modeled. The MeshPart sits at its centre; RigSkin.apply moves
     its pivot there too."""
     bpy.context.view_layer.update()  # matrix_world lags a script's location changes until the next update

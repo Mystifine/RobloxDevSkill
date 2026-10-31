@@ -14,7 +14,7 @@
 -- rig: a Model with a Humanoid or AnimationController (R15, R6 or custom; Motor6D or AnimationConstraint joints; Bones
 -- are followed). clip: a KeyframeSequence, an Animation or an asset id. The rig itself is never changed.
 -- Load in Edit: loadstring(game:GetService("HttpService"):GetAsync(url, true))(), or a temporary ModuleScript.
--- Calibrated in Studio (2026-10-27) on Roblox's R15 idle, walk, run and point clips (0 errors) and on planted defects
+-- Calibrated in Studio on Roblox's R15 idle, walk, run and point clips (0 errors) and on planted defects
 -- (flip, seam, sink, hover, renamed poses, hyperextended knee and elbow, off-grid key, missing and early marker).
 
 local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")

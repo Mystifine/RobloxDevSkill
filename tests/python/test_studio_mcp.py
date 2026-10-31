@@ -13,6 +13,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import studio_mcp
 
 
+class PlayTests(unittest.TestCase):
+    def test_play_runs_on_the_server_and_always_stops(self):
+        class Fake:
+            def __init__(self):
+                self.calls = []
+
+            def call(self, tool, args, timeout):
+                self.calls.append(tool if tool != 'start_stop_play' else f'play {args["is_start"]}')
+                if tool == 'get_studio_state':
+                    return {'content': [{'type': 'text', 'text': 'Available DataModels: Client, Server'}]}
+                if tool == 'execute_luau':
+                    self.server = args
+                    raise RuntimeError('lost')
+                return {'content': []}
+
+        fake = Fake()
+        with tempfile.TemporaryDirectory() as tmp, patch.object(studio_mcp.time, 'sleep'):
+            script = Path(tmp) / 't.luau'
+            script.write_text('return 1')
+            args = type('A', (), {'target': str(script), 'timeout': 5, 'image': None, 'output': None})
+            with self.assertRaises(RuntimeError):
+                studio_mcp.play(fake, 'id', args)
+        self.assertEqual(fake.calls, ['play True', 'get_studio_state', 'execute_luau', 'play False'])
+        self.assertEqual(fake.server['datamodel_type'], 'Server')
+
+    def test_play_stops_even_when_starting_it_times_out(self):
+        class Slow:
+            calls = []
+
+            def call(self, tool, args, timeout):
+                self.calls.append(args['is_start'])
+                if args['is_start']:
+                    sys.exit('no reply')
+                return {'content': []}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / 't.luau'
+            script.write_text('return 1')
+            args = type('A', (), {'target': str(script), 'timeout': 5, 'image': None, 'output': None})
+            with self.assertRaises(SystemExit):
+                studio_mcp.play(Slow(), 'id', args)
+        self.assertEqual(Slow.calls, [True, False])
+
+
 class OutputTests(unittest.TestCase):
     def test_unicode_text_and_image_have_separate_outputs(self):
         payload = json.dumps({'name': '竜の娘', 'motion': '▂▇█'}, ensure_ascii=False)

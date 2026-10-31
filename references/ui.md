@@ -19,7 +19,7 @@ Roblox is a phone platform: **design, build and verify for the phone first**, th
 
 ## Stay in bounds
 
-Nothing leaks out of its box unless the design says so. **A border stroke's band sits where its settings put it** ([UIStroke](https://create.roblox.com/docs/reference/engine/classes/UIStroke), checked 2026-10-28):
+Nothing leaks out of its box unless the design says so. **A border stroke's band sits where its settings put it** ([UIStroke](https://create.roblox.com/docs/reference/engine/classes/UIStroke)):
 - `BorderStrokePosition.Outer` (the default) draws it entirely outside the frame, so an element's outline adds its thickness on every side: a bar 1 px inside a rim still touches the rim once its own outline is counted. `Center` puts half outside, `Inner` none (the band then eats into the content area). `BorderOffset` moves it on (a scale of the frame's shorter side plus pixels).
 - `StrokeSizingMode.ScaledSize` makes `Thickness` a share of the frame's shorter side (0.1 on a 200 x 300 frame is 20 px), so the outline grows with the device scale; `FixedSize` keeps pixels.
 - An object may carry several border strokes (give each its own `ZIndex`); the widest sets the reach. On text objects only `ApplyStrokeMode.Border` outlines the box; the default `Contextual` outlines the glyphs.
@@ -43,7 +43,7 @@ Nothing leaks out of its box unless the design says so. **A border stroke's band
 - **Mount a preview in CoreGui** (Edit): Studio shows it and never saves it with the place. `screen_capture` leaves CoreGui out, so move the preview into StarterGui only for a capture, then delete it, along with anything the code made on the way (sounds, groups).
 - **Lay out against the device,** not the Studio window: a frame of the device's size holding the HUD at its own `UIScale`. `GuiService:GetGuiInset()` reads 0 in Edit, so a preview passes the top bar's height in.
 - **Measure at each size,** once open tweens settle (Edit can run them late): UIBounds, the smallest text per line, every button's size, the distance to the top bar and the screen edges. Then the content extremes: the longest name and text, the lowest and highest values, optional parts hidden or shown.
-- **An unpublished place (PlaceId 0) may load none of the game's own images** (seen 2026-10-28: every one returned `AssetFetchStatus.Failure`). Judge art in the published place; images missing from such a preview are not a layout fault.
+- **An unpublished place (PlaceId 0) may load none of the game's own images** (every one returned `AssetFetchStatus.Failure`). Judge art in the published place; images missing from such a preview are not a layout fault.
 - **Keep Studio in the foreground for captures:** in the background it stops rendering 3D, so the world and every ViewportFrame come out blank while the GUI still draws. That is the environment, not a code fault.
 - **Engine gotchas:** `TextFits` checks text against its own label only (a label wider than its parent still passes; UIBounds catches the leak); children of a `UIGridLayout` ignore `Rotation` (rotate a frame inside each cell); under a `UIScale`, `AbsoluteSize` is scaled, so lay out in logical points (`AbsoluteSize / scale`).
 

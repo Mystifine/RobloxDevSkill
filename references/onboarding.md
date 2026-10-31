@@ -18,7 +18,7 @@
 
 Templates: [scripts/TutorialGuide.luau](../scripts/TutorialGuide.luau): `spotlight` (dark hole plus input sinks), `screenRect`, `arrow`, `beam`, `lookAt`, `lock` (hide HUD, sink keys, restore). Checked in Studio. Use the project's own pointer or beam first if it has one, and match its style.
 
-## Funnels (AnalyticsService; Creator Hub limits table checked 2026-10-27)
+## Funnels (AnalyticsService; Creator Hub limits table)
 **Limits:** up to 10 funnels (the docs do not say whether onboarding counts: plan at most 9 including it and build only what is needed now), 100 steps each, server only, published places only. Only a step's first instance counts (repeats still spend rate budget); skipping ahead completes earlier steps; a saved step expires after 180 days. One-time funnels need no `funnelSessionId`; recurring ones do (a GUID or `<playerId>-<itemId>`; the last 10 per user are tracked). Up to 3 custom fields (`Enum.AnalyticsCustomFieldKeys.CustomField01..03.Name`, string values): unlimited values per field, but past 8,000 combined values they are grouped as "Other". One rate budget for all events: 120 + 20 per CCU per minute.
 
 **Rules**

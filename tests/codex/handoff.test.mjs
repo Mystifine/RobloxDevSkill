@@ -13,8 +13,8 @@ import { alive, loadState, readJson, reserve, release, safeRemove, writeJson } f
 import { limitResetAt, nextStep, summarize } from '../../scripts/codex/summarize.mjs';
 import { snapshot, finishSnapshot, git } from '../../scripts/codex/snapshot.mjs';
 import { cleanup } from '../../scripts/codex/cleanup.mjs';
-import { parse } from '../../scripts/codex/handoff.mjs';
-import { bindingReset, normalize, readLogged, room, runCost } from '../../scripts/codex/usage.mjs';
+import { fastReport, parse } from '../../scripts/codex/handoff.mjs';
+import { bindingReset, FAST_COST, FAST_TIER, normalize, readLogged, room, runCost } from '../../scripts/codex/usage.mjs';
 
 const scripts = fileURLToPath(new URL('../../scripts/codex/', import.meta.url));
 const fake = fileURLToPath(new URL('./fake-codex.mjs', import.meta.url));
@@ -24,7 +24,7 @@ function fixture(t) {
   const root = path.join(dir, 'home'), cwd = path.join(dir, 'repo'), codexHome = path.join(dir, 'codex');
   for (const folder of [root, cwd, codexHome]) fs.mkdirSync(folder);
   const calls = path.join(dir, 'calls.jsonl'), brief = path.join(dir, 'brief.md'), usage = path.join(dir, 'usage.json');
-  fs.writeFileSync(brief, 'Perform the fixture task.');
+  fs.writeFileSync(brief, 'Perform the fixture task.\n\n## Style\nFlat fixture style.\n');
   const env = { ...process.env, CODEX_HANDOFF_HOME: root, CODEX_HOME: codexHome, CODEX_HANDOFF_CLI: fake, CODEX_HANDOFF_MODEL: '',
     CODEX_HANDOFF_EFFORT: '', CODEX_HANDOFF_FALLBACK_MODELS: '', CODEX_HANDOFF_SANDBOX: '', CODEX_HANDOFF_MAX_RUNS: '', CODEX_HANDOFF_SELF: '',
     CLAUDE_CODE_SESSION_ID: '', CLAUDE_CONFIG_DIR: path.join(dir, 'claude'), FAKE_CALLS: calls, FAKE_USAGE_FILE: usage };
@@ -89,7 +89,7 @@ test('completion requires a task result, completed turn, and successful infrastr
     ['recovered-command', [{ type: 'item.completed', item: { type: 'command_execution', exit_code: 1, aggregated_output: 'a recoverable test failed' } }, done], result, 0],
     // Recovered stream reconnects, a byte-order mark and tool noise in stderr are not failures.
     ['reconnects', [reconnect, { ...reconnect, message: 'Falling back from WebSockets to HTTPS transport.' }, done], result, 0],
-    // The CLI logs the transport fallback as an error item too (seen 2026-10-29).
+    // The CLI logs the transport fallback as an error item too.
     ['fallback-item', [reconnect, { type: 'item.completed', item: { type: 'error', message: 'Falling back from WebSockets to HTTPS transport. stream disconnected before completion: websocket closed by server before response.completed' } }, done], result, 0],
     ['tool-error-item', [{ type: 'item.completed', item: { type: 'error', message: 'apply_patch failed' } }, done], result, 1],
     ['bom', [done], null, 0, { rawResult: `\uFEFF${JSON.stringify(result)}` }],
@@ -126,7 +126,7 @@ test('a mid-run usage limit: code is taken over, image work is resumed by --wait
   assert.match(limited.stdout, /next: images wait for Codex/); assert.match(limited.stdout, /resume after reset: bash /);
   const [entry] = Object.values(loadState(f.root).pending);
   assert.match(entry.checkpoint, /^1 step\(s\) done \(last: phase 1 textures\); next: phase 2 review sheets$/);
-  assert.equal(entry.goal, 'Perform the fixture task.');
+  assert.equal(entry.goal, 'Perform the fixture task. ## Style Flat fixture style.');
   const argv = words(entry.command).slice(2), resumed = parse(argv);
   assert.equal(resumed.resume, entry.thread); assert.equal(resumed.note, note); assert.deepEqual(resumed.mcp, ['blender']); assert.equal(resumed.kind, 'image');
   assert.equal(resumed.cd, path.resolve(readJson(path.join(entry.runDir, 'invocation.json')).cwd));
@@ -395,19 +395,62 @@ test('usage is read live without a model turn, falls back to the session log, an
   t.after(() => { if (saved === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = saved; });
   assert.equal(readLogged().primary.used, 55);
 });
+test('a run measured before fast mode counts at the fast rate; one measured in it counts as it was', () => {
+  const old = (primary) => ({ kind: 'image', primary, secondary: 1 }), fast = (primary) => ({ ...old(primary), fast: true });
+  assert.equal(FAST_COST, 1.5);
+  assert.equal(runCost([old(4), old(6), old(8)], 'image').primary.value, 12);
+  assert.equal(runCost([old(4), old(6), old(8)], 'image').secondary.value, 2);
+  assert.equal(runCost([fast(4), fast(6), fast(8)], 'image').primary.value, 8);
+  assert.equal(runCost([old(4), old(6), fast(8)], 'image').primary.value, 9);
+});
+test('every launch asks for the fast tier, the probe and a resume too', async (t) => {
+  const f = fixture(t), tier = `service_tier="${FAST_TIER}"`;
+  f.setUsage({ primary: 1 });
+  assert.equal((await f.launch(f.args).done).code, 0);
+  assert.equal((await f.launch(['--check', '--probe', '--cd', f.cwd]).done).code, 0);
+  const calls = f.invocations();
+  assert.ok(calls.length >= 2);
+  for (const call of calls) assert.ok(call.args.includes(tier), call.args.join(' '));
+});
+test('an image brief with no Style section is refused before anything runs; a follow-up keeps its thread\'s style', async (t) => {
+  const f = fixture(t);
+  f.setUsage({ primary: 1 });
+  fs.writeFileSync(f.brief, '# Task\nDraw a face.\n');
+  const refused = await f.launch([...f.args, '--kind', 'image']).done;
+  assert.equal(refused.code, 64);
+  assert.match(refused.stderr, /Style/);
+  assert.equal(f.invocations().length, 0);
+  assert.equal((await f.launch(f.args).done).code, 0);          // a code brief needs none
+  fs.writeFileSync(f.brief, '# Task\n## Style\nAnime ink: bold brush lines.\n');
+  assert.equal((await f.launch([...f.args, '--kind', 'image']).done).code, 0);
+  const prompt = f.invocations().at(-1).args.find((arg) => arg.includes('carry out the brief'));
+  assert.match(prompt, /Style section is binding/);
+  assert.match(prompt, /at most twice/);
+  assert.match(prompt, /tonal noise/);
+  assert.match(parse(['--brief', 'b', '--kind', 'image', '--resume', 'thread']).resume, /thread/);
+});
+test('--check says whether the model offers the fast tier', (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(path.join(f.codexHome, 'config.toml'), 'model = "quick"\n');
+  writeJson(path.join(f.codexHome, 'models_cache.json'), { models: [{ slug: 'quick', service_tiers: [{ id: FAST_TIER }] }, { slug: 'slow', service_tiers: [] }] });
+  assert.match(fastReport('', f.codexHome), /fast mode: on \(quick/);
+  assert.match(fastReport('slow', f.codexHome), /NOT AVAILABLE on slow/);
+  assert.match(fastReport('unknown', f.codexHome), /not confirmed/);
+});
 test('room counts the measured run cost per kind, active runs, resets and the cap', () => {
-  assert.deepEqual(runCost([]), { primary: { value: 10, measured: 0 }, secondary: { value: 2, measured: 0 } });
-  const code = (primary, secondary, overlap = false) => ({ kind: 'code', primary, secondary, overlap });
+  assert.deepEqual(runCost([]), { primary: { value: 15, measured: 0 }, secondary: { value: 3, measured: 0 } });
+  const code = (primary, secondary, overlap = false) => ({ kind: 'code', primary, secondary, overlap, fast: true });
   const cost = runCost([code(4, 1), code(6, 1), code(8, 2), code(30, 9, true), code(null, 1)], 'code');
   // The upper quartile, not the median: the costlier runs of a kind set its room.
   assert.deepEqual(cost, { primary: { value: 8, measured: 3 }, secondary: { value: 1, measured: 4 } });
   // Kinds are measured apart: small image runs don't make a Blender build look cheap (a median of all said 4%).
-  const mixed = [code(2, 0), { kind: 'image', primary: 4, secondary: 1 }, { kind: 'image', primary: 6, secondary: 1 }, code(36, 6), code(36, 6), { kind: 'image', primary: 5, secondary: 1 }];
+  const image = (primary) => ({ kind: 'image', primary, secondary: 1, fast: true });
+  const mixed = [code(2, 0), image(4), image(6), code(36, 6), code(36, 6), image(5)];
   assert.equal(runCost(mixed, 'code').primary.value, 36);
   assert.equal(runCost(mixed, 'image').primary.value, 6);
   // Under three runs of a kind, the costliest measured run outweighs a smaller default.
   assert.equal(runCost([code(2, 0), code(36, 6)], 'code').primary.value, 36);
-  assert.equal(runCost([code(2, 0)], 'code').primary.value, 10);
+  assert.equal(runCost([code(2, 0)], 'code').primary.value, 15);
   const later = now() + 3600;
   const usage = (primary, secondary = 0, allowed = true) => normalize({ primary: { usedPercent: primary, resetsAt: later }, secondary: { usedPercent: secondary, resetsAt: later + 86400 } }, 'live', Date.now(), allowed);
   assert.equal(room(usage(79), 0, runCost(mixed, 'code'), 9), 0);   // 21% left: no Blender build fits
@@ -445,7 +488,7 @@ test('a launch without room is refused before it starts; image work is queued an
 });
 test('parallel launches never overshoot the room', async (t) => {
   const f = fixture(t), hold = path.join(f.dir, 'hold');
-  f.setUsage({ primary: 75 });   // 25% left at the default 10% a run: room for two
+  f.setUsage({ primary: 69 });   // 31% left at the default 15% a run: room for two
   const launches = ['a', 'b', 'c'].map((name) => { const dir = path.join(f.dir, name); fs.mkdirSync(dir); return f.launch(['--brief', f.brief, '--cd', dir], { FAKE_HOLD: hold }); });
   await until(() => f.invocations().length >= 2, 'two runs did not start');
   const refused = await Promise.race(launches.map((launch) => launch.done));
@@ -461,7 +504,7 @@ test('a run measures its share of the usage windows', async (t) => {
   assert.equal(measured.code, 0, measured.stderr);
   assert.match(measured.stdout, /codex usage: 5h window 10% -> 18%, weekly 2% -> 3%/);
   const sample = loadState(f.root).samples.at(-1);
-  assert.deepEqual([sample.primary, sample.secondary, sample.overlap, sample.kind], [8, 1, false, 'code']);
+  assert.deepEqual([sample.primary, sample.secondary, sample.overlap, sample.kind, sample.fast], [8, 1, false, 'code', true]);
 });
 test('the summary tells Claude to take over code and to keep images with Codex', async (t) => {
   const f = fixture(t), at = now(), failed = [{ type: 'thread.started', thread_id: 'thread-a' }, { type: 'turn.failed', error: { message: 'tool crashed' } }];

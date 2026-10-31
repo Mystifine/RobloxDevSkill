@@ -51,6 +51,120 @@ class SkinKitTests(unittest.TestCase):
     def setUp(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)
 
+    def test_hoop_runs_round_its_outline_without_a_jump(self):
+        hoop = kit.Hoop(1.0, .5, .15)
+        steps = 400
+        points = [hoop.at(hoop.L * i / steps)[0] for i in range(steps + 1)]
+        self.assertLess(max((a - b).length for a, b in zip(points, points[1:])), hoop.L / steps * 1.5)
+        self.assertLess((points[0] - points[-1]).length, 1e-6)
+        self.assertAlmostEqual(hoop.at(.3)[0].x, -hoop.at(-.3)[0].x)
+        self.assertAlmostEqual(hoop.at(0)[0].y, -.5)
+        self.assertAlmostEqual(hoop.at(hoop.L / 2)[0].y, .5)
+
+    def test_form_interpolates_between_its_hoops(self):
+        form = kit.Form(1, 2, [(0, 1, 1, .1), (2, 2, 1, .1)])
+        self.assertAlmostEqual(form.hoop(1).w, 1.5)
+        p, n = form.S(0, 1, .1)
+        self.assertAlmostEqual(p.y, 2 - 1.1)
+        self.assertEqual(tuple(n), (0, -1, 0))
+
+    def test_band_and_stack_face_outward_and_cut_at_each_joint(self):
+        form = kit.Form(0, 0, [(0, 1, 1, .2), (2, 1, 1, .2)])
+        t = kit.stack(form, form.around())
+        face = max(t.faces, key=lambda f: f.calc_area())
+        self.assertGreater(face.normal.dot(face.calc_center_median() - Vector((0, 0, face.calc_center_median().z))), 0)
+        pieces = kit.Pieces()
+        pieces.cut([('Upper', 1, 99), ('Lower', -99, 1)], 'Gold', t, .03)
+        obs = pieces.objects({'Gold': '#C9A23A'})
+        self.assertEqual(sorted(o.name for o in obs), ['Lower__Gold', 'Upper__Gold'])
+        tops = {o.name: max(v.co.z for v in o.data.vertices) for o in obs}
+        bottoms = {o.name: min(v.co.z for v in o.data.vertices) for o in obs}
+        self.assertLess(tops['Lower__Gold'], 1)
+        self.assertGreater(bottoms['Upper__Gold'], 1)
+
+    def test_sections_cut_at_the_joints_and_keep_one_part_on_r6(self):
+        r15 = {'upper': 'U', 'lower': 'L', 'hand': 'H', 'elbow': 3, 'wrist': 2}
+        self.assertEqual(kit.sections(r15), [('U', 3, 99), ('L', 2, 3), ('H', -99, 2)])
+        r6 = {'upper': 'Arm', 'lower': 'Arm', 'hand': 'Arm', 'elbow': 3, 'wrist': 2}
+        self.assertEqual(kit.sections(r6), [('Arm', -99, 99)])
+        self.assertEqual(kit.sections({'chest': 'T', 'hip': 'T', 'waist': 2}), [('T', -99, 99)])
+
+    def test_mirrored_ribbons_meeting_on_the_centre_line_stay_flat(self):
+        form = kit.Form(0, 0, [(0, 1, .5, .15), (3, 1, .5, .15)])
+        pieces = kit.Pieces()
+        for side, m in (('Left', 1), ('Right', -1)):
+            path = [(m * .004, .4), (m * .3, 1.3), (m * .9, 1.8)]
+            pieces.put(side, 'Gold', kit.ribbon(form.S, path, .044, flat_ends=True), False)
+        obs = pieces.objects({'Gold': '#C9A23A'})
+        self.assertEqual(kit.folds(obs), {})
+        self.assertEqual(kit.coplanar(obs), {})
+
+    def test_ribbon_plate_gem_and_blade_are_closed(self):
+        form = kit.Form(0, 0, [(0, 1, .5, .15), (3, 1, .5, .15)])
+        for t in (kit.ribbon(form.S, [(0, 1), (.5, 2)], .03), kit.plate(form.S, [(-.2, 1), (.2, 1), (0, 1.3)]),
+                  kit.gem(form.S, 0, 1, .05), kit.blade([Vector((0, 0, 0)), Vector((0, 0, 1)), Vector((.1, 0, 2))], [.1, .1, 0], lambda p: kit.Y)):
+            self.assertTrue(closed(t))
+            t.free()
+
+    def test_split_at_keeps_the_path_and_cuts_where_it_crosses(self):
+        above, below = kit.split_at([(0, 3), (0, 1)], 2)
+        self.assertEqual(above, [(0, 3), (0.0, 2)])
+        self.assertEqual(below, [(0.0, 2), (0, 1)])
+
+    def test_pokes_finds_a_box_corner_through_a_round_wrap(self):
+        rig = {'boxes': {'Left Leg': limb('Left Leg', 0)}}
+        for r, poking in ((.2, True), (.08, False)):
+            form = kit.Form(0, 0, [(.2, .555, .555, r), (1.8, .555, .555, r)])
+            pieces = kit.Pieces()
+            pieces.put('Left Leg', 'Gold', kit.shell(kit.stack(form, form.around(3, 2, 6)), .03))
+            obs = pieces.objects({'Gold': '#C9A23A'})
+            self.assertEqual(bool(kit.pokes(rig, obs)), poking, r)
+            for ob in obs:
+                bpy.data.objects.remove(ob)
+
+    def test_coplanar_gives_where_two_pieces_lie_on_each_other(self):
+        pieces = kit.Pieces()
+        pieces.put('A', 'Gold', kit.box((0, 0, 0), (1, 1, 1), 0))
+        pieces.put('B', 'Gold', kit.box((.2, .2, 1), (.8, .8, 2), 0))
+        pieces.put('C', 'Gold', kit.box((.2, .2, 0), (.8, .8, .5), 0))
+        obs = pieces.objects({'Gold': '#C9A23A'})
+        found = kit.coplanar(obs)
+        self.assertIn(('A__Gold', 'C__Gold'), found)
+        self.assertEqual(found[('A__Gold', 'C__Gold')][1][2], 0.0)
+        self.assertNotIn(('A__Gold', 'B__Gold'), found)  # back to back, facing away from each other
+
+    def test_a_bob_in_two_shells_is_closed_and_passes_hair_check(self):
+        head = {'part': 'Head', 'c': Vector((0, 0, 4.6)), 'r': .6, 'h': .6}
+        H = kit.Hair(head, rise=.2, side=.2, back=.28, front=.15, round_=2.7)
+        span = 47
+        under = H.points(span, [-.1, -.24, -.05, -.26, -.12, -.2, -.06], .2) + [(span + 2, -.25), (span + 6, -.72)]
+        under += H.teeth(span + 10, 350 - span, 17, -.8, -.98) + [(354 - span, -.72), (358 - span, -.25)]
+        over = H.points(40, [.14, .03, .2, .06, .17], .36) + [(43, .02), (49, -.3)] + H.teeth(55, 305, 13, -.32, -.54, 2) + [(311, -.3), (317, .02)]
+        pieces = kit.Pieces()
+        pieces.put('Head', 'Dark', H.shell(under, stop=.62, rows=6), True)
+        t = H.shell(over, off=.035, rows=8)
+        self.assertTrue(closed(t))
+        pieces.put('Head', 'Hair', t, True)
+        obs = pieces.objects({})
+        self.assertEqual(kit.hair_check(head, obs), {})
+        self.assertEqual(kit.folds(obs), {})
+        self.assertLess(sum(len(p.vertices) - 2 for o in obs for p in o.data.polygons), 4800)
+
+    def test_render_frames_a_weapon_that_lies_along_y(self):
+        pieces = kit.Pieces()
+        pieces.put('Sword', 'Gold', kit.box((-.05, -5, -.05), (.05, 1, .05), 0))
+        pieces.objects({'Gold': '#C9A23A'})
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = kit.render(tmp, 'sword', views={'right': kit.VIEWS['right']}, res=(120, 60))
+            self.assertTrue(Path(paths[0]).exists())
+            image = bpy.data.images.load(paths[0])
+            px = list(image.pixels)
+            w, h = image.size
+            sword = [x for y in range(h) for x in range(w) if abs(px[(y * w + x) * 4 + 2] - px[2]) > .1]
+            self.assertGreater(max(sword) - min(sword), w * .6)   # most of the frame, and not cut off at its edges
+            self.assertGreater(min(sword), 0)
+            self.assertLess(max(sword), w - 1)
+
     def piece(self):
         pieces = kit.Pieces()
         pieces.put('Head', 'Gold', cube())
@@ -330,7 +444,7 @@ class SkinKitTests(unittest.TestCase):
         self.assertEqual(kit.grip_fit([self.weapon(self.HANDLE, self.BLADE, self.GUARD, self.POMMEL)]), {})
 
     def test_grip_fit_finds_a_guard_and_blade_in_the_hand(self):
-        """The sword of 2026-10-30: its guard and blade began 0.3 studs ahead of the grip."""
+        """A sword whose guard and blade began 0.3 studs ahead of the grip."""
         sword = self.weapon((.08, -.3, .75, -.08, .08), (.05, -3.5, -.28, -.3, .3), (.1, -.33, -.27, -.5, .5))
         found = kit.grip_fit([sword])
         self.assertEqual(set(found), {'front'})
@@ -424,7 +538,7 @@ class SkinKitTests(unittest.TestCase):
         self.assertEqual(kit.hair_check(self.HEAD, self.built_hair()), {})
 
     def test_hair_check_finds_a_helmet_and_a_comb(self):
-        """The monster hair of 2026-10-30: a cap 0.09 off the head and 0.13 over it, 11 bangs ending at one height."""
+        """Monster hair: a cap 0.09 off the head and 0.13 over it, 11 bangs ending at one height."""
         H = kit.Hair(self.HEAD, rise=.13, side=.09, back=.09, front=.09, round_=3.4)
         found = kit.hair_check(self.HEAD, self.hair(H, H.cap(), *H.bangs(n=11, span=116, tips=[.4] * 11, sweep=0),
                                                     *H.layer(144, 216, 7, 4.7, 3.0)))

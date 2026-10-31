@@ -2,8 +2,9 @@
 
     python skin_ink.py paint.png strokes.json color.png height.png
 
-strokes.json holds {"ink": [...], "shadow": [...], "light": [...]}, each stroke a flat list x0, y0, r0, x1, y1, r1, ... in
-pixels of the paint layer (r the half width). Shadow and light are soft fold tones, blurred before they go down; ink is drawn
+strokes.json holds {"ink": [...], "shadow": [...], "light": [...], "tones": [{"color": [r, g, b], "strokes": [...]}]}, each stroke a flat
+list x0, y0, r0, x1, y1, r1, ... in pixels of the paint layer (r the half width). Shadow and light are soft fold tones, blurred
+before they go down; tones are fold lines in their look's own deep tone, since black ones read as scratches; ink is drawn
 at four times the size and filtered down, so a tapered stroke keeps a smooth edge. The paint is eased first, which takes the
 bake's noise out of its soft edges. height.png holds the same strokes as relief, for the normal map."""
 import json
@@ -50,6 +51,14 @@ def main():
     light = light.filter(ImageFilter.GaussianBlur(1.8)).point(lambda v: int(v * .55))
     result = Image.composite(ImageChops.multiply(base, Image.new('RGB', size, FOLD_SHADOW)), base, shadow)
     result = Image.composite(Image.new('RGB', size, FOLD_LIGHT), result, light)
+    folds = Image.new('L', size, 0)
+    for tone in data.get('tones', []):
+        layer = Image.new('L', (size[0] * SS, size[1] * SS), 0)
+        for s in tone['strokes']:
+            draw(layer, s, SS)
+        layer = layer.resize(size, Image.Resampling.LANCZOS)
+        result = Image.composite(Image.new('RGB', size, tuple(tone['color'])), result, layer)
+        folds = ImageChops.lighter(folds, layer)
     line = ink.resize(size, Image.Resampling.LANCZOS)
     result = Image.composite(Image.new('RGB', size, INK), result, line)
     result.save(out)
@@ -57,7 +66,7 @@ def main():
     relief = Image.new('L', size, 128)
     relief = Image.composite(Image.new('L', size, 70), relief, shadow.point(lambda v: int(v * .8)))
     relief = Image.composite(Image.new('L', size, 190), relief, light)
-    relief = Image.composite(Image.new('L', size, 30), relief, line.filter(ImageFilter.GaussianBlur(.8)))
+    relief = Image.composite(Image.new('L', size, 30), relief, ImageChops.lighter(line, folds).filter(ImageFilter.GaussianBlur(.8)))
     relief.save(height)
 
 

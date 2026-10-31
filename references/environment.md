@@ -4,7 +4,7 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 
 ## Lighting
 
-- **Unified Lighting** (fully live): `Lighting.LightingStyle` (`Realistic`, or `Soft` for the classic Roblox look) with `PrioritizeLightingQuality` replaces the deprecated `Technology` property ([Lighting](https://create.roblox.com/docs/reference/engine/classes/Lighting), checked 2026-10-28). Never set `Technology` in new work.
+- **Unified Lighting** (fully live): `Lighting.LightingStyle` (`Realistic`, or `Soft` for the classic Roblox look) with `PrioritizeLightingQuality` replaces the deprecated `Technology` property ([Lighting](https://create.roblox.com/docs/reference/engine/classes/Lighting)). Never set `Technology` in new work.
 - **Time and sun:** `ClockTime` (or `TimeOfDay`) and `GeographicLatitude`; `Brightness` and `ExposureCompensation`.
 - **Fill and reflections:** `Ambient` (areas the sky cannot reach) and `OutdoorAmbient`; `EnvironmentDiffuseScale` and `EnvironmentSpecularScale` (how much the sky lights and reflects on surfaces: PBR materials look flat at 0).
 - **Shadows:** `GlobalShadows`, `ShadowSoftness`. Every `PointLight`, `SpotLight` or `SurfaceLight` with `Shadows` on costs on phones: keep shadow casters few and ranges short, and give decorative glows no shadows.
@@ -16,7 +16,7 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 
 ## Post-processing
 
-- In Lighting an effect shows for every player; in the Camera, for one (a blur behind a menu) ([post-processing](https://create.roblox.com/docs/environment/post-processing-effects), checked 2026-10-28).
+- In Lighting an effect shows for every player; in the Camera, for one (a blur behind a menu) ([post-processing](https://create.roblox.com/docs/environment/post-processing-effects)).
 - `BloomEffect` (glow on bright surfaces: neon parts and particle `LightEmission` feed it), `ColorCorrectionEffect` (brightness, contrast, saturation, tint; a red tint at low health), `ColorGradingEffect` (`TonemapperPreset` `Default` or `Retro`), `DepthOfFieldEffect`, `SunRaysEffect`, `BlurEffect`.
 - Keep them subtle and judge them on a phone: heavy bloom and depth of field cost fill rate and smear small detail. Studio hides some effects below the highest editor quality level.
 

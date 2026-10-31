@@ -1,6 +1,6 @@
 # Blood and gore (uploads strict, existing assets trusted)
 
-**Where the risk is.** Roblox's automated moderation screens everything new you submit: images, decals, textures, flipbooks, meshes and their maps, audio, video, saved models and packages, and the text that goes with them. It applies its own rules to uploads whatever the experience's label ([content maturity](https://create.roblox.com/docs/production/promotion/content-maturity), checked 2026-10-28), it can misfire (a red splash meant as paint or magic can be read as blood), and a rejection can strike the uploading account ([characters.md](characters.md)). What is already on Roblox has passed that screen: particles, textures and models used by their ids rarely get taken down, and using them uploads nothing.
+**Where the risk is.** Roblox's automated moderation screens everything new you submit: images, decals, textures, flipbooks, meshes and their maps, audio, video, saved models and packages, and the text that goes with them. It applies its own rules to uploads whatever the experience's label ([content maturity](https://create.roblox.com/docs/production/promotion/content-maturity)), it can misfire (a red splash meant as paint or magic can be read as blood), and a rejection can strike the uploading account ([characters.md](characters.md)). What is already on Roblox has passed that screen: particles, textures and models used by their ids rarely get taken down, and using them uploads nothing.
 
 | Zone | Rule |
 |---|---|

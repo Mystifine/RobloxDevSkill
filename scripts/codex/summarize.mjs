@@ -188,7 +188,7 @@ export async function summarize(runDir, codexExit, start, end, cwd = '', extra =
       if (limitUntil > (state.limits[key]?.until || 0)) state.limits[key] = { until: limitUntil, message: limitHit };
     }
     if (!invocation.probe && (delta('primary') !== null || delta('secondary') !== null)) {
-      state.samples = [...state.samples, { at: end, kind: imageWork ? 'image' : 'code', seconds, primary: delta('primary'), secondary: delta('secondary'), overlap: !!extra.overlap }].slice(-40);
+      state.samples = [...state.samples, { at: end, kind: imageWork ? 'image' : 'code', seconds, primary: delta('primary'), secondary: delta('secondary'), overlap: !!extra.overlap, fast: true }].slice(-40);
     }
     // Success NEVER clears another run's active usage limit.
     // A later run of the same job supersedes its pending resume, whatever the outcome.

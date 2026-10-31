@@ -20,6 +20,10 @@
 --                               default, its origin at the grip, seated inside the fist (options.seat); or anywhere on a
 --                               body part (options.part, options.at)
 --   doubleSided(root)           DoubleSided on every MeshPart under root (apply, bind and equip do it for what they touch)
+--   image(id)                   the image id inside an uploaded Decal asset, which is what a map or a face takes
+--   surface(maps)               a SurfaceAppearance from { color, normal, metal, rough } Decal asset ids, for options.surfaces
+--   preload(images)             which of these image ids have not loaded, read through ImageLabels
+--   playtest(rigs, clip, seconds)  on the Play server: a stock walk on each rig, and how far its skin strays from its limbs
 --   audit(rig)                  findings: pieces unwelded, off their weld, astray from their part, anchored or collidable,
 --                               Bones left unbound or astray, hidden body parts (with or without skin over them), weld
 --                               attachments left by deleted pieces, MeshParts not double sided, gear off its Motor6D, a held
@@ -27,7 +31,7 @@
 --                               place may read, as its own uploads are)
 --
 -- A dynamic head (a MeshPart Head with FaceControls, as on a generated R15) maps a decal through its UV atlas: a face
--- came out magnified and offset, its mouth showing as a dark line (seen 2026-10-30). There `face` puts the decal on a
+-- came out magnified and offset, its mouth showing as a dark line. There `face` puts the decal on a
 -- classic head piece ("Head__Face", sized to the head, welded like any piece) and hides the dynamic head, which stays
 -- the hitbox and keeps the Neck.
 --
@@ -37,7 +41,9 @@
 -- (Scripts) describes, or require it from ServerScriptService in a game.
 
 local AssetService = game:GetService("AssetService")
+local ContentProvider = game:GetService("ContentProvider")
 local HttpService = game:GetService("HttpService")
+local InsertService = game:GetService("InsertService")
 
 local RigSkin = {}
 
@@ -46,6 +52,7 @@ export type Options = {
 	origin: CFrame?, -- where the root sat in the skin's file (default: CFrame.new(0, rootHeight, 0))
 	map: { [string]: string }?, -- piece or bone name -> body part name, for names that do not follow the convention
 	colors: { [string]: Color3 }?, -- body colors by BodyColors group, or Body for all (see color)
+	surfaces: { [string]: SurfaceAppearance }?, -- Head, Torso, Arms and Legs: each piece gets its region's, cloned in (see surface)
 	looks: { [string]: { [string]: any } }?, -- name after "__" -> properties for those pieces, e.g. { Gold = { Color = c, Material = Enum.Material.Metal } }: imported MeshParts arrive gray Plastic; an Instance value (a SurfaceAppearance made in Studio) is cloned into each piece, replacing one of its class
 	face: string?, -- an image for the head's face decal (rbxassetid://<image id>); a dynamic head gets a classic head piece for it
 	hide: boolean?, -- hide the body parts the skin covers (and their decals, such as the face): only when the design replaces them
@@ -57,6 +64,7 @@ export type Gear = {
 	part: string?, -- a body part instead of a hand, for gear worn on the arm or back
 	at: CFrame?, -- with part: where the gear's origin sits, in the skin's file space (ground at 0, the root at rootHeight)
 	name: string?, -- the gear's name, which is also its joint's: what an animation keys
+	surface: SurfaceAppearance?, -- its maps, cloned in
 }
 
 local SEATED = 0.05 -- studs a piece may sit from where its weld holds it
@@ -386,7 +394,7 @@ local function paintBody(rig: Model, pose: { [BasePart]: CFrame }, options: Opti
 end
 
 -- A look's Instance values are cloned in: game scripts cannot set or read a SurfaceAppearance's maps (they lack the
--- Plugin capability), but can clone one made in Studio, maps and all (seen 2026-10-30).
+-- Plugin capability), but can clone one made in Studio, maps and all.
 local function style(piece: BasePart, options: Options?): boolean
 	local looks = options and options.looks
 	local look = looks and looks[(string.split(piece.Name, "__"))[2] or ""]
@@ -429,6 +437,58 @@ local function place(rig: Model, pose: { [BasePart]: CFrame }, items: { BasePart
 	for _, item in items do
 		item.CFrame = toRig * item.CFrame
 	end
+end
+
+-- A skin's regions, as skin_kit.regions cuts its texture sets.
+local function regionOf(part: string): string
+	if part == "Head" then
+		return "Head"
+	elseif string.find(part, "Arm", 1, true) or string.find(part, "Hand", 1, true) then
+		return "Arms"
+	elseif string.find(part, "Leg", 1, true) or string.find(part, "Foot", 1, true) then
+		return "Legs"
+	end
+	return "Torso"
+end
+
+-- upload_asset.py gives a Decal asset's id, and a Decal holds a different id for its image.
+function RigSkin.image(id: number): string
+	local model = InsertService:LoadAsset(id)
+	local decal = model:FindFirstChildWhichIsA("Decal", true)
+	assert(decal, "asset " .. id .. " holds no Decal")
+	local texture = decal.Texture
+	model:Destroy()
+	return texture
+end
+
+-- From a Studio script: game scripts cannot set a SurfaceAppearance's maps, but can clone one (see style).
+function RigSkin.surface(maps: { color: number, normal: number, metal: number, rough: number }): SurfaceAppearance
+	local sa = Instance.new("SurfaceAppearance")
+	sa.ColorMap = RigSkin.image(maps.color)
+	sa.NormalMap = RigSkin.image(maps.normal)
+	sa.MetalnessMap = RigSkin.image(maps.metal)
+	sa.RoughnessMap = RigSkin.image(maps.rough)
+	return sa
+end
+
+-- The ids of those that have not loaded. Each is read through an ImageLabel holding it: PreloadAsync on a bare id string reports Failure
+-- for a good map in Edit, and on a SurfaceAppearance reports nothing at all. A failed map stays failed on what holds it.
+function RigSkin.preload(images: { string }): { string }
+	local labels, failed = {}, {}
+	for _, image in images do
+		local label = Instance.new("ImageLabel")
+		label.Image = image
+		table.insert(labels, label)
+	end
+	ContentProvider:PreloadAsync(labels :: { any }, function(content, status)
+		if status ~= Enum.AssetFetchStatus.Success then
+			table.insert(failed, content)
+		end
+	end)
+	for _, label in labels do
+		label:Destroy()
+	end
+	return failed
 end
 
 function RigSkin.doubleSided(model: Instance): number
@@ -493,6 +553,14 @@ function RigSkin.equip(rig: Model, gear: BasePart, options: Gear?): Motor6D
 	gear.CanCollide, gear.CanTouch, gear.CanQuery = false, false, false
 	gear.PivotOffset = c1
 	gear.CFrame = part.CFrame * c0 * c1:Inverse()
+	if opts.surface then
+		local worn = gear:FindFirstChildOfClass("SurfaceAppearance")
+		if worn then
+			worn:Destroy()
+		end
+		gear.Color = Color3.new(1, 1, 1)
+		opts.surface:Clone().Parent = gear
+	end
 	gear.Parent = folder
 	RigSkin.doubleSided(gear)
 	local joint = Instance.new("Motor6D")
@@ -525,7 +593,19 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 			piece.PivotOffset = CFrame.identity -- imported pieces pivot at the file origin
 			weld(piece, target, r.CFrame * pose[target])
 			covered[target] = true
-			styled += if style(piece, options) then 1 else 0
+			local surface = options and options.surfaces and options.surfaces[regionOf(target.Name)]
+			if surface and not piece:IsA("MeshPart") then
+				surface = nil -- a plain Part cannot hold one
+			end
+			if surface then
+				local worn = piece:FindFirstChildOfClass("SurfaceAppearance")
+				if worn then
+					worn:Destroy()
+				end
+				piece.Color = Color3.new(1, 1, 1)
+				surface:Clone().Parent = piece
+			end
+			styled += if style(piece, options) or surface then 1 else 0
 		else
 			table.insert(unmatched, piece.Name)
 		end
@@ -545,6 +625,50 @@ function RigSkin.apply(rig: Model, skin: Instance, options: Options?): string
 	end
 	return string.format("%s: %d pieces welded (%d styled)%s; %d body parts and %d accessories hidden%s", rig.Name, #pieces - #unmatched, styled, painted, hidden,
 		accessories, if #unmatched > 0 then "; no body part for: " .. table.concat(unmatched, ", ") else "")
+end
+
+local WALK = { R6 = "rbxassetid://180426354", R15 = "rbxassetid://507777826" }
+
+-- Run on the Play server: an audit reads a rig at rest, and this is the skin with physics live. `clip` defaults to a stock walk.
+function RigSkin.playtest(rigs: { Model }, clip: string?, seconds: number?): string
+	local runs = {}
+	for _, rig in rigs do
+		local holder: Instance = rig:FindFirstChildOfClass("Humanoid") or rig:FindFirstChildOfClass("AnimationController") or rig
+		local animator = holder:FindFirstChildOfClass("Animator")
+		assert(animator, rig:GetFullName() .. " has no Animator")
+		local animation = Instance.new("Animation")
+		animation.AnimationId = clip or WALK[if rig:FindFirstChild("UpperTorso") then "R15" else "R6"]
+		local track = (animator :: Animator):LoadAnimation(animation)
+		track.Looped = true
+		track:Play()
+		local rest = {}
+		for name, part in bodyParts(rig) do
+			if name ~= "HumanoidRootPart" then
+				rest[part] = part.Position
+			end
+		end
+		table.insert(runs, { rig = rig, track = track, rest = rest, moved = 0, strayed = 0 })
+	end
+	local finish = os.clock() + (seconds or 2)
+	repeat
+		task.wait(0.05)
+		for _, run in runs do
+			for part, at in run.rest do
+				run.moved = math.max(run.moved, (part.Position - at).Magnitude)
+			end
+			for _, item in run.rig:GetDescendants() do
+				if item:IsA("RigidConstraint") and item.Attachment0 and item.Attachment1 then
+					run.strayed = math.max(run.strayed, (item.Attachment0.WorldPosition - item.Attachment1.WorldPosition).Magnitude)
+				end
+			end
+		end
+	until os.clock() > finish
+	local lines = {}
+	for _, run in runs do
+		run.track:Stop()
+		table.insert(lines, string.format("%s: limbs moved up to %.2f studs, skin strayed %.3f", run.rig.Name, run.moved, run.strayed))
+	end
+	return table.concat(lines, "\n")
 end
 
 function RigSkin.bind(rig: Model, skinned: Instance, options: Options?): string

@@ -7,6 +7,7 @@
 
   python studio_mcp.py list                                  the server's tools and their input schemas
   python studio_mcp.py luau FILE [--datamodel Edit|Server|Client]
+  python studio_mcp.py play FILE                             starts Play, runs FILE on the server, stops Play
   python studio_mcp.py call TOOL ['{"json": "args"}' | @args.json] [--image out.png]
   options: --studio NAME (a part of the place name, when several Studios are open; or STUDIO_ID), --timeout SECONDS
            --output FILE (text blocks as UTF-8, no BOM; avoids PowerShell redirect encoding)
@@ -16,7 +17,7 @@ The server: STUDIO_MCP (its command line), else %LOCALAPPDATA%\\Roblox\\mcp.bat 
 from screen_capture are written to --image. Each run starts its own server process (about 2 s).
 
 Calls run in Studio one at a time and block it until they yield. A reply can be lost while the code still runs (seen
-2026-10-30: "Target is not reachable" came back after a dressing script had run): read the state again before
+"Target is not reachable" came back after a dressing script had run): read the state again before
 re-running, and write scripts that can run twice. Exit code 1 on a tool error."""
 import argparse
 import base64
@@ -123,7 +124,7 @@ end
 
 def inline_uses(src, datamodel='Edit'):
     """`--@use A, B` on the first line: each name's .luau in this folder becomes a local. In Edit through loadstring
-    (nothing left behind); in Play, where loadstring is off (seen 2026-10-30), through a temporary ModuleScript that is
+    (nothing left behind); in Play, where loadstring is off, through a temporary ModuleScript that is
     required and destroyed."""
     first = src.split('\n', 1)[0]
     if not first.startswith('--@use'):
@@ -157,11 +158,33 @@ def show(result, image, output=None):
     return 1 if result.get('isError') else 0
 
 
+def play(s, studio, a):
+    """FILE on the Play server, between a start and a stop of Play. Stopping discards what the run changed; the place's own scripts run,
+    so audit what was inserted first (references/assets.md)."""
+    with open(a.target, encoding='utf-8') as f:
+        source = f.read()
+    try:
+        # Inside the try: a Studio slow to start Play may have started it by the time this call gives up.
+        s.call('start_stop_play', {'is_start': True, 'studio_id': studio}, a.timeout)
+        for _ in range(120):
+            state = s.call('get_studio_state', {'studio_id': studio}, 30)
+            if 'Server' in ' '.join(c.get('text', '') for c in state.get('content', [])):
+                break
+            time.sleep(1)
+        else:
+            sys.exit('Play did not start in 2 minutes')
+        time.sleep(3)  # the place's own startup
+        args = {'code': inline_uses(source, 'Server'), 'datamodel_type': 'Server', 'studio_id': studio}
+        return show(s.call('execute_luau', args, a.timeout), a.image, a.output)
+    finally:
+        s.call('start_stop_play', {'is_start': False, 'studio_id': studio}, a.timeout)
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
-    ap.add_argument('command', choices=['list', 'luau', 'call'])
-    ap.add_argument('target', nargs='?', help='luau: the .luau file; call: the tool name')
+    ap.add_argument('command', choices=['list', 'luau', 'play', 'call'])
+    ap.add_argument('target', nargs='?', help='luau, play: the .luau file; call: the tool name')
     ap.add_argument('args', nargs='?', default='{}', help='call: JSON arguments or @file.json')
     ap.add_argument('--datamodel', default='Edit', choices=['Edit', 'Server', 'Client'])
     ap.add_argument('--image', help='where to write an image result (screen_capture)')
@@ -181,6 +204,8 @@ def main():
             return 0
         if not a.target:
             ap.error(a.command + ' needs a target')
+        if a.command == 'play':
+            return play(s, s.studio(a.studio), a)
         if a.command == 'luau':
             tool = 'execute_luau'
             args = {'code': inline_uses(open(a.target, encoding='utf-8').read(), a.datamodel), 'datamodel_type': a.datamodel}
@@ -189,6 +214,8 @@ def main():
             args = json.load(open(a.args[1:], encoding='utf-8')) if a.args.startswith('@') else json.loads(a.args)
             if tool in DATAMODEL_TOOLS:
                 args.setdefault('datamodel_type', a.datamodel)
+            if tool == 'screen_capture':
+                args.setdefault('capture_id', 'ScreenCapture_1')
         if tool != 'list_roblox_studios':
             args.setdefault('studio_id', s.studio(a.studio))
         return show(s.call(tool, args, a.timeout), a.image, a.output)

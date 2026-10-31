@@ -106,10 +106,36 @@ local ok, failure = pcall(function()
 		Skin.equip(gloved, boxes("Sword", FITS), { name = "Sword" })
 		local found = gear(gloved)
 		check(found.fist ~= nil and string.find(found.fist, "past 0.80", 1, true) ~= nil, kind .. ": the fist is measured around the glove")
+
+		-- Each piece takes its region's surface, and the rapier its own.
+		local dressed = rig()
+		local names = if dressed:FindFirstChild("UpperTorso") then { Head = "Head", Torso = "UpperTorso", Arms = "LeftHand", Legs = "RightFoot" }
+			else { Head = "Head", Torso = "Torso", Arms = "Left Arm", Legs = "Right Leg" }
+		local model, surfaces = own(Instance.new("Model")), {}
+		for region, part in names do
+			boxes(part .. "__Skin", { { .2, 0, 1, -.2, .2 } }).Parent = model
+			local surface = own(Instance.new("SurfaceAppearance"))
+			surface.Name = region
+			surfaces[region] = surface
+		end
+		local plain = Instance.new("Part")
+		plain.Name = names.Torso .. "__Plain"
+		plain.Parent = model
+		Skin.apply(dressed, model, { surfaces = surfaces })
+		check(plain:FindFirstChildOfClass("SurfaceAppearance") == nil, kind .. ": a plain Part piece is left without a surface")
+		for region, part in names do
+			local piece = (dressed :: any).Skin[part .. "__Skin"]
+			check(piece:FindFirstChildOfClass("SurfaceAppearance").Name == region, kind .. ": " .. part .. " takes the " .. region .. " surface")
+		end
+		local held = boxes("Sword", FITS)
+		Skin.equip(dressed, held, { name = "Sword", surface = surfaces.Arms })
+		check(held:FindFirstChildOfClass("SurfaceAppearance") ~= nil, kind .. ": gear takes its surface")
 	end
 end)
 for _, item in temporary do
 	item:Destroy()
 end
 assert(ok, tostring(failure) .. "; checks completed: " .. table.concat(results, ", "))
+-- A bad id comes back; a good one, read through an ImageLabel, does not, where a bare string would report Failure.
+check(#Skin.preload({ "rbxassetid://1" }) == 1, "preload reports an image that does not load")
 return HttpService:JSONEncode({ passed = #results, checks = results })

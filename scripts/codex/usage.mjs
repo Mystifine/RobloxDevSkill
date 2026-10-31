@@ -7,6 +7,9 @@ import readline from 'node:readline';
 import { spawn } from 'node:child_process';
 
 const now = () => Math.floor(Date.now() / 1000);
+// Every run asks for Codex's fast tier, Fast in its model list. It uses about 1.5 times the usage of the default tier.
+export const FAST_TIER = 'priority';
+export const FAST_COST = 1.5;
 export const maxRuns = () => Number(process.env.CODEX_HANDOFF_MAX_RUNS) || 3;
 
 // One window; a window whose reset has passed is empty again.
@@ -84,15 +87,16 @@ export function readLogged(maxFiles = 6) {
 }
 
 // A run's share of each window: the upper quartile of the last 20 runs of its kind measured alone, since one code
-// run can be a 2% fix and the next a 36% Blender build (seen 2026-10-29, where a median said 4%); until 3 exist,
-// a cautious default or the costliest measured, whichever is larger. Without a kind, every kind counts.
+// run can be a 2% fix and the next a 36% Blender build (where a median said 4%); until 3 exist,
+// a cautious default or the costliest measured, whichever is larger. Without a kind, every kind counts. A run measured
+// before fast mode counts at the fast rate.
 export function runCost(samples = [], kind) {
   const quartile = (key, fallback) => {
     const values = samples.filter((sample) => !sample.overlap && (!kind || sample.kind === kind) && Number.isFinite(sample[key])).slice(-20)
-      .map((sample) => sample[key]).sort((a, b) => a - b);
+      .map((sample) => (sample.fast ? sample[key] : Math.ceil(sample[key] * FAST_COST))).sort((a, b) => a - b);
     return { value: values.length >= 3 ? Math.max(1, values[Math.ceil(values.length * 3 / 4) - 1]) : Math.max(fallback, ...values), measured: values.length };
   };
-  return { primary: quartile('primary', 10), secondary: quartile('secondary', 2) };
+  return { primary: quartile('primary', 15), secondary: quartile('secondary', 3) };
 }
 export const runCosts = (samples) => ({ code: runCost(samples, 'code'), image: runCost(samples, 'image') });
 const fits = (w, per) => w ? Math.floor((100 - w.used) / per) : Infinity;
@@ -124,7 +128,7 @@ export function describeUsage(usage, active, costs, cap = maxRuns()) {
   const lines = [usage
     ? `codex usage (${usage.source}${usage.source === 'live' ? '' : ` of ${new Date(usage.at).toISOString()}`}${usage.plan ? `, ${usage.plan} plan` : ''}): ${show('5h window', usage.primary)}; ${show('weekly', usage.secondary)}${usage.allowed === false ? '; ordinary usage NOT allowed now' : ''}`
     : 'codex usage: unknown (no live read, no session log); only the cap limits launches',
-  `a code run costs about ${costs.code.primary.value}% of the 5h window and ${costs.code.secondary.value}% of the week (${measured(costs.code, 'code')}); ` +
+  `in fast mode, a code run costs about ${costs.code.primary.value}% of the 5h window and ${costs.code.secondary.value}% of the week (${measured(costs.code, 'code')}); ` +
     `an image run about ${costs.image.primary.value}% and ${costs.image.secondary.value}% (${measured(costs.image, 'image')})`,
   `active runs: ${active}; room: ${runs(free.code, 'code')} and ${runs(free.image, 'image')} now (cap ${cap})`];
   return { text: lines.join('\n'), room: free };

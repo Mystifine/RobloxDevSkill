@@ -118,7 +118,7 @@ export const describePending = (entry) => [`== ${entry.thread ? `thread ${entry.
   `run dir: ${entry.runDir}`, `${entry.thread ? 'resume' : 'launch'}: ${entry.command}`].join('\n');
 
 // Files a run changed outside its directory that still name that directory, as "file -> run dir". Delivered rebuild
-// scripts that kept their intermediates in the run directory broke at cleanup (seen 2026-10-29).
+// scripts that kept their intermediates in the run directory broke at cleanup.
 function namingRuns(targets) {
   const found = [];
   for (const run of targets) {
