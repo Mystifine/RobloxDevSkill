@@ -2,6 +2,8 @@
 
 Goal: an effect that is unique to the ability and reads clearly, not a remix of two presets. Hits, injuries and defeats default to the stylized effects in [no-gore.md](no-gore.md) (flashes, sparks, stars, puffs, element effects), within the experience's maturity label. Upload new textures neutral (white or grey) and tint them with `Color`; a pack's existing textures are fine by id (the project's own exclusions win).
 
+Resolve visual direction through [visual-style.md](visual-style.md): match the selected shape language, palette, texture treatment and timing, without assuming a simulator/cartoon look. Existing packs supply compatible components, not the art direction. Keep the content/upload rules above when adapting another style.
+
 ## 1. Research before building
 
 1. Find the project's VFX player/utility, existing templates, and VFX packs (search Workspace, ServerStorage, ReplicatedStorage, the repo's `assets/`). Also check installed plugins' asset libraries ([assets.md, Plugin asset libraries](assets.md#plugin-asset-libraries)) before creating effects, and generate a texture or model a mesh only when none of these has one that fits: generation is the costly path. Read how existing effects are authored so yours plays through the same path.

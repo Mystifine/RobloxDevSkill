@@ -2,24 +2,26 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: ten always-on rules, shared visual-style precedence and a routing table. Agents load only the reference for the task at hand, so a UI tweak never pays for the modeling guide. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
+`SKILL.md` is a short dispatcher: ten always-on rules, shared visual-style routing, asset-readiness decisions and a routing table. Agents load only the references for the task at hand, so a UI tweak never pays for the modeling guide. Visual direction follows instructions/references, then comparable project assets, then a suitable inferred treatment; there is no fixed house style. Gameplay actors include a tested rig by default unless explicitly static or a modeling-only stage; rigging alone does not add a full animation set or AI. Materials, maps and resolution adapt to the intended result rather than requiring full PBR. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
 ```
-SKILL.md                 dispatcher: request/reference -> matching project theme -> asset-specific fallback
+SKILL.md                 dispatcher: visual direction, asset readiness, task-specific references
 .mcp.json                repository-only Studio/Blender MCP access (excluded by installers)
 references/
+  visual-style.md        shared style resolver: request/reference -> matching project assets -> suitable inference
+  styles/                optional stud, anime-ink, hand-painted, realistic, low-poly and simulator-cartoon techniques
   coding.md              dependencies, structure, backend performance, security, data limits and erasure, pitfalls, verification
   gameplay.md            physics movers, network ownership, NPC pathfinding, playing animations in game
   rojo-project.md        new Rojo project or Studio-game conversion: folder, blueprint, inventory, rebuild, switch-over, parity tests
-  ui.md                  simulator-cartoon UI/icon fallback, mobile first, in bounds (UIStroke), safe areas, centered anchors, Studio previews, state, world-space GUIs
+  ui.md                  reference-led UI/icons, mobile first, in bounds (UIStroke), safe areas, centered anchors, Studio previews, state, world-space GUIs
   vfx.md                 research, tuning, EmitDelay/EmitDuration/EmitCount, smooth in/out, placement, inspection
-  modeling.md            stud-style model / anime-ink skin fallbacks, 1024x1024 maps, 20k tri limit (18k for top tier), DoubleSided always, box modeling, clay check, no z-fighting
+  modeling.md            adaptive materials/maps/resolution, rig planning, budgets, modeling, clay check, QA, no z-fighting
   environment.md         Unified Lighting, atmosphere, sky, post-processing, terrain, custom materials
-  rigs.md                character models: skins modeled in Blender by default (Toolbox only without Blender; hair found first), the base R15 from a HumanoidDescription (seat, clean), parts, joints, attachments, accessories, R6, no Humanoid by default (AnimationController), skins (welded or skinned)
+  rigs.md                static/articulated/actor decisions, custom creature skeletons and deformation verification; standard R6/R15 skins, accessories and gear
   characters.md          all-ages character rules (2D and 3D): modest covered chest, no cleavage, 70% in-character cover, a straight layer past the hips, prompts, review
   no-gore.md             blood and gore: strict uploads (false-positive margin, neutral textures), trusted existing assets, stylized play
   assets.md              Toolbox policy (no code), safe intake, sounds, the upload gate, uploads (the cloud API key, owner-owned)
-  animation.md           60 FPS, weighted joints, feet on the ground, export, publish, inspection
+  animation.md           rig-only diagnostic scope; production clips: 60 FPS, weighted joints, feet on the ground, export, publish, inspection
   onboarding.md          show-don't-tell tutorials, pointer choices, funnel rules (10 funnels, custom fields, a post-tutorial funnel per feature)
   game-design.md         fantasy, direction, simple vs deep, loops, progression, retention, social, review
   game-economy.md        currencies, pacing (PacingSim), odds, monetization, paid random items, live ops

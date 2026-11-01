@@ -1,5 +1,9 @@
 # Animation (Blender to Roblox)
 
+## Rig-only scope
+
+For a modeling task that includes an animation-ready rig, first follow [rigs.md](rigs.md) and its standard/custom route. Use representative poses or a short diagnostic motion to verify deformation before baking and after importing the rig into Studio. This does not require a full idle/walk/attack set, gameplay code or publication of diagnostic clips. The full clip authoring, inspection and publishing workflow below applies when production animations are part of the task. Custom creatures use anatomy-appropriate skeletons, not automatically R6/R15.
+
 For **R6-style motion on an R15 rig**, first read the bundled [animate-r15-like-r6 skill](../skills/animate-r15-like-r6/SKILL.md). It defines the six moving joints and nine locked joints, rigid-limb retargeting, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
 
 ## Roblox characters (R15 / R6): check for the skill first

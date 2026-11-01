@@ -18,31 +18,23 @@ Read the rules below, then load **only** the reference your task needs. Do not p
 5. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
 6. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Design and check the phone first; topbar components match native CoreGui control height unless explicitly specified otherwise, and fit inside the actual topbar safe area; separate UI components do not overlap or clip each other unless explicitly designed to; nothing leaks out of its box, rim or rounded corner; ground effects land on the floor (never at a character's hip, head or in the air). See `references/ui.md` and `references/vfx.md` section 5.
 7. **Characters are all-ages safe, 2D and 3D** *(default, stricter than Roblox's rules)*. Female designs are fine with a modest chest under one continuous chest piece (a slight hourglass is fine), no cleavage, and in-character armor or clothing over the chest and at least 70% of the torso, the chest piece unlike the skin. Read `references/characters.md` before generating, modeling or uploading any character.
-8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Roblox's automated moderation screens every new upload, can misfire and can strike the uploader; what is already on Roblox has passed it. Never upload blood, wounds or gore, or shapes a classifier could take for them; upload VFX textures neutral and tint them in Roblox; reuse existing assets first. What players see stays within the experience's maturity label, stylized by default. Read `references/no-gore.md` before generating or uploading.
+8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Roblox's automated moderation screens every new upload, can misfire and can strike the uploader; what is already on Roblox has passed it. Never upload blood, wounds or gore, or shapes a classifier could take for them; upload VFX textures neutral and tint them in Roblox; reuse existing assets first. What players see stays within the experience's maturity label; choose art direction through the visual-style dispatcher. Read `references/no-gore.md` before generating or uploading.
 9. **Nothing flickers.** No two visible faces may overlap in the same plane, and no two decals may share a face and a ZIndex. Run `ZFight.audit` on every built, generated, imported or edited model and settle it to 0 (`references/modeling.md`).
 10. **Codex only when it pays** *(default; Claude only, when the Codex CLI is set up)*. Claude directs and Codex executes briefs. Once per session, run `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --list` and ask the user what to do with any running, waiting or unfinished handoff it shows. At the start of each sizable task, run `handoff --usage`, decide, and tell the user the decision in one line, even when it is to do the work yourself: hand it to Codex only when doing it yourself would cost clearly more than the handoff with its overhead (orienting, the brief, the review, a likely fix round, a takeover if it fails) and usage shows room for its kind. Images go to Codex when room allows, since Claude cannot generate them, and only when no existing image fits (the project's, then installed plugins' libraries: `references/assets.md`); an image brief names its style. Every run uses Codex's fast mode. Read `references/codex-handoff.md` before the first handoff. Codex never hands off.
 
 ## Visual style precedence
 
-Resolve visual design per asset/feature, filling **unspecified choices** in order:
+For visual work, load [references/visual-style.md](references/visual-style.md). Explicit instructions and supplied references lead; comparable project assets fill gaps; otherwise infer a coherent treatment suited to the task and briefly state it. There is no fixed house style. Load an optional style recipe only when its techniques apply; references may combine characteristics from several styles.
 
-1. **Request:** inspect supplied/linked references; explicit specifications win. Match design, proportions, palette, materials, layout, typography and visual treatment. Do not repaint references in a house style; partial references constrain only what they define.
-2. **Project:** inspect comparable assets and theme/configuration in the available project scope. Match the relevant family, not unrelated work; reuse compatible assets.
-3. **Fallback:** use these defaults only where neither source supplies a comparable style:
+Before substantial asset production, briefly resolve intended use and completion scope, visual direction, movement/deformation needs, and material/budget choices. State reasonable assumptions and continue; ask only when unresolved information would materially change the result or cause substantial rework. A small edit needs only the decisions it changes.
 
-| Asset | Fallback |
-|---|---|
-| Models, props, creatures and environments | [Stud style](references/modeling.md#stud-style): the Monster Pack look |
-| Character skins on R6/R15 rigs | [Anime ink](references/modeling.md#anime-ink-skins): deep near-black strokes and painted shading |
-| UIs | [Simulator cartoon](references/ui.md#style): rounded, colorful, boldly outlined HUDs |
-| Standalone images/icons | [Simulator cartoon imagery](references/ui.md#icons-and-images): glossy, colorful shapes with dark outlines |
-
-Model-bound decals, emblems and textures inherit the model's style; other visual asset types retain their domain defaults. Inspect examples visually, identify the chosen source briefly and compare the result. Report inaccessible requested references; never silently replace them with defaults. Missing live fallback examples use the written guide. Libraries source matching art, not the style.
+**Gameplay actors are animation-ready by default.** Characters, creatures, mobs and bosses intended to act in gameplay include a functional rig unless the user requests a static asset or a modeling-only stage. Resolve this before detailed modeling; use anatomy-appropriate skeletons, not necessarily R6/R15. Verify deformation and motion after import into Studio ([rigs.md](references/rigs.md)). Rigging alone does not add a full animation set or AI to the scope. Static scenery and objects moving only as a whole need no skeletal rig.
 
 ## Route
 
 | Task | Load |
 |---|---|
+| Visual design for models, textures, UI, icons, VFX or environments | [references/visual-style.md](references/visual-style.md), then only applicable recipes and domain references |
 | Luau, modules, services, networking, security, data, optimization, tests | [references/coding.md](references/coding.md) |
 | Physics, constraints, network ownership, NPC movement and pathfinding, playing animations in game | [references/gameplay.md](references/gameplay.md) |
 | New Rojo / VS Code project, or converting a Studio game into one | [references/rojo-project.md](references/rojo-project.md) |
@@ -50,7 +42,7 @@ Model-bound decals, emblems and textures inherit the model's style; other visual
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
 | 3D models, meshes, textures, building with parts (maps), z-fighting, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | [references/environment.md](references/environment.md) |
-| Character models: R15/R6 rigs (no Humanoid by default), skins (custom Blender meshes on a standard rig, the default; Toolbox only without Blender), hair (found before modeled), weapons and shields, NPCs, accessories, clothing, scaling | [references/rigs.md](references/rigs.md) |
+| Character models, gameplay creatures/mobs/bosses, custom skeletons and articulated assets; R15/R6 skins, hair, gear, accessories, clothing, scaling | [references/rigs.md](references/rigs.md); custom creatures use its dedicated route, not the standard-skin workflow |
 | Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
 | Generating or uploading assets (moderation margin, neutral textures), reusing existing ones; blood and gore: stylized hits, injuries, defeat, monsters, horror | [references/no-gore.md](references/no-gore.md) |
 | Toolbox, free models, images, sounds, any imported asset; the upload gate, uploads and the cloud API key | [references/assets.md](references/assets.md) |

@@ -1,6 +1,6 @@
 # Environment (lighting, atmosphere, sky, post-processing, terrain)
 
-The mood of a place: maps built per [modeling.md](modeling.md) get their look here. Match the project's existing Lighting first and change it only on purpose, since it changes every screen and screenshot.
+The mood of a place: maps built per [modeling.md](modeling.md) get their look here. Resolve the requested atmosphere and surface treatment through [visual-style.md](visual-style.md). Preserve compatible project Lighting and change it only on purpose, since it changes every screen and screenshot; an isolated asset request does not imply restyling the whole place.
 
 ## Lighting
 
