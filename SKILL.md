@@ -7,6 +7,13 @@ description: Dispatcher for Roblox game development. Use for any Roblox work - L
 
 Read the rules below, then load **only** the reference your task needs. Do not preload them all.
 
+## Efficient execution
+
+- **Discover narrowly.** Read each selected reference once. Inspect project/service names and asset tables first, then retrieve only relevant source sections; a static UI task does not need every controller or package. Search tool names first and expand only the schemas needed. Batch independent reads/searches; keep dependent edits and checks sequential.
+- **Keep payloads out of context.** Retain full tool results in variables or files, but print only needed paths, asset ids, status and failure details. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source. Use the tool's image display mechanism for visual review.
+- **Use helpers without dumping them.** Run the relevant audit/helper directly when its interface is known; inspect its implementation only to diagnose or change it. Group repeated findings by rule/component, retain enough detail to fix them, and repeat affected checks after a fix rather than restarting discovery. Required safety and visual checks still apply.
+- **Resolve production choices before repetition.** For visual work, settle the related asset set and validate one representative component before duplicating it; UI follows the [focused workflow](references/ui.md#workflow). Track temporary files, objects, servers and changed settings as they are created so cleanup restores the prior state without deleting final deliverables.
+
 **Everything in this skill is a default.** The project's own instructions (its `AGENTS.md`, `CLAUDE.md` and docs) and the user's instructions take precedence over any rule here, the safety and content rules included. Rules marked *(default)* are house conventions. The unmarked ones guard against Roblox limits, moderation or bugs: when an instruction overrides one of those, say once what it risks, then follow the instruction.
 
 ## Always
