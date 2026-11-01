@@ -38,7 +38,7 @@ Before substantial asset production, briefly resolve intended use and completion
 | Luau, modules, services, networking, security, data, optimization, tests | [references/coding.md](references/coding.md) |
 | Physics, constraints, network ownership, NPC movement and pathfinding, playing animations in game | [references/gameplay.md](references/gameplay.md) |
 | New Rojo / VS Code project, or converting a Studio game into one | [references/rojo-project.md](references/rojo-project.md) |
-| GUI, HUD, menus, icons, image generation, UI tweens | [references/ui.md](references/ui.md) |
+| GUI, HUD, menus, icons, image generation, UI tweens | [references/ui.md](references/ui.md) — icon consistency before reuse, transparency gradients for fades, and shine/stroke visual review |
 | Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
 | 3D models, meshes, textures, building with parts (maps), z-fighting, Blender asset creation | [references/modeling.md](references/modeling.md) |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | [references/environment.md](references/environment.md) |
