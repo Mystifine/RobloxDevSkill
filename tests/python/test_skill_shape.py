@@ -79,6 +79,13 @@ class Budgets(unittest.TestCase):
         self.assertEqual(over, {})
 
 
+class Frontmatter(unittest.TestCase):
+    def test_the_description_is_valid_yaml(self):
+        # Its colon is invalid YAML unquoted, and an agent then shows the skill with no description: seen on a CRLF checkout, which Windows installs get.
+        text = (ROOT / 'SKILL.md').read_text(encoding='utf-8')
+        self.assertRegex(text, r"(?m)^description: '[^']+'$")
+
+
 class Links(unittest.TestCase):
     def test_every_relative_link_and_anchor_resolves(self):
         broken = []

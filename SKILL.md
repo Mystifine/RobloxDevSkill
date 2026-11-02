@@ -1,6 +1,6 @@
 ---
 name: roblox-dev
-description: Roblox game development: Luau, networking, data, physics and NPCs; Rojo; UI, HUD and icons; VFX; 3D models, weapons, maps, lighting and terrain; R15/R6 rigs, skins and animation, including R6-like animation on R15 ("R6 like", "fake R6", "fake R15", "R15 R6 animation", default R6 clips on R15); Toolbox, uploads and moderation; onboarding and analytics; game design and economy; Codex handoffs.
+description: 'Roblox game development: Luau, networking, data, physics and NPCs; Rojo; UI, HUD and icons; VFX; 3D models, weapons, maps, lighting and terrain; R15/R6 rigs, skins and animation, including R6-like animation on R15 ("R6 like", "fake R6", "fake R15", "R15 R6 animation", default R6 clips on R15); Toolbox, uploads and moderation; onboarding and analytics; game design and economy; Codex handoffs.'
 ---
 
 # Roblox Dev
