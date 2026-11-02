@@ -1,6 +1,6 @@
-"""Upload one file through Open Cloud (references/assets.md, Uploading) and wait for moderation.
+"""Upload one file through Open Cloud (references/safety/uploading.md) and wait for moderation.
 
-  python upload_asset.py FILE [FILE ...] (--group ID | --user ID) [--manifest assets.json] [--type Decal|Model|Audio] [--name NAME]
+  python upload_asset.py FILE [FILE ...] (--group ID | --user ID) [--manifest assets.json] [--type Decal|Model|Audio|Animation] [--name NAME]
                          [--description TEXT] [--env-file .env] [--key-var ROBLOX_CLOUD_API_KEY] [--timeout 300] [--dry-run]
 
 Prints one JSON line a file: assetId, assetType, displayName, moderation (Approved, Rejected, ...) and the operation id.
@@ -10,10 +10,11 @@ Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending afte
 - --manifest keeps each file's result by its stem with its hash: a file already approved at the same hash is reused, not resent, so a
   batch can be rerun after any change. It holds ids only, never the key.
 
-- The creator is the experience's owner (references/assets.md says how to find it).
+- The creator is the experience's owner (references/safety/uploading.md says how to find it).
 - The key comes from the environment (--key-var) or the --env-file (KEY=VALUE lines) and is never printed.
 - The type follows the extension: .png .jpg .jpeg .bmp .tga a Decal (its image id: InsertService:LoadAsset in Studio),
-  .fbx .obj .gltf .glb .rbxm a Model, .mp3 .ogg .wav .flac Audio. Tested with .png Decals and .fbx Models.
+  .fbx .obj .gltf .glb .rbxm a Model, .mp3 .ogg .wav .flac Audio. Tested with .png Decals and .fbx Models. An animation is a .rbxm saved
+  by Studio with --type Animation (publish_r6_clips.py for the default set); Roblox documents that path, but it has not been run live.
 - --dry-run prints the request without the key and sends nothing."""
 import argparse
 import hashlib
@@ -67,7 +68,7 @@ def main():
     who = ap.add_mutually_exclusive_group(required=True)
     who.add_argument('--group', help='group id (the experience is group-owned)')
     who.add_argument('--user', help='user id (the experience is user-owned)')
-    ap.add_argument('--type', choices=['Decal', 'Model', 'Audio'])
+    ap.add_argument('--type', choices=['Decal', 'Model', 'Audio', 'Animation'])
     ap.add_argument('--name')
     ap.add_argument('--description', default='')
     ap.add_argument('--env-file')
