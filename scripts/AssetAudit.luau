@@ -153,7 +153,7 @@ function AssetAudit.run(root: Instance): Report
 				end
 			end
 			if instance:IsA("LayerCollector") and root:IsA("BasePart") then
-				add("reject", instance, "hidden ui", "a screen UI inside a mesh: seen as a fake Studio dialog, see references/assets.md")
+				add("reject", instance, "hidden ui", "a screen UI inside a mesh: seen as a fake Studio dialog, see references/safety/assets.md")
 			end
 			for _, class in BEHAVIOUR do
 				if instance:IsA(class) then

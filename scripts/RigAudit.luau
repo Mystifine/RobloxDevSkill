@@ -1,5 +1,5 @@
 --!strict
--- Character model check for Studio (Edit mode), R15 and R6 (references/rigs.md):
+-- Character model check for Studio (Edit mode), R15 and R6 (references/rigs/rigs.md):
 --
 --   audit(model)          findings: missing parts or joints, the root and PrimaryPart, anchored limbs, accessories off
 --                         their welds (they float in anchored models, viewports and previews), unmatched attachments,

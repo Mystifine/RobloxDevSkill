@@ -2,7 +2,7 @@
 -- R6-like animation on a real R15 rig ("fake R6", "R6 on R15", "R15 R6 animation"): every part and proportion stays R15, but
 -- only six joints move, and each limb moves as one rigid block about R6's pivot, so FK, IK and clips behave as they do on an R6.
 -- Everything here speaks R6: a pose is { [R6 part name] = that joint's R6 Transform }, the same numbers an R6 clip holds.
--- Run in Edit (skills/animate-r15-like-r6/SKILL.md):
+-- Run in Edit (references/animation/r6-on-r15.md):
 --
 --   map(rig)                    reads an R15's joints and body; everything below takes this map
 --   toR15 / fromR15             one joint's R6 Transform <-> the R15 Transform that moves its block the same way

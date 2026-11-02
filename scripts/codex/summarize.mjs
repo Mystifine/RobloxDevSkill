@@ -60,7 +60,7 @@ export function nextStep(status, image, thread) {
     : 'next: take over: finish the brief yourself from the checkout (the patch shows what Codex changed) and its checkpoint; relaunch only if the user asks';
   if (status === 'NEEDS REVIEW') return 'next: review the images; send anything missing back to Codex with the follow-up';
   if (status === 'CODEX USAGE LIMIT') return `next: images wait for Codex: start "${selfCommand()} --wait" in the background (it prints the resume at the reset) and tell the user; do any non-image remainder yourself`;
-  return 'next: images stay with Codex: fix the cause and run the follow-up (moderation: reword the prompt per references/characters.md and no-gore.md; at most 5 reference images; capacity: retry in a few minutes); do any non-image remainder yourself';
+  return 'next: images stay with Codex: fix the cause and run the follow-up (moderation: reword the prompt per references/safety/characters.md and no-gore.md; at most 5 reference images; capacity: retry in a few minutes); do any non-image remainder yourself';
 }
 
 const TRANSIENT = /^(Reconnecting\.\.\. \d+\/\d+|Falling back from WebSockets)/i;

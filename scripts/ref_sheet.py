@@ -1,4 +1,4 @@
-"""Renders beside their reference, for the clay check (references/modeling.md): python ref_sheet.py OUT.png IMAGE [IMAGE ...] [--height 640].
+"""Renders beside their reference, for the clay check (references/art/modeling.md): python ref_sheet.py OUT.png IMAGE [IMAGE ...] [--height 640].
 
 Each image is cropped to what stands out from its corner's color and scaled to one height, so proportions compare directly. List a
 reference, then the render of the same view. An image that fills its frame, a turnaround on a busy background, stays whole. Needs Pillow."""

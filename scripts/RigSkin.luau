@@ -1,5 +1,5 @@
 --!strict
--- Skins for R6 and R15 characters in Studio, Edit mode (references/rigs.md, Skins). A skin dresses a standard rig and
+-- Skins for R6 and R15 characters in Studio, Edit mode (references/rigs/skins.md). A skin dresses a standard rig and
 -- never replaces it: the rig keeps its parts, joints, cages, scaling and hitboxes, and its body stays visible, colored to
 -- fit; the art is built around it.
 --
@@ -72,13 +72,13 @@ local SKIN = "Skin" -- the folder under the rig that holds the pieces
 local WELD = "SkinWeld" -- the RigidConstraint that holds a piece (its attachments: SkinWeld_<piece> on the body part, SkinWeldAttachment on the piece)
 local FACE = "Head__Face" -- the classic head piece that carries the face on a dynamic head
 local GEAR = "Gear" -- the folder under the rig that holds weapons and shields
--- A held weapon against the hand, as skin_kit.grip_fit measures it in Blender (references/rigs.md, Gear).
+-- A held weapon against the hand, as skin_kit.grip_fit measures it in Blender (references/rigs/gear.md).
 local SEAT = 0.16 -- studs from the hand's end up to the handle's axis: inside the fist, not along its underside
 local HANDLE = 0.13 -- the widest a handle may be and stay inside the fist
 local CLEAR = 0.05 -- what the guard and the butt stand clear of the fist
 local WRIST = 0.3 -- how far above the hand's end the fist goes on
 local ARM = 2 -- how far above the hand's end nothing but the handle may go: the arm's length on R6
--- A weapon's triangles, as skin_kit.weapon_budget counts them in Blender (references/modeling.md, Budgets).
+-- A weapon's triangles, as skin_kit.weapon_budget counts them in Blender (references/art/modeling.md, Budgets).
 local WEAPON_MIN, WEAPON_MAX = 17000, 19000
 
 local function root(rig: Model): BasePart
@@ -807,7 +807,7 @@ local function checkHold(rig: Model, item: MeshPart, joint: Motor6D, grip: Vecto
 	end
 	local triangles = #edges // 3
 	if triangles < WEAPON_MIN or triangles > WEAPON_MAX then
-		add("warn", path, "budget", string.format("%d triangles: a weapon is built to about 18,000, between %d and %d (references/modeling.md, Budgets)", triangles, WEAPON_MIN, WEAPON_MAX))
+		add("warn", path, "budget", string.format("%d triangles: a weapon is built to about 18,000, between %d and %d (references/art/modeling.md, Budgets)", triangles, WEAPON_MIN, WEAPON_MAX))
 	end
 	local part = joint.Part0 :: BasePart
 	local axis = joint.C0.Position

@@ -11,7 +11,7 @@
 --                  running it twice moves nothing.
 --
 -- Analyses Parts (blocks, cylinder ends), WedgeParts and CornerWedgeParts. MeshParts, unions and terrain are not: audit
--- counts the MeshParts and unions it skipped, so its 0 is not read as covering them (references/modeling.md).
+-- counts the MeshParts and unions it skipped, so its 0 is not read as covering them (references/art/modeling.md).
 -- Load: loadstring(game:GetService("HttpService"):GetAsync(url, true))(), or a temporary ModuleScript. Edit mode.
 
 local ZFight = {}

@@ -1,72 +1,65 @@
 ---
 name: roblox-dev
-description: Dispatcher for Roblox game development. Use for any Roblox work - Luau, services, networking, security, DataStores, performance, physics and NPCs; Rojo/VS Code projects and converting Studio games; UI/HUD and icons; VFX and particles; 3D models, maps, lighting, terrain and z-fighting; R15/R6 rigs and character art (all-ages safety); Toolbox assets, uploads and moderation-safe generation (blood and gore); Blender-to-Roblox animation; R6-like animation on R15 rigs ("R6 like", fake R6, fake R15, R15 R6 animation, R6 FK and IK on R15, Roblox's default R6 clips on R15); onboarding and AnalyticsService funnels; game design (loops, progression, depth, retention, economy, monetization) written up as a local design plan; handing grunt work and images to the Codex CLI to save Claude tokens (usage-aware handoffs, Claude only). Loads only the reference needed.
+description: Roblox game development: Luau, networking, data, physics and NPCs; Rojo; UI, HUD and icons; VFX; 3D models, weapons, maps, lighting and terrain; R15/R6 rigs, skins and animation, including R6-like animation on R15 ("R6 like", "fake R6", "fake R15", "R15 R6 animation", default R6 clips on R15); Toolbox, uploads and moderation; onboarding and analytics; game design and economy; Codex handoffs.
 ---
 
 # Roblox Dev (dispatcher)
 
-Read the rules below, then load **only** the reference your task needs. Do not preload them all.
+Read these rules, then load **only** what the route names, each file once, when you reach that part. A task can span several rows (a skill ability = coding + vfx + animation).
+
+**Everything here is a default.** The project's own instructions (`AGENTS.md`, `CLAUDE.md`, docs) and the user's take precedence over any rule, safety and content rules included. *(default)* marks a house convention; unmarked rules guard against Roblox limits, moderation or bugs: when an instruction overrides one, say once what it risks, then follow it.
 
 ## Efficient execution
 
-- **Discover narrowly.** Read each selected reference once. Inspect project/service names and asset tables first, then retrieve only relevant source sections; a static UI task does not need every controller or package. Search tool names first and expand only the schemas needed. Batch independent reads/searches; keep dependent edits and checks sequential.
-- **Keep payloads out of context.** Retain full tool results in variables or files, but print only needed paths, asset ids, status and failure details. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source. Use the tool's image display mechanism for visual review.
-- **Use helpers without dumping them.** Run the relevant audit/helper directly when its interface is known; inspect its implementation only to diagnose or change it. Group repeated findings by rule/component, retain enough detail to fix them, and repeat affected checks after a fix rather than restarting discovery. Required safety and visual checks still apply.
-- **Resolve production choices before repetition.** For visual work, settle the related asset set and validate one representative component before duplicating it; UI follows the [focused workflow](references/ui.md#workflow). Track temporary files, objects, servers and changed settings as they are created so cleanup restores the prior state without deleting final deliverables.
-
-**Everything in this skill is a default.** The project's own instructions (its `AGENTS.md`, `CLAUDE.md` and docs) and the user's instructions take precedence over any rule here, the safety and content rules included. Rules marked *(default)* are house conventions. The unmarked ones guard against Roblox limits, moderation or bugs: when an instruction overrides one of those, say once what it risks, then follow the instruction.
+- **Discover narrowly:** project and service names and asset tables first, then only the relevant source. Search tool names first and expand only the schemas you need. Batch independent reads; keep dependent edits and checks in order.
+- **Keep payloads out of context:** keep full results in variables or files and print only paths, ids, status and failures. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source; use the tool's image display for visual review.
+- **Run helpers, don't read them:** read a script only to diagnose or change it. Group repeated findings by rule or component, and after a fix repeat the affected checks, not discovery. Required safety and visual checks still apply.
+- **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables.
 
 ## Always
 
-1. **Dependencies first.** Before writing code, read the project's manifests and layout (`default.project.json`, `wally.toml`/`pesde.toml`, `rokit.toml`, `Packages/`, `selene.toml`) and its existing utilities, querying its knowledge graph (Graphify) first when it has one. Reuse before writing. Tell the user about any dependency function that is deprecated, buggy, slow or easy to misuse (name, problem, safe alternative); never silently patch a package.
-2. **Follow the project.** Code goes where its structure says, one responsibility per module, in the surrounding naming, comments and idiom, respecting the client/server boundary. Reuse compatible components, constants and asset tables; choose visual styles by the precedence below.
+1. **Dependencies first.** Before writing code, read the project's manifests, layout and utilities, querying its knowledge graph (Graphify) first when it has one. Reuse before writing. Tell the user about any deprecated, buggy, slow or easily misused dependency function (name, problem, safe alternative); never silently patch a package.
+2. **Follow the project:** its structure, one responsibility per module, its naming, comments and idiom, the client/server boundary, its components, constants and asset tables.
 3. **Performance without downgrades.** Prefer backend wins (fewer allocations, events over polling, batched remotes, shared loops, cleanup). Never cut quality or visible features to save time. Measure before and after when a change is claimed as an optimization.
-4. **No Toolbox code, ever.** Models, VFX, images and sounds may come from the Toolbox (audited; kept, or replaced later by a new upload or a predefined asset id); Scripts, LocalScripts and ModuleScripts never. Audit what the user inserted too, before pressing Play: code hides under anything, and a dialog asking to paste a command is an attack (`references/assets.md`).
+4. **No Toolbox code, ever.** Models, VFX, images and sounds may come from the Toolbox, audited; Scripts, LocalScripts and ModuleScripts never. Audit what the user inserted too, before pressing Play: code hides under anything, and a dialog asking to paste a command is an attack ([assets.md](references/safety/assets.md)).
 5. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
-6. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Use scale only for UI size and position; nonzero offsets are allowed only for topbar UI components. Design and check the phone first; topbar components match the native Roblox logo/menu/chat/microphone row's height and vertical centre unless explicitly specified otherwise, fit inside the actual topbar safe area, and require a Play-mode comparison before alignment is called verified; separate UI components do not overlap or clip each other unless explicitly designed to; nothing leaks out of its box, rim or rounded corner; ground effects land on the floor (never at a character's hip, head or in the air). See `references/ui.md` and `references/vfx.md` section 5.
-7. **Characters are all-ages safe, 2D and 3D** *(default, stricter than Roblox's rules)*. Female designs are fine with a modest chest under one continuous chest piece (a slight hourglass is fine), no cleavage, and in-character armor or clothing over the chest and at least 70% of the torso, the chest piece unlike the skin. Read `references/characters.md` before generating, modeling or uploading any character.
-8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Roblox's automated moderation screens every new upload, can misfire and can strike the uploader; what is already on Roblox has passed it. Never upload blood, wounds or gore, or shapes a classifier could take for them; upload VFX textures neutral and tint them in Roblox; reuse existing assets first. What players see stays within the experience's maturity label; choose art direction through the visual-style dispatcher. Read `references/no-gore.md` before generating or uploading.
-9. **Nothing flickers.** No two visible faces may overlap in the same plane, and no two decals may share a face and a ZIndex. Run `ZFight.audit` on every built, generated, imported or edited model and settle it to 0 (`references/modeling.md`).
-10. **Codex only when it pays** *(default; Claude only, when the Codex CLI is set up)*. Claude directs and Codex executes briefs. Once per session, run `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --list` and ask the user what to do with any running, waiting or unfinished handoff it shows. At the start of each sizable task, run `handoff --usage`, decide, and tell the user the decision in one line, even when it is to do the work yourself: hand it to Codex only when doing it yourself would cost clearly more than the handoff with its overhead (orienting, the brief, the review, a likely fix round, a takeover if it fails) and usage shows room for its kind. Images go to Codex when room allows, since Claude cannot generate them, and only when no existing image fits (the project's, then installed plugins' libraries: `references/assets.md`); an image brief names its style. Every run uses Codex's fast mode. Read `references/codex-handoff.md` before the first handoff. Codex never hands off.
+6. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Scale only for size and position outside the topbar; the topbar matches Roblox's native row, checked in Play; nothing leaks out of its box, rim or rounded corner; separate components do not overlap. Ground effects land on the floor, never at a hip, a head or in the air.
+7. **Characters are all-ages safe, 2D and 3D** *(default, stricter than Roblox's rules)*. Read [characters.md](references/safety/characters.md) before generating, modeling or uploading any character.
+8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Reuse first. Read [no-gore.md](references/safety/no-gore.md) before generating or uploading: never blood, wounds, gore or shapes a classifier could take for them, and VFX textures go up neutral, tinted in Roblox. What players see stays within the experience's maturity label.
+9. **Nothing flickers.** `ZFight.audit` every built, generated, imported or edited model down to 0 ([modeling.md](references/art/modeling.md)).
+10. **Codex only when it pays** *(default; Claude only, when the Codex CLI is set up)*. Once per session, run `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --list` and ask the user about any open handoff. At each sizable task, run `handoff --usage`, decide, and say so in one line. Read [handoff.md](references/codex/handoff.md) before the first handoff. Codex never hands off.
 
-## Visual style precedence
-
-For visual work, load [references/visual-style.md](references/visual-style.md). Explicit instructions and supplied references lead; comparable project assets fill gaps; otherwise infer a coherent treatment suited to the task and briefly state it. There is no fixed house style. Load an optional style recipe only when its techniques apply; references may combine characteristics from several styles.
-
-Before substantial asset production, briefly resolve intended use and completion scope, visual direction, movement/deformation needs, and material/budget choices. State reasonable assumptions and continue; ask only when unresolved information would materially change the result or cause substantial rework. A small edit needs only the decisions it changes.
-
-**Gameplay actors are animation-ready by default.** Characters, creatures, mobs and bosses intended to act in gameplay include a functional rig unless the user requests a static asset or a modeling-only stage. Resolve this before detailed modeling; use anatomy-appropriate skeletons, not necessarily R6/R15. Verify deformation and motion after import into Studio ([rigs.md](references/rigs.md)). Rigging alone does not add a full animation set or AI to the scope. Static scenery and objects moving only as a whole need no skeletal rig.
+**Visual work:** load [visual-style.md](references/art/visual-style.md) first; explicit instructions and references lead, and there is no house style. **Gameplay actors** (characters, creatures, mobs, bosses) include a working rig by default ([rigs.md](references/rigs/rigs.md)).
 
 ## Route
 
-| Task | Load |
+| Task | Load, under `references/` |
 |---|---|
-| Visual design for models, textures, UI, icons, VFX or environments | [references/visual-style.md](references/visual-style.md), then only applicable recipes and domain references |
-| Luau, modules, services, networking, security, data, optimization, tests | [references/coding.md](references/coding.md) |
-| Physics, constraints, network ownership, NPC movement and pathfinding, playing animations in game | [references/gameplay.md](references/gameplay.md) |
-| New Rojo / VS Code project, or converting a Studio game into one | [references/rojo-project.md](references/rojo-project.md) |
-| GUI, HUD, menus, icons, image generation, UI tweens | [references/ui.md](references/ui.md) — icon consistency before reuse, transparency gradients for fades, and shine/stroke visual review |
-| Particles, skill/ability/hit effects, lights, beams, trails | [references/vfx.md](references/vfx.md) |
-| 3D models, meshes, textures, building with parts (maps), z-fighting, Blender asset creation; weapons (always about 18,000 triangles) | [references/modeling.md](references/modeling.md) |
-| Lighting, atmosphere, sky, post-processing, terrain, custom materials | [references/environment.md](references/environment.md) |
-| Character models, gameplay creatures/mobs/bosses, custom skeletons and articulated assets; R15/R6 skins, hair, gear, accessories, clothing, scaling | [references/rigs.md](references/rigs.md); custom creatures use its dedicated route, not the standard-skin workflow |
-| Character art or models, 2D or 3D (all-ages rules, prompts, review) | [references/characters.md](references/characters.md) |
-| Generating or uploading assets (moderation margin, neutral textures), reusing existing ones; blood and gore: stylized hits, injuries, defeat, monsters, horror | [references/no-gore.md](references/no-gore.md) |
-| Toolbox, free models, images, sounds, any imported asset; the upload gate, uploads and the cloud API key | [references/assets.md](references/assets.md) |
-| R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips; FK or IK on R15 that behaves like R6's; Roblox's default R6 clips on R15 | [animate-r15-like-r6](skills/animate-r15-like-r6/SKILL.md), then [references/animation.md](references/animation.md) for the toolchain |
-| Rigging, skinning, Blender animation, import, inspection, publishing (R15/R6: `animate-roblox-characters` first) | [references/animation.md](references/animation.md) |
-| Onboarding, tutorials, guidance pointers; analytics funnels (onboarding, post-tutorial progression) | [references/onboarding.md](references/onboarding.md) |
-| Game design: a new game, a redesign or audit, a new gameplay system; fantasy, loops, progression, depth, retention; the design plan | [references/game-design.md](references/game-design.md) |
-| Economy, pacing, odds, prices and offers, update cadence (with game design) | [references/game-economy.md](references/game-economy.md) |
-| Handing work to Codex (Claude only): open handoffs, usage and room, briefs, launch, review, takeover, cleanup | [references/codex-handoff.md](references/codex-handoff.md) |
-
-A task can span several rows (a skill ability = coding + vfx + animation); load each reference once, when you reach that part.
+| Luau, modules, services, networking, security, data, optimization, tests | `code/coding.md` |
+| Physics, constraints, network ownership, NPC movement and pathfinding, playing animations in game | `code/gameplay.md` |
+| New Rojo / VS Code project, or converting a Studio game into one | `code/rojo-project.md` |
+| GUI, HUD, menus, UI tweens | `ui/ui.md`, which says when to add topbar, icons, surface or runtime |
+| Icons, image generation | `ui/icons.md` |
+| Particles, skill/ability/hit effects, lights, beams, trails | `art/vfx.md` |
+| 3D models, meshes, textures, maps built with parts, z-fighting, Blender asset creation | `art/modeling.md` |
+| Weapons (always about 18,000 triangles), shields, held or worn gear | `art/modeling.md`, `rigs/gear.md` |
+| Lighting, atmosphere, sky, post-processing, terrain, custom materials | `art/environment.md` |
+| R15/R6 rigs and character models, accessories, scaling, rigs without a Humanoid | `rigs/rigs.md` |
+| Skins, clothing | `rigs/skins.md`, plus `rigs/rigs.md` unless the rig is ready |
+| Hair | `rigs/hair.md` |
+| Custom creatures, mobs, bosses, custom skeletons, articulated assets | `rigs/custom-creatures.md` |
+| Character art, 2D or 3D (all-ages rules, prompts, review) | `safety/characters.md` |
+| Toolbox, free models, images, sounds, any imported asset, plugin libraries | `safety/assets.md` |
+| Generating or uploading assets; uploads and the cloud API key | `safety/no-gore.md`, `safety/uploading.md` |
+| Showing hits, injuries, defeat, monsters, horror | `safety/stylized-violence.md` |
+| Rigging, skinning, Blender animation, clips, import, inspection, publishing | `animation/animation.md` |
+| R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips | `animation/r6-on-r15.md`; FK or IK adds `animation/r6-ik.md` |
+| Roblox's default R6 clips on R15, under any name | `animation/r6-default-set.md` alone: find them, upload what is missing |
+| Onboarding, tutorials, guidance pointers; analytics funnels | `design/onboarding.md` |
+| Game design: a new game, a redesign or audit, a new gameplay system; the design plan | `design/game-design.md` |
+| Economy, pacing, odds, prices and offers, update cadence | `design/game-economy.md` |
+| Handing work to Codex (Claude only) | `codex/handoff.md` |
 
 ## Scripts
 
-- **Mandatory checks:** [UIBounds](scripts/UIBounds.luau) (ui.md), [VFXInspector](scripts/VFXInspector.luau) (vfx.md 8), [AnimationInspector](scripts/AnimationInspector.luau) (animation.md 4), [ZFight](scripts/ZFight.luau) (modeling.md), [RigAudit](scripts/RigAudit.luau), `RigSkin.audit`, `skin_kit.gaps` and `hair_check` (rigs.md), `skin_kit.weapon_budget` (modeling.md), `R6OnR15.check` (animate-r15-like-r6), [AssetAudit](scripts/AssetAudit.luau) (assets.md).
-- **Helpers:** [RigSkin](scripts/RigSkin.luau), [roblox_rig.py](scripts/roblox_rig.py) and [skin_kit.py](scripts/skin_kit.py) with [skin_ink.py](scripts/skin_ink.py) (rigs.md, Skins; Studio and Blender), [upload_asset.py](scripts/upload_asset.py) (assets.md), [find_blender.py](scripts/find_blender.py) and [ref_sheet.py](scripts/ref_sheet.py) (modeling.md), [R6OnR15](scripts/R6OnR15.luau) and [r6_on_r15.py](scripts/r6_on_r15.py) (R6-like FK, IK and clips on R15; Studio and Blender: animate-r15-like-r6), [ParticlePlayer](scripts/ParticlePlayer.luau) (fallback; prefer the project's own), [TutorialGuide](scripts/TutorialGuide.luau) (onboarding.md), [PacingSim](scripts/PacingSim.luau) (game-economy.md; Lune, copied into the project), [GameInventory](scripts/GameInventory.luau), [export_place](scripts/export_place.luau) (Lune) and [UIParity](scripts/UIParity.luau) (rojo-project.md), [icon_outlines.py](scripts/icon_outlines.py) (ui.md; Python with numpy and Pillow).
-- **Codex handoff (Claude only):** [scripts/codex/handoff.sh](scripts/codex/handoff.sh) (Node; codex-handoff.md).
-- **Loading into Studio:** `python scripts/studio_mcp.py luau FILE` runs a file through Studio's own MCP server, with or without a Studio MCP tool; a first line `--@use RigSkin, RigAudit` inlines those scripts, keeping their source out of the conversation. Otherwise serve this folder (`python -m http.server 8394 --bind 127.0.0.1 --directory <skill>/scripts`; `python3` on macOS/Linux), then `loadstring(game:GetService("HttpService"):GetAsync(url, true))()`. A game's HTTP setting ships with it, so if it is off leave it off: pass the source to `loadstring`, or use a temporary ModuleScript (the only way on the client; one the Play server puts in ReplicatedStorage reaches the client; in Edit, one in CoreGui is never saved with the place). Delete what you add.
-
-Blender and animation skill chains: modeling.md, animation.md; `find-skills` when nothing fits.
+References name the scripts they need. Run Studio code with `python scripts/studio_mcp.py luau FILE`, with or without a Studio MCP tool: a first line `--@use RigSkin, RigAudit` inlines those scripts and keeps their source out of the conversation. Delete what you add. Other ways to load them, and what each script is: [docs/scripts.md](docs/scripts.md). `find-skills` when no skill named here fits.

@@ -1,6 +1,6 @@
 --!strict
 -- Writes every Script, LocalScript and ModuleScript in a saved place file to <out>/<DataModel path><suffix> (Lune,
--- outside Studio): the legacy code of a game being converted (references/rojo-project.md), byte for byte, without
+-- outside Studio): the legacy code of a game being converted (references/code/rojo-project.md), byte for byte, without
 -- passing it through Studio or an agent's context. Suffixes: .server.luau, .client.luau, .luau. Two siblings with one
 -- name get ~2, ~3 suffixes.
 -- Usage: lune run export_place.luau <place.rbxl or .rbxlx> <out folder>

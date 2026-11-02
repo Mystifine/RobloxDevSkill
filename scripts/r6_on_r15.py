@@ -1,4 +1,4 @@
-"""R6-like FK and IK on an R15 armature in Blender: the Blender side of R6OnR15.luau (skills/animate-r15-like-r6/SKILL.md).
+"""R6-like FK and IK on an R15 armature in Blender: the Blender side of R6OnR15.luau (references/animation/r6-on-r15.md).
 Run inside Blender 4.2+ (bpy):
 
     import r6_on_r15 as r6

@@ -1,5 +1,5 @@
 --!strict
--- Pacing model for game design plans (references/game-economy.md): when a modeled player reaches each milestone, so a
+-- Pacing model for game design plans (references/design/game-economy.md): when a modeled player reaches each milestone, so a
 -- plan's pacing table comes from arithmetic instead of guesses. Pure Luau, no Roblox APIs. Lune: copy this file beside
 -- the model, require("./PacingSim"), `lune run model.luau`. It also runs in Studio or any Luau VM.
 --

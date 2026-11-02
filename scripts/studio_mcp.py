@@ -160,7 +160,7 @@ def show(result, image, output=None):
 
 def play(s, studio, a):
     """FILE on the Play server, between a start and a stop of Play. Stopping discards what the run changed; the place's own scripts run,
-    so audit what was inserted first (references/assets.md)."""
+    so audit what was inserted first (references/safety/assets.md)."""
     with open(a.target, encoding='utf-8') as f:
         source = f.read()
     try:

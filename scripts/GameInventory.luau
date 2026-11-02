@@ -1,6 +1,6 @@
 --!strict
 -- Game inventory for converting a Studio game into a Rojo project (Studio MCP, Edit mode). Use it before, during and
--- after the migration (references/rojo-project.md):
+-- after the migration (references/code/rojo-project.md):
 --
 --   scripts(roots?)        every Script, LocalScript and ModuleScript: path, class, run context, lines, and what its
 --                          source touches (requires, remotes, DataStores, tags, products, attributes)

@@ -1,4 +1,4 @@
-"""Shapes and layout for modeling a welded skin around roblox_rig's replica (references/rigs.md, Skins). Blender 4.2+:
+"""Shapes and layout for modeling a welded skin around roblox_rig's replica (references/rigs/skins.md). Blender 4.2+:
 
     import roblox_rig as rr, skin_kit as kit
     dump = rr.load(path); rig = rr.build(dump, colors={...})
@@ -9,9 +9,9 @@
     P.put(a['lower'], 'Navy', kit.wrap(lo, hi, 0.07, gap=0.03, tuck=a['inner']))
     pieces = P.objects({'Navy': '#2B5AA6', 'Gold': '#E8B83A'})   # '<Part>__<Look>' objects, triangulated
     kit.render(out_dir, 'clay', clay=True)    # front, right, back and three-quarter views beside the reference
-    print(kit.gaps(rig, pieces))              # {}, or the sides a wrap leaves bare (references/rigs.md, Skins)
+    print(kit.gaps(rig, pieces))              # {}, or the sides a wrap leaves bare (references/rigs/skins.md)
     kit.render(out_dir, 'apart', views=kit.INNER, apart=1.5, res=(900, 900))   # those sides, limbs pulled clear
-    # Geometry QA with the replica body before UVs/textures (references/rigs.md, step 4).
+    # Geometry QA with the replica body before UVs/textures (references/rigs/skins.md, step 4).
     # Anime-ink skin fallback, only when selected by SKILL.md's style precedence; 1024x1024 PBR after the clay check:
     kit.sharpen(pieces)                       # crisp rims: a plate shaded smooth looks inflated
     skins, glow = kit.merge(pieces, emissive={'Glow'})   # one '<Part>__Skin' per body part; glow stays Neon
@@ -23,7 +23,7 @@
     # A realistic material instead, when selected: maps = kit.bake(skins, PBR, out_dir, 'MyStand_R6').
     # Final geometry + UV QA before export, then verify the FBX by re-importing.
     rr.export_pieces(skins + glow, fbx_path)  # then RigSkin.apply(rig, skin, { looks = ... }) in Studio
-    # A weapon or shield is its own model, built the same way in its own scene: references/rigs.md, Gear. A held one:
+    # A weapon or shield is its own model, built the same way in its own scene: references/rigs/gear.md. A held one:
     print(kit.grip_fit(gear_pieces))          # {}, or what stops a hand holding it
 
 LOOKS (kit.paint): {look: {'base': '#rrggbb', 'shade': '#rrggbb' (its shadow tone), 'light': '#rrggbb' (highlights and lit edges;
@@ -46,7 +46,7 @@ is black on metal). An R6 skin baked in about 45 s on CPU.
 
 Space as roblox_rig: the ground at 0, facing -Y, the character's left at +X, 1 unit = 1 stud. Every shape returns a
 bmesh in world space; Pieces.put merges it into the object for its body part and look (one MeshPart each in Roblox,
-styled by RigSkin's `looks`). Leave 0.03 studs between faces that look the same way (references/modeling.md).
+styled by RigSkin's `looks`). Leave 0.03 studs between faces that look the same way (references/art/modeling.md).
 
 layout(dump, rig) -> {
   'head':  {'part', 'c' (centre), 'r' (radius), 'h' (half height)},
@@ -66,7 +66,7 @@ prof, sides, sx, sy, keep, n, tilt) a surface of revolution (n > 2: a squircle t
 open surface thickness; prism(outline, origin, u, v, n, d0, d1) an extruded outline; cyl(center, axis, r, d0, d1);
 text(body, height, depth, origin, u, v, n, d0, shear, font) extruded lettering; head_profile(r, h, off, zmin) the
 classic head's outline grown by `off`, for a helmet that hugs it. Hair(L['head'], rise, side, back, front) the hair's
-volume, with cap(), lock(), hang(), bangs(), layer() and spike(), or shell() for a style drawn as one sheet (references/rigs.md, Hair):
+volume, with cap(), lock(), hang(), bangs(), layer() and spike(), or shell() for a style drawn as one sheet (references/rigs/hair.md):
     H = kit.Hair(L['head']); c, h = L['head']['c'], L['head']['h']
     for t in [H.cap(), *H.bangs(n=4, part=-20), *H.layer(95, 265, 9, c.z + 1.2 * h, c.z - 2 * h, drift=.1)]:
         P.put('Head', 'Hair', t, True)
@@ -87,7 +87,7 @@ on each other, with positions; hair_check(head, obs, leave)
 what makes hair read as a helmet or a comb; render(..., views=INNER,
 apart=1.5) shows them; clips(ob, others, pad) whether a mesh cuts into others, for gear on armor; clear_of(place, ob, others,
 start, stop, step, pad) the first placement that does not; grip_fit(obs, fist, handle, clear) what stops a hand holding a
-weapon, with fist(arm, pieces) measuring a bulky glove (references/rigs.md, Gear)."""
+weapon, with fist(arm, pieces) measuring a bulky glove (references/rigs/gear.md)."""
 import json
 import math
 import os
@@ -263,8 +263,8 @@ def wrap(lo, hi, thick, gap=0.02, open_side=None, corner=0.05, flare=0.0, inset=
     when that side shows); tucking is for the rest pose, where a full wall would lie in the same plane as the
     neighbour's and flicker. Wraps tucked against each other (the legs) keep corner above gap, so they curve apart at
     the seam.
-    open_side (the same values) leaves those walls out, only for a side the design leaves open (references/rigs.md,
-    Skins); the remaining walls end `inset` inside the body. flare widens the bottom by that much, and the x sides only
+    open_side (the same values) leaves those walls out, only for a side the design leaves open (references/rigs/skins.md);
+     the remaining walls end `inset` inside the body. flare widens the bottom by that much, and the x sides only
     where neither applies."""
     lo, hi = Vector(lo), Vector(hi)
     a, b = lo - Vector((gap, gap, 0)), hi + Vector((gap, gap, 0))
@@ -358,7 +358,7 @@ def _crossing(outline):
 
 def prism(outline, origin, u, v, n, d0, d1, b=0.015):
     """Polygon [(a, c)] in the plane origin + a*u + c*v, extruded along n from d0 to d1. Concave is fine; an outline that crosses
-    itself is refused, because its cap would fold over itself (references/modeling.md): end two arcs where they meet."""
+    itself is refused, because its cap would fold over itself (references/art/modeling.md): end two arcs where they meet."""
     crossed = _crossing(outline)
     if crossed:
         raise ValueError(f'prism: the outline crosses itself, between edges {crossed[0]} and {crossed[1]}')
@@ -792,7 +792,7 @@ def gaps(rig, pieces, open_sides=None, reach=0.5, rows=16, across=5):
     `reach` studs out (a neighbour's pieces leave when the joint swings). A height wraps where they cover the front and
     back, or three sides, and any other side there is bare (two rows at least: a single one is a piece's edge). A
     one-sided piece (a wing, a plate) wraps nothing, so it passes. open_sides {part: side, or 'x' for both} lists sides
-    the design leaves open (references/rigs.md, Skins). Welded pieces only; the head is skipped, since nothing touches
+    the design leaves open (references/rigs/skins.md). Welded pieces only; the head is skipped, since nothing touches
     its sides."""
     verts, polys = {}, {}
     for ob in pieces:
@@ -948,14 +948,14 @@ def clear_of(place, ob, others, start=0.0, stop=1.0, step=0.02, pad=0.05):
 
 
 # A held weapon against a Roblox hand: a block about a stud deep, which a handle passes through. In studs, from the weapon's
-# origin, the middle of the handle on its axis (references/rigs.md, Gear).
+# origin, the middle of the handle on its axis (references/rigs/gear.md).
 SEAT = 0.16    # from the hand's end up to the handle's axis, as RigSkin.equip seats it
 HANDLE = 0.13  # the widest a handle may be and stay inside the fist
 FIST = 0.62    # half a fist, along the handle and across it: half a hand and a glove up to 0.1 thick
 CLEAR = 0.05   # what the guard and the butt stand clear of the fist
 
 
-# A weapon's budget, in triangles of its evaluated meshes (references/modeling.md, Budgets). Roblox refuses a mesh over 20,000.
+# A weapon's budget, in triangles of its evaluated meshes (references/art/modeling.md, Budgets). Roblox refuses a mesh over 20,000.
 WEAPON_TRIS = 18000
 WEAPON_MIN = 17000
 WEAPON_MAX = 19000
@@ -1048,7 +1048,7 @@ def grip_fit(obs, fist=FIST, handle=HANDLE, clear=CLEAR):
     return found
 
 
-# ---------------------------------------------------------------- hair (references/rigs.md, Hair)
+# ---------------------------------------------------------------- hair (references/rigs/hair.md)
 # Read from 48 anime hair meshes on the classic head, in studs for a head 1.2 tall: the hair is a dome whose
 # top stands 0.42 above the head's (median; at least 0.2), 0.22 off the scalp, 0.33 out behind and 0.14 at the temples.
 

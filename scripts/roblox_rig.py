@@ -1,9 +1,9 @@
-"""Blender side of skins (references/rigs.md, Skins). Run inside Blender 4.2+ (bpy):
+"""Blender side of skins (references/rigs/skins.md). Run inside Blender 4.2+ (bpy):
 
     import roblox_rig as rr
     dump = rr.load(r"rig.json")                # the JSON from RigSkin.dump(rig) in Studio
     rig = rr.build(dump, colors={'Body': '#E9BE2C'})  # the body as it looks in game (solid, colored) + an armature
-    # ... model the skin around the replica body, which stays visible (references/rigs.md: build around the body); name
+    # ... model the skin around the replica body, which stays visible (references/rigs/skins.md: build around the body); name
     # each piece after its body part ("LeftUpperArm", "Left Arm", "Head__Halo" for more than one) ...
     rr.export_pieces([pieces...], r"skin.fbx")   # welded skin: RigSkin.apply(rig, skin) in Studio
     rr.rigid_weights(mesh, rig, blend=0.08)      # skinned skin: weight each vertex to the body part it sits in
@@ -181,7 +181,7 @@ def _fbx(path, objects, types, **extra):
 
 def folds(objects, min_area=.002, eps=1e-4):
     """Where a mesh visibly overlaps itself in one plane, as {object name: (area in studs², point)}; {} when none does. A cap folded
-    over itself draws one triangle over another: it flickers and fills what should be hollow (references/modeling.md). An overlap
+    over itself draws one triangle over another: it flickers and fills what should be hollow (references/art/modeling.md). An overlap
     counts when a ray along its normal, either way, meets nothing in the scene within 0.6 studs, so creases buried in armor pass
     (keep the replica body in the scene). Under min_area is a speck. Faces of separate islands that touch are blender-asset-qa's
     to report. Both exports refuse what this finds."""
@@ -247,7 +247,7 @@ def folds(objects, min_area=.002, eps=1e-4):
 def _refuse_folds(objects):
     found = folds(objects)
     if found:
-        raise ValueError(f'export: a mesh overlaps itself in one plane, which flickers in game: {found}. Fix its geometry (references/modeling.md)')
+        raise ValueError(f'export: a mesh overlaps itself in one plane, which flickers in game: {found}. Fix its geometry (references/art/modeling.md)')
 
 
 def export_pieces(pieces, path):
