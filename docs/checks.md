@@ -86,3 +86,8 @@ Finding and uploading the default R6 clips (`publish_r6_clips.py`), after a requ
 - **Found by testing:** `search_asset` takes `Animation` though its schema omits it. `KeyframeSequenceProvider:GetAnimations` returns ids with no names, so it cannot query by name; `AssetService:CreateAssetAsync` has no animation type, so uploading needs Open Cloud; and Open Cloud has no by-name listing of private animations. A place can report creator 0 through `search_asset` while `game.CreatorId` is the user.
 - **Files:** one `.rbxm` per clip, saved by Studio: read back through Lune, they hold Studio's 23 clips, 802 keys and 6,658 poses.
 - **Not run:** a live upload, which needs the project's key and was not asked for. `test_publish_r6_clips.py` (21 tests) covers that path against stand-ins, so Roblox's response to an animation upload, including its moderation state, is unproven.
+
+Learning notes (`learn.py`), after a request for notes kept on the maintainer's own machine, for a later quality update:
+- **Through the command line:** off by default (`check` exits 5 and nothing is written), then `on`, `check`, `record`, `digest` and `archive` on a real note.
+- **New spec:** `test_learn.py`, 25 tests: the switch, filling in a note, the only git call being a read of the skill's version, attachments, every format refusal, the digest's grouping, archiving, a damaged note, the reference's template passing its own validation, and notes living outside the skill's folder, the system's temp folder and the folders the installers read.
+- **Not run:** an agent writing a note on its own during a real task, and a quality update on real notes.

@@ -2,7 +2,7 @@
 
 A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
 
-`SKILL.md` is a short dispatcher: ten always-on rules, shared visual-style routing, asset-readiness decisions and a routing table. Agents load only the references for the task at hand, so a UI tweak never pays for the modeling guide. [docs/developing.md](docs/developing.md) holds the limits that keep it that way. Visual direction follows instructions/references, then comparable project assets, then a suitable inferred treatment; there is no fixed house style. Gameplay actors include a tested rig by default unless explicitly static or a modeling-only stage; rigging alone does not add a full animation set or AI. Materials, maps and resolution adapt to the intended result rather than requiring full PBR. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/templates/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
+`SKILL.md` is a short dispatcher: eleven always-on rules, shared visual-style routing, asset-readiness decisions and a routing table. Agents load only the references for the task at hand, so a UI tweak never pays for the modeling guide. [docs/developing.md](docs/developing.md) holds the limits that keep it that way. Visual direction follows instructions/references, then comparable project assets, then a suitable inferred treatment; there is no fixed house style. Gameplay actors include a tested rig by default unless explicitly static or a modeling-only stage; rigging alone does not add a full animation set or AI. Materials, maps and resolution adapt to the intended result rather than requiring full PBR. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/templates/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
 ```
 SKILL.md                 dispatcher: always-on rules and the route table, read on every task
@@ -15,7 +15,8 @@ references/              read only when the route names them; each file serves o
   safety/                characters (all-ages), no-gore (uploads), stylized-violence (what players see), assets (Toolbox intake), uploading
   design/                game-design, game-economy, onboarding
   codex/                 handoff (Claude only)
-scripts/                 run, not read: Studio audits and helpers, Blender kits, upload tools, the Codex wrapper
+  learning/              learning (notes kept on the maintainer's machine), quality-update (turning them into skill changes)
+scripts/                 run, not read: Studio audits and helpers, Blender kits, upload tools, the Codex wrapper, learning notes
 assets/
   templates/             PROJECT_STRUCTURE (project blueprint), GAME_DESIGN_PLAN (written to a project's docs/game-design.md)
   r6-on-r15/clips/       Roblox's 23 default R6 animations as R15 KeyframeSequences, ready to upload
@@ -57,6 +58,17 @@ bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --check
 ```
 
 Configure the MCP servers Codex needs (Roblox Studio, Blender) once in Codex (`codex mcp list`); Claude's are not shared. Runs default to `--sandbox danger-full-access` (`CODEX_HANDOFF_SANDBOX` to change it). State lives in `~/.claude/codex-handoffs` (`CODEX_HANDOFF_HOME`).
+
+## Learning notes
+
+The skill can keep notes for its maintainer on what using it teaches: what was asked and attached, what came out, the reaction, and what the skill should change. Nothing is sent anywhere. Notes are off until you turn them on, so anyone else who installs the skill writes nothing:
+
+```sh
+python scripts/learn.py on     # off stops new notes and keeps the ones there
+```
+
+- **Taking notes:** when a task teaches the skill something, the agent writes a note in the [format](references/learning/learning.md) and [scripts/learn.py](scripts/learn.py) files it under `~/.roblox-dev/learning/notes` (`ROBLOX_DEV_LEARNING_HOME`). That is outside the skill's folder, which installs replace, and outside the system's temp folder, which gets cleaned.
+- **Using them:** now and then, ask the agent for a quality update. It reads the notes, proposes changes, applies what you approve under the [developing rules](docs/developing.md), and archives what it dealt with. The process is in [quality-update.md](references/learning/quality-update.md).
 
 ## Related skills
 

@@ -26,3 +26,7 @@ The skill grew from 880 tokens in `SKILL.md` and 4,000 in references to 3,600 an
 6. **Scripts carry their own detail.** When a script enforces a rule, the reference says what to run and what its findings mean. The script's header documents its options and checks.
 7. **Nothing that loads by itself.** Keep `CLAUDE.md`, `AGENTS.md` and similar files out of the skill folder: an agent may load them whenever it reads a file there, and every use would pay.
 8. **Check that nothing was lost.** `python tests/facts_check.py <commit before the rewrite>` lists every number, backticked name and URL that vanished from the docs. Read the diff line by line too: every removed fact must still exist in its home, or be a true duplicate. Then run the checks and one real task with the skill loaded.
+
+## Quality updates
+
+The maintainer's learning notes become changes to the skill through [quality-update.md](../references/learning/quality-update.md), under the rules above.
