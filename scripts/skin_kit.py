@@ -955,6 +955,35 @@ FIST = 0.62    # half a fist, along the handle and across it: half a hand and a 
 CLEAR = 0.05   # what the guard and the butt stand clear of the fist
 
 
+# A weapon's budget, in triangles of its evaluated meshes (references/modeling.md, Budgets). Roblox refuses a mesh over 20,000.
+WEAPON_TRIS = 18000
+WEAPON_MIN = 17000
+WEAPON_MAX = 19000
+MESH_LIMIT = 20000
+
+
+def weapon_budget(obs, target=WEAPON_TRIS, low=WEAPON_MIN, high=WEAPON_MAX):
+    """What keeps a weapon off its budget, {} when nothing does. `obs` are its pieces, counted with their modifiers applied, since a
+    Bevel or Subdivision in the stack is what ships. Keys: 'low' and 'high' (the total against the band, with the triangles to add or
+    remove to reach `target`), 'limit' (the pieces over Roblox's limit for one mesh)."""
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    counts, found = {}, {}
+    for ob in obs:
+        evaluated = ob.evaluated_get(depsgraph)
+        me = evaluated.to_mesh()
+        counts[ob.name] = sum(len(p.vertices) - 2 for p in me.polygons)
+        evaluated.to_mesh_clear()
+    total = sum(counts.values())
+    if total < low:
+        found['low'] = {'total': total, 'add': target - total}
+    elif total > high:
+        found['high'] = {'total': total, 'remove': total - target}
+    over = {name: n for name, n in counts.items() if n > MESH_LIMIT}
+    if over:
+        found['limit'] = over
+    return found
+
+
 def fist(arm, pieces):
     """Half the fist's size, measured from the pieces on the hand of layout arm `arm`: grip_fit's `fist` for a bulky glove."""
     c = (arm['lo'] + arm['hi']) / 2

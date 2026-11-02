@@ -4,7 +4,7 @@
 
 For a modeling task that includes an animation-ready rig, first follow [rigs.md](rigs.md) and its standard/custom route. Use representative poses or a short diagnostic motion to verify deformation before baking and after importing the rig into Studio. This does not require a full idle/walk/attack set, gameplay code or publication of diagnostic clips. The full clip authoring, inspection and publishing workflow below applies when production animations are part of the task. Custom creatures use anatomy-appropriate skeletons, not automatically R6/R15.
 
-For **R6-style motion on an R15 rig**, first read the bundled [animate-r15-like-r6 skill](../skills/animate-r15-like-r6/SKILL.md). It defines the six moving joints and nine locked joints, rigid-limb retargeting, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
+For **R6-like motion on an R15 rig** ("R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15"), first read the bundled [animate-r15-like-r6 skill](../skills/animate-r15-like-r6/SKILL.md). It defines the six moving joints and nine locked joints, FK and IK that behave like R6's, rigid-limb retargeting, Roblox's default R6 set rebuilt for R15, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
 
 ## Roblox characters (R15 / R6): check for the skill first
 
@@ -26,7 +26,7 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 
 ## 2. Route
 
-- R6-style animation on R15: bundled [animate-r15-like-r6](../skills/animate-r15-like-r6/SKILL.md) for motion restrictions, then the Roblox character toolchain below.
+- R6-like animation on R15, under any of its names: bundled [animate-r15-like-r6](../skills/animate-r15-like-r6/SKILL.md) for its FK, IK, default clips and joint policy, then the Roblox character toolchain below.
 - Roblox R6/R15 actions (walk, run, idle, attacks, emotes): `animate-roblox-characters` when available.
 - Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
 - Nothing fitting installed: search `find-skills`, then do it yourself.
@@ -35,7 +35,8 @@ When the task animates a Roblox character, first look for the **`animate-roblox-
 
 1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig.
 2. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) instead of hardcoded times.
-3. Pass section 4, then publish to the **group that owns the experience** (the project's cloud API key with that group as creator, or Studio publishing to that group; [assets.md](assets.md), Uploading). An animation plays only in experiences owned by its creator. Republishing makes a new id.
+3. To read an existing clip, `Clone` what `KeyframeSequenceProvider:GetKeyframeSequenceAsync` returns before changing it, and never `Destroy` it: it is cached and shared, and destroying it leaves that id empty for the rest of the Studio session (`AnimationClipProvider:GetAnimationClipAsync` still reads it). `Animator:StepAnimations` runs only in Edit.
+4. Pass section 4, then publish to the **group that owns the experience** (the project's cloud API key with that group as creator, or Studio publishing to that group; [assets.md](assets.md), Uploading). An animation plays only in experiences owned by its creator. Republishing makes a new id.
 
 ## 4. Inspect (a clip is not done until it passes)
 

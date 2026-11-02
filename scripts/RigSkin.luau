@@ -27,8 +27,8 @@
 --   audit(rig)                  findings: pieces unwelded, off their weld, astray from their part, anchored or collidable,
 --                               Bones left unbound or astray, hidden body parts (with or without skin over them), weld
 --                               attachments left by deleted pieces, MeshParts not double sided, gear off its Motor6D, a held
---                               weapon that does not fit the hand, read from its mesh and the skin's (needs a mesh this
---                               place may read, as its own uploads are)
+--                               weapon that does not fit the hand or is off its triangle budget, read from its mesh and the
+--                               skin's (needs a mesh this place may read, as its own uploads are)
 --
 -- A dynamic head (a MeshPart Head with FaceControls, as on a generated R15) maps a decal through its UV atlas: a face
 -- came out magnified and offset, its mouth showing as a dark line. There `face` puts the decal on a
@@ -78,6 +78,8 @@ local HANDLE = 0.13 -- the widest a handle may be and stay inside the fist
 local CLEAR = 0.05 -- what the guard and the butt stand clear of the fist
 local WRIST = 0.3 -- how far above the hand's end the fist goes on
 local ARM = 2 -- how far above the hand's end nothing but the handle may go: the arm's length on R6
+-- A weapon's triangles, as skin_kit.weapon_budget counts them in Blender (references/modeling.md, Budgets).
+local WEAPON_MIN, WEAPON_MAX = 17000, 19000
 
 local function root(rig: Model): BasePart
 	local r = rig:FindFirstChild("HumanoidRootPart")
@@ -802,6 +804,10 @@ local function checkHold(rig: Model, item: MeshPart, joint: Motor6D, grip: Vecto
 	if not edges then
 		add("warn", path, "unread", "its mesh cannot be read here, so its fit in the hand is unmeasured: look at the hand from below")
 		return
+	end
+	local triangles = #edges // 3
+	if triangles < WEAPON_MIN or triangles > WEAPON_MAX then
+		add("warn", path, "budget", string.format("%d triangles: a weapon is built to about 18,000, between %d and %d (references/modeling.md, Budgets)", triangles, WEAPON_MIN, WEAPON_MAX))
 	end
 	local part = joint.Part0 :: BasePart
 	local axis = joint.C0.Position

@@ -152,7 +152,7 @@ A Rojo build validates mapped source; it does not recreate Studio-owned content.
 ## Asset generation guidelines
 
 - **Icons:** Generate at 512 × 512 pixels (1:1) with a transparent background unless otherwise specified. Match the established visual style and tone of the project.
-- **Models:** Keep each generated model at or below 20,000 triangles. For higher-tier models, target around 18,000 triangles maximum to leave performance headroom.
+- **Models:** Keep each generated model at or below 20,000 triangles. For higher-tier models, target around 18,000 triangles maximum to leave performance headroom. Weapons are always built to about 18,000 triangles (17,000 to 19,000) at high quality, however small or common.
 
 ## Agent instruction files
 

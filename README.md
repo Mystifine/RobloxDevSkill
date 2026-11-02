@@ -29,12 +29,15 @@ references/
 assets/
   PROJECT_STRUCTURE.md   project blueprint: layout, Rojo map, packages, toolchain, AGENTS.md, MCP, Graphify
   GAME_DESIGN_PLAN.md    game design plan template, written to the project's docs/game-design.md
+  r6-on-r15/             Roblox's 23 default R6 animations as R15 KeyframeSequences, ready to insert into Studio (R6OnR15.defaults rebuilds them)
 scripts/
   UIBounds.luau          UI bounds audit: nothing leaks out of its box, rim or rounded corner
   icon_outlines.py       icon set outline style (white sticker border or not) and the icons that break it
   VFXInspector.luau      VFX inspection: exit lint, sphere/cube or real-rig stage, vanish watcher, frozen-frame captures
   ParticlePlayer.luau    fallback attribute-driven particle player (scaled by quality and measured frame rate, min 1)
   AnimationInspector.luau  animation inspection: exact-time audit (pops, seams, feet, hyperextension, markers) and contact sheet
+  R6OnR15.luau           R6-like animation on a real R15 ("fake R6"): FK and IK that behave like R6's, R6 clips retargeted from the engine, Roblox's whole default set, the joint policy, Animate wiring
+  r6_on_r15.py           Blender side of R6OnR15: FK and IK controls on an R15 armature, at R6's pivots, with an FK/IK switch and a bake to the R15 bones
   ZFight.luau            z-fighting audit and fix: coplanar overlapping faces and decal ZIndex ties
   RigAudit.luau          character model audit (R15/R6, with or without a Humanoid): parts, joints, root, seated accessories, cages, leftovers; seat, clean, controller (the Humanoid swapped for an AnimationController)
   RigSkin.luau           skins: dump a rig for Blender, dress it around its visible body (welded pieces or a skinned mesh, body colors, a face decal; any pose), equip weapons and shields on Motor6Ds, audit the skin
@@ -55,7 +58,7 @@ tests/
   codex/                 Node tests for the handoff wrapper against a fake Codex CLI
   python/                MCP UTF-8 output/error handling and installer exclusion regressions (standard library)
   blender/               isolated Blender geometry and material/bake regressions
-  studio/                engine regressions for animation inspection, capture-sheet redraw, a held weapon's fit in the hand and rigs without a Humanoid
+  studio/                engine regressions for animation inspection, capture-sheet redraw, a held weapon's fit in the hand, rigs without a Humanoid and R6-like animation on R15
 install/
   install.ps1            Windows installer (junction); install.sh for macOS/Linux (symlink)
 INSTALL.md               placement rules, options, manual steps
@@ -93,7 +96,7 @@ Configure the MCP servers Codex needs (Roblox Studio, Blender) once in Codex (`c
 
 ## Companion skills
 
-The bundled [animate-r15-like-r6](skills/animate-r15-like-r6/SKILL.md) companion covers stiff R6-style motion on real R15 rigs: six moving joints, nine locked joints, smooth locomotion, compact jump/fall arcs, and validation. The dispatcher routes matching requests to it; it ships with the existing install.
+The bundled [animate-r15-like-r6](skills/animate-r15-like-r6/SKILL.md) companion covers R6-like animation on real R15 rigs, also called "R6 like", "fake R6", "fake R15" or "R15 R6 animation": six moving joints, nine locked joints, FK and IK that behave like R6's in Studio and Blender, Roblox's default R6 clips rebuilt for R15, smooth locomotion, compact jump/fall arcs, and validation. The dispatcher routes matching requests to it; it ships with the existing install.
 
 It hands off to Blender and animation skills when they are installed (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `animate-roblox-characters`, `find-skills`, and others named in `SKILL.md`). Without them it falls back to the rules in each reference.
 
@@ -176,9 +179,11 @@ selene scripts tests        # lint, std = roblox
 node --test tests/codex/handoff.test.mjs   # the Codex handoff wrapper (Node 20+, Git), against a fake CLI
 python -m unittest discover -s tests/python -v
 blender -b --factory-startup --python-exit-code 1 -P tests/blender/skin_kit_test.py
+blender -b --factory-startup --python-exit-code 1 -P tests/blender/r6_on_r15_test.py
 python scripts/studio_mcp.py luau tests/studio/AnimationInspector.spec.luau --studio "PLACE NAME" --output animation-results.json
 python scripts/studio_mcp.py luau tests/studio/RigSkin.spec.luau --studio "PLACE NAME" --output rigskin-results.json
 python scripts/studio_mcp.py luau tests/studio/RigAudit.spec.luau --studio "PLACE NAME" --output rigaudit-results.json
+python scripts/studio_mcp.py luau tests/studio/R6OnR15.spec.luau --studio "PLACE NAME" --output r6onr15-results.json
 luau-lsp analyze --platform=roblox --definitions=@roblox=<globalTypes.d.luau> <the Studio scripts>   # strict types; again with --flag:LuauSolverV2=true
 ```
 
@@ -213,6 +218,19 @@ Accessory types and joints, after the same reference was rebuilt on the Blender 
 - **Tests:** `RigAudit.spec.luau` passed 26 checks twice, including 4 new ones: the joint each rig gets, and the audit and `seat` finding it. Selene is clean.
 - **Not staged:** an accessory jointed but off its seat. In Edit a joint snaps its handle in whenever it is made or re-parented, and setting a jointed handle's CFrame moves the whole assembly, so only the generator's output shows that state.
 - **The character itself** (DaggerHunter) came out of this run: two skins and two daggers from Blender, 37 uploads approved, RigAudit and RigSkin at 0 errors on both rigs, and a walk with the skin 0.000 studs from its joints.
+
+R6-like animation on R15, after a request for FK and IK on R15 that behave like R6's, and for Roblox's default R6 set on R15:
+- **The set:** all 23 clips from the R6 `Animate` script, sampled from the engine and built for classic R15 proportions. Played back through the engine on an R15 and read back as R6 numbers, the worst clip is 0.29 degrees and 0.0034 studs from its source, with the nine locked joints at 0 and the joint policy clean on all 23. `AnimationInspector` finds what the sources have (R6's walk sinks a foot 0.16 studs), and no seam or off-grid key, which a few sources have. Front sheets of `cheer` on R6 and R15 match pose for pose. The file reads back through Lune with Studio's counts: 23 clips, 802 keys, 6658 poses.
+- **New spec:** `R6OnR15.spec.luau` passed 48 checks twice: FK and IK through the engine, targets held with the torso moved, floor contact, the locks over a stock R15 walk, partly keyed clips over a walk, wiring.
+- **Blender:** `r6_on_r15_test.py` (11 tests) checks the controls against Studio's numbers for the same body and poses (`R6OnR15.fixture.luau`), both FK and IK, within 0.001, including the bake. `weapon_budget` added 6 tests; `skin_kit_test.py` passes all 61.
+- **In Play, on a real avatar through `Animate`:** idle, walk, jump, fall, sit, climb, a tool over a walk, and the emotes each played the right clip with the locks at 0. With a tool out, the arm stayed held while the hip swung to 66 degrees.
+- **Found by testing:**
+  - R15's `Animate` ran R6's walk 13% fast and its climb 2.4 times too fast, so `wire` retunes it: x1.367 for R6's x1.379 and x1.163 for R6's x1.167.
+  - Destroying what `GetKeyframeSequenceAsync` returned emptied those ids for the session: the provider caches and shares it, so `sourceSequence` clones it.
+  - `StepAnimations` refuses to run in Play, so building happens in Edit.
+  - An `IKControl` of type Position on a one-joint chain reached its target by detaching the arm; a tip-distance check alone passes that.
+  - Height cannot tell a planted foot from a swinging one on a rigid leg, so live foot-slide numbers were dropped for the audit's ground speed.
+- **Not run:** publishing the clips (nothing was uploaded, so Play used `RegisterKeyframeSequence`), the swim state in Play, the Blender controls through Cautioned's `.rbxanim` exporter or an FBX export, and `luau-lsp` from the command line. A weapon built to the budget has not been modeled yet: `weapon_budget` and the `budget` rule are tested on test meshes.
 
 ## Developing the skill
 

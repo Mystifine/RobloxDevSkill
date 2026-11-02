@@ -54,7 +54,8 @@ local FITS = { HANDLE, BLADE, GUARD, POMMEL }
 local function gear(rig)
 	local found = {}
 	for _, f in (Skin.audit(rig)) do
-		if string.find(f.Path, ".Gear.", 1, true) then
+		-- `budget` has its own check: these little test swords are all under it.
+		if string.find(f.Path, ".Gear.", 1, true) and f.Rule ~= "budget" then
 			found[f.Rule] = f.Detail
 		end
 	end
@@ -79,6 +80,11 @@ local ok, failure = pcall(function()
 		local grip = joint.Part0:FindFirstChild("RightGripAttachment") :: Attachment
 		check(math.abs(joint.C0.Position.Y - grip.Position.Y - .16) < 1e-4, kind .. ": equip seats the handle 0.16 above the hand's end")
 		check(none(gear(r)), kind .. ": a sword built to the fist passes")
+		local budget
+		for _, f in (Skin.audit(r)) do
+			budget = if f.Rule == "budget" then f else budget
+		end
+		check(budget and budget.Severity == "warn" and string.find(budget.Detail, "48 triangles", 1, true) ~= nil, kind .. ": a weapon far under its triangle budget is named")
 		local bow = table.clone(FITS)
 		table.insert(bow, { .05, -.75, .75, -.34, -.24 })
 		check(none(gear((holding(bow)))), kind .. ": a knuckle bow under the hand passes")

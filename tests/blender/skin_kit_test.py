@@ -440,6 +440,43 @@ class SkinKitTests(unittest.TestCase):
     GUARD = (.1, -.75, -.68, -.5, .5)
     POMMEL = (.12, .68, .9, -.12, .12)
 
+    def dense_weapon(self, tris, name='Blade'):
+        """A grid of about `tris` triangles, as one object."""
+        side = int((tris / 2) ** .5)
+        bm = bmesh.new()
+        bmesh.ops.create_grid(bm, x_segments=side, y_segments=side, size=1)
+        me = bpy.data.meshes.new(name)
+        bm.to_mesh(me)
+        bm.free()
+        ob = bpy.data.objects.new(name, me)
+        bpy.context.scene.collection.objects.link(ob)
+        return ob
+
+    def test_weapon_budget_passes_a_weapon_at_its_budget(self):
+        self.assertEqual(kit.weapon_budget([self.dense_weapon(18000)]), {})
+
+    def test_weapon_budget_counts_all_its_pieces(self):
+        self.assertEqual(kit.weapon_budget([self.dense_weapon(9000, 'Blade'), self.dense_weapon(9000, 'Grip')]), {})
+
+    def test_weapon_budget_refuses_a_cheap_weapon(self):
+        found = kit.weapon_budget([self.dense_weapon(4000)])
+        self.assertEqual(set(found), {'low'})
+        self.assertGreater(found['low']['add'], 12000)
+
+    def test_weapon_budget_refuses_a_weapon_over_the_band(self):
+        self.assertEqual(set(kit.weapon_budget([self.dense_weapon(19800)])), {'high'})
+
+    def test_weapon_budget_names_a_mesh_roblox_would_refuse(self):
+        found = kit.weapon_budget([self.dense_weapon(22000, 'Huge')])
+        self.assertEqual(set(found), {'high', 'limit'})
+        self.assertIn('Huge', found['limit'])
+
+    def test_weapon_budget_counts_modifiers_not_the_cage(self):
+        ob = self.dense_weapon(4500)
+        ob.modifiers.new('Subdivide', 'SUBSURF').levels = 1
+        self.assertEqual(kit.weapon_budget([ob]), {})
+        self.assertLess(sum(len(p.vertices) - 2 for p in ob.data.polygons), 5000)
+
     def test_grip_fit_passes_a_weapon_built_to_the_fist(self):
         self.assertEqual(kit.grip_fit([self.weapon(self.HANDLE, self.BLADE, self.GUARD, self.POMMEL)]), {})
 

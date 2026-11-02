@@ -3,6 +3,11 @@
 ## Budgets
 
 - Roblox mesh limit is **20,000 triangles per mesh**. Aim well under it for most assets; top-tier hero models may reach about **18,000 triangles max** *(default)*, leaving buffer. Scale detail to the item's importance and typical viewing distance, not every prop to the cap.
+- **Weapons always sit at the top of that range: about 18,000 triangles, and high quality** *(default)*. Anything a character wields (swords, axes, spears, staffs, bows, guns), however small or common, is seen up close in the hand, so the scaling above does not lower it. The count is the whole weapon's, on its evaluated mesh.
+  - **Check it:** `kit.weapon_budget(pieces)` must return `{}` at the clay stage and before export: 17,000 to 19,000 triangles with modifiers applied, and no mesh over the limit. In Studio, `RigSkin.audit` warns (`budget`) on a held weapon outside that band, wherever it came from.
+  - **Spend it on form you can see:** a bevel on every hard edge, curves with no visible facets, a blade's real grind and fuller, a grip's wraps, the shaping of a guard and pommel, rivets, engraving and panel lines, a gun's machined parts. Never reach the count by subdividing flat faces or with hidden or interior geometry. If the detail runs out first, the design needs more detail.
+  - **High quality means it holds up filling the screen:** crisp shading, its own materials and map, and every rule below (folds, z-fighting, normals, UVs). Review it close up and in the hand, not only at gameplay distance.
+  - Optimization never takes a weapon under the band. A weapon that already exists (the project's, or from the Toolbox) keeps its mesh: state its count rather than calling it on budget. An explicit request for something else, such as a deliberately low-poly look, wins.
 - Count triangles on the evaluated mesh (modifiers applied, after triangulation), per mesh object.
 - Fewer materials and meshes means fewer draw calls: merge parts that share a material and never move independently.
 
