@@ -67,6 +67,8 @@ local raise = R6OnR15.clip(map, {
 
 **A pose that touches or points at something is IK, not FK:** a hand at the chin, on the chest or on a prop, or an arm aimed at a target. Author the point and let `R6OnR15.reach(map, limb, point, { Torso })` find the turn ([r6-ik.md](r6-ik.md)); three tries of guessed angles left a hand beside the face and an aimed arm 25 degrees off, and `reach` placed both first time.
 
+**Fingers and hand signs:** an R15 hand is one block. Add fingers as parts welded to the hand and pose each by its weld's `C0` every frame; anchored parts placed from `hand.CFrame` in `RenderStepped` trail the animated hand by a frame. Roll the finger rig about the hand's long axis toward world up, so a sign stays upright whatever the rigid arm's roll, and give an aimed arm `reach`'s `Twist` so the hand block faces the way the sign needs.
+
 Rotation normally supplies the motion. A translation slides the whole rigid block, which is how R6 clips imitate a bend: R6's climb slides its legs 1.5 studs. Sparse keys interpolate the R15 joint, so a limb turning far between two keys strays from R6's arc by up to about 0.1 studs; add a key where that shows. `retarget` does so by itself.
 
 ## Shape the motion

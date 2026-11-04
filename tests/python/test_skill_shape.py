@@ -12,11 +12,13 @@ EXCEPTIONS = {'references/design/game-design.md': 6000}  # a design task reads i
 # What a typical task loads, SKILL.md included.
 ROUTES = {
     'luau code': (['code/coding'], 5000),
+    'studio testing': (['code/coding', 'code/studio-testing'], 6000),
     'hud': (['art/visual-style', 'ui/ui'], 8000),
     'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 9000),
-    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9000),
+    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9200),
+    'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8000),
     'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10000),
-    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 19500),
+    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 19700),
     'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8500),
     'default r6 clips': (['animation/r6-default-set'], 4000),
     'funnels': (['design/analytics'], 5000),

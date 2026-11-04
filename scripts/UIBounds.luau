@@ -3,7 +3,7 @@
 -- client) at the phone size first, then tablet and desktop:
 --
 --   local UIBounds = require(thisModule)
---   local findings, text = UIBounds.audit(frame)      -- every visible GuiObject under `frame`
+--   local findings, text = UIBounds.audit(frame)      -- every visible GuiObject under `frame`, not `frame` itself
 --   print(text)
 --
 -- Rules (a border UIStroke's band sits where its BorderStrokePosition puts it: Outer, the default, entirely outside the
@@ -241,7 +241,12 @@ function UIBounds.audit(root: GuiBase2d, options: { Ignore: { string }? }?): ({ 
 	for _, finding in findings do
 		table.insert(lines, string.format("%s %s: %s", string.upper(finding.Rule), finding.Path, finding.Detail))
 	end
-	table.insert(lines, string.format("%d GuiObjects checked, %d findings", #items, #findings))
+	if #items == 0 then
+		-- not a pass: a leaf label has nothing under it to measure
+		table.insert(lines, "0 GuiObjects checked: only what is under the root is measured, so audit the ScreenGui or a frame that holds it")
+	else
+		table.insert(lines, string.format("%d GuiObjects checked, %d findings", #items, #findings))
+	end
 	return findings, table.concat(lines, "\n")
 end
 
