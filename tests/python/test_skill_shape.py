@@ -21,6 +21,7 @@ ROUTES = {
     'default r6 clips': (['animation/r6-default-set'], 4000),
     'funnels': (['design/analytics'], 5000),
     'audio': (['art/audio', 'safety/assets'], 6000),
+    'video': (['art/video', 'art/visual-style'], 6000),
     'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 9500),
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')

@@ -9,7 +9,7 @@ SKILL.md                 dispatcher: always-on rules and the route table, read o
 references/              read only when the route names them; each file serves one kind of task
   code/                  coding, gameplay (physics, NPCs, playing animations), rojo-project
   ui/                    ui (the workflow), topbar, icons, surface (fades and shine), runtime (state, world-space GUIs)
-  art/                   visual-style, modeling, environment, vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing),
+  art/                   visual-style, modeling, environment, vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
                          styles/ (stud, anime-ink, hand-painted, realistic, low-poly, simulator-cartoon)
   rigs/                  rigs (R15, R6, no Humanoid, audits), custom-creatures, skins, hair, gear
   animation/             animation (clips, export, inspection), r6-on-r15, r6-ik, r6-default-set

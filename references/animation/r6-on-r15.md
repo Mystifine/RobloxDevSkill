@@ -71,7 +71,7 @@ Rotation normally supplies the motion. A translation slides the whole rigid bloc
 
 ## Shape the motion
 
-Inspect supplied frames/video and the existing animation family before inventing motion. Separate torso yaw, torso pitch and shoulder arcs: a circular arm gesture does not imply a body spin. Keep jump/fall bodies upright unless the reference or request calls for a tilt or turn.
+Inspect supplied frames/video ([video.md](../art/video.md)) and the existing animation family before inventing motion. Separate torso yaw, torso pitch and shoulder arcs: a circular arm gesture does not imply a body spin. Keep jump/fall bodies upright unless the reference or request calls for a tilt or turn.
 
 - **Idle:** favor a slow weight shift, small shoulder/head lag and minimal vertical bounce. Keep both feet down unless a fidget is requested. When smoothing an approved loop, remove the unwanted accent without replacing the whole motion.
 - **Walk/run:** use hip-driven leg pendulums and opposed shoulder swings, with smaller torso/head counter-motion. Reduce vertical amplitude and abrupt acceleration when asked for smoother motion. A forward run posture comes from the root/whole torso, with a partial head counter-tilt to keep looking ahead; keep the waist locked.

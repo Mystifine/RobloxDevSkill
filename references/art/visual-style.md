@@ -12,7 +12,7 @@ Fill unspecified choices in this order:
 2. **Project:** inspect comparable assets, theme tokens and configuration in the available scope. Match the relevant family and reuse compatible work. Unrelated project assets do not override a supplied reference.
 3. **Inference:** when neither gives direction, choose a coherent treatment suited to purpose, genre, viewing distance and target platform. Briefly state the assumption and proceed. Ask only when an unresolved choice would materially change the result or require substantial rework.
 
-Report inaccessible references and use available evidence without claiming to have matched them. With one view, infer unseen construction and surfaces consistently; disclose consequential guesses. Request another view only when it is needed to resolve a material ambiguity.
+A video reference is watched with [video.md](video.md) before it informs anything. Report inaccessible references and use available evidence without claiming to have matched them. With one view, infer unseen construction and surfaces consistently; disclose consequential guesses. Request another view only when it is needed to resolve a material ambiguity.
 
 Describe concrete characteristics rather than requiring a preset name: realistic proportions with painted shadows and exaggerated armor is a valid direction. Model-bound faces, emblems, textures and gear inherit the model's treatment; UI imagery follows its own component family. Coordinate the domains without assuming identical rendering techniques.
 

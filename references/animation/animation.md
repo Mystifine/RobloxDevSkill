@@ -30,6 +30,7 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
 - Roblox R6/R15 actions (walk, run, idle, attacks, emotes): this reference; `animate-roblox-characters` for Blender rig transfer and export.
 - Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
 - Nothing fitting installed: search `find-skills`, then do it yourself.
+- A video of the motion to match: [video.md](../art/video.md); its `burst` gives the timing in frames.
 
 ## 3. Export, set up, publish
 

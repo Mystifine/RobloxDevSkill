@@ -44,6 +44,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Particles, skill/ability/hit effects, lights, beams, trails | `art/vfx.md` |
 | Cutscenes, cinematic cameras, timelines | `art/cutscenes.md` |
 | Sound effects, music, mixing, Audio API | `art/audio.md` |
+| Watching a video: references, recordings, timing (ffmpeg) | `art/video.md` |
 | 3D models, meshes, textures, maps built with parts, z-fighting, Blender asset creation | `art/modeling.md` |
 | Weapons (always about 18,000 triangles), shields, held or worn gear | `art/modeling.md`, `rigs/gear.md` |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | `art/environment.md` |
