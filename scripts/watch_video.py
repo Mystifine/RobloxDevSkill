@@ -5,10 +5,11 @@ shot list, labelled contact sheets, a loudness timeline and stills, written to a
   python watch_video.py sheet VIDEO -o OUT.png [--count 16 | --every S] [--start T] [--end T]
   python watch_video.py burst VIDEO --start T [--duration 1] [--fps 24] -o OUT.png   every new frame: motion, timing
   python watch_video.py frames VIDEO --at 1.5,0:03.2 -o DIR [--width W]           full-size stills
+  python watch_video.py compare REFERENCE RECORDING --pairs 2.3=1.6,0:07=5.2 -o OUT.png   moments side by side
   python watch_video.py shots VIDEO [--threshold 0.35] [--min-shot 0.2]           cut times only
   python watch_video.py audio VIDEO [--bin 0.05]                                    loudness and onsets only
   python watch_video.py probe VIDEO                                                 streams as JSON
-  python watch_video.py record OUT.mp4 --window TITLE [--seconds 10] [--fps 30]     Windows: record a window while it plays
+  python watch_video.py record OUT.mp4 --window TITLE [--seconds 10] [--fps 30] [--crop W:H:X:Y]   Windows: record a window
   python watch_video.py find | install                                              the ffmpeg in use / install it
 
 VIDEO is a file or a direct media URL; a page (YouTube, a post) is not a video file. Times are seconds or [h:]m:ss[.ss].
@@ -21,10 +22,16 @@ Settings, measured on a 47 s, 640x348, 30 fps anime clip with flashes, quick cut
   dominates. Full size, 320 and 160 px found the same 28. Threshold 0.3 split a flashing effect 4 more times; 0.4 lost a
   real cut. Cuts under --min-shot (0.2 s) apart merge, and 3 or more shots in a row under 0.5 s are one rapid run (a
   flashing effect or stepped zooms, not separate shots). A dissolve or slow fade is not a cut: a long shot can hide one.
+  A still border dilutes the score: the clip padded to 45% of the frame (the 3D view's share of a recorded Studio
+  window) gave 6 of its 29 shots, and cropped back all 29. So `record --crop` keeps only the 3D view.
 - Frames: one decode pass that keeps the frames asked for (1.1 s for 44 frames, against 4.9 s for 44 seeks) when the
   span is 2 minutes or less; seeks beyond that. Hardware decoding was slower on a short clip (start-up cost): not used.
-- Sheets: 1536 px wide at most, 4 columns (6 for portrait video and bursts), tiles never larger than the source. An image
-  costs about width x height / 750 tokens to view: a 16-frame sheet (1534 x 964) about 2,000, the timeline about 500.
+- Sheets: 1536 px wide at most, 4 columns (6 for portrait video and bursts), tiles never larger than the source, each
+  frame fitted whole within its tile. An image costs about width x height / 750 tokens to view: a 16-frame sheet
+  (1534 x 964) about 2,000, the timeline about 500.
+- Shots sheet: each shot's in, middle and out frame, 0.1 s inside its cuts (a quarter of a shorter shot), two shots a row
+  (three for portrait video). The middle alone hid every camera move and the path of the action within a shot.
+- Compare: a reference moment and the recording's beside it, two pairs a row, so the picture is checked, not only timing.
 - Burst: duplicates dropped (mpdecimate), then at most --fps 24 a second, each tile labelled with its source frame. The
   clip held about 24 new images a second though stored at 30, so 12 fps would skip every other drawing, impact frames
   included; a 60 fps recording is thinned to 24. Gaps in the frame numbers are holds.
@@ -55,6 +62,8 @@ SCENE = 0.35
 MIN_SHOT = 0.2
 SCALE = 320
 RAPID = 0.5  # shots shorter than this, three or more in a row, are one rapid run
+EDGE = 0.1  # seconds inside each cut for a shot's in and out frames
+GROUP_GAP = 14  # px between groups of tiles in a row: one shot's three, or one compared pair
 ONE_PASS = 120.0  # seconds: decode once for frames up to this span, seek beyond it
 BURST_FPS = 24
 AUDIO_RATE = 8000
@@ -372,21 +381,28 @@ def audio(tools, video, info, start, end, size=AUDIO_BIN):
 
 # ----------------------------------------------------------------------------------------------------------------- sheets
 
-def layout(width, height, count, cols=None, sheet_width=SHEET_WIDTH, max_edge=MAX_EDGE, label=22, gap=6, header=30):
-    """(cols, tile width, tile height, tiles per page) for a sheet whose long edge stays within `max_edge`."""
+def group_gap(col, group):
+    """Extra px left of column `col`: GROUP_GAP for each group boundary before it."""
+    return col // group * GROUP_GAP if group > 1 else 0
+
+
+def layout(width, height, count, cols=None, sheet_width=SHEET_WIDTH, max_edge=MAX_EDGE, label=22, gap=6, header=30, group=1):
+    """(cols, tile width, tile height, tiles per page) for a sheet whose long edge stays within `max_edge`; a row holds
+    whole groups of `group` tiles, GROUP_GAP apart."""
     cols = cols or (6 if height > width else 4)
-    cols = max(1, min(cols, count))
-    tile_w = min(width, (sheet_width - gap * (cols + 1)) // cols)
+    cols = max(group, min(cols, count) // group * group)
+    tile_w = min(width, (sheet_width - gap * (cols + 1) - group_gap(cols - 1, group)) // cols)
     tile_h = max(1, round(tile_w * height / width))
     rows = max(1, (max_edge - header - gap) // (tile_h + label + gap))
     return cols, tile_w, tile_h, cols * rows
 
 
-def make_sheet(paths, labels, out, title, cols=None, sheet_width=SHEET_WIDTH):
-    """Contact sheets of `paths` with a label over each tile; more pages (`-2`, `-3`) when one would pass MAX_EDGE."""
+def make_sheet(paths, labels, out, title, cols=None, sheet_width=SHEET_WIDTH, group=1):
+    """Contact sheets of `paths` with a label over each tile, each frame fitted whole (tiles take the first frame's
+    shape); more pages (`-2`, `-3`) when one would pass MAX_EDGE."""
     Image, ImageDraw, ImageFont = pillow()
     first = Image.open(paths[0])
-    cols, tile_w, tile_h, per_page = layout(first.width, first.height, len(paths), cols, sheet_width)
+    cols, tile_w, tile_h, per_page = layout(first.width, first.height, len(paths), cols, sheet_width, group=group)
     small, big = font(ImageFont, 15), font(ImageFont, 17)
     label, gap, header = 22, 6, 30
     outs = []
@@ -394,16 +410,19 @@ def make_sheet(paths, labels, out, title, cols=None, sheet_width=SHEET_WIDTH):
     for page in range(pages):
         chunk = list(zip(paths, labels))[page * per_page:(page + 1) * per_page]
         rows = math.ceil(len(chunk) / cols)
-        width = gap + cols * (tile_w + gap)
+        width = gap + cols * (tile_w + gap) + group_gap(cols - 1, group)
         sheet = Image.new('RGB', (width, header + rows * (tile_h + label + gap) + gap), (18, 18, 22))
         draw = ImageDraw.Draw(sheet)
         draw.text((gap, 7), title + (f'  (page {page + 1} of {pages})' if pages > 1 else ''), fill=(235, 235, 235), font=big)
         for i, (path, text) in enumerate(chunk):
-            x = gap + (i % cols) * (tile_w + gap)
+            x = gap + (i % cols) * (tile_w + gap) + group_gap(i % cols, group)
             y = header + (i // cols) * (tile_h + label + gap)
             draw.text((x + 2, y + 3), text, fill=(255, 214, 102), font=small)
             with Image.open(path) as frame:
-                sheet.paste(frame.convert('RGB').resize((tile_w, tile_h), Image.LANCZOS), (x, y + label))
+                scale = min(tile_w / frame.width, tile_h / frame.height)
+                size = (max(1, round(frame.width * scale)), max(1, round(frame.height * scale)))
+                sheet.paste(frame.convert('RGB').resize(size, Image.LANCZOS),
+                            (x + (tile_w - size[0]) // 2, y + label + (tile_h - size[1]) // 2))
         target = out if page == 0 else re.sub(r'(\.\w+)$', f'-{page + 1}\\1', out)
         sheet.save(target)
         outs.append(target)
@@ -493,6 +512,30 @@ def shot_tiles(shot_list):
     return tiles
 
 
+def shot_moments(tiles):
+    """[(label, time)]: each tile's in, middle and out frame, EDGE inside its cuts (a quarter of a shorter shot)."""
+    moments = []
+    for label, (a, b) in tiles:
+        inset = min(EDGE, (b - a) / 4)
+        moments += [(f'{label} {stamp(a + inset)}', a + inset), (f'mid {stamp((a + b) / 2)}', (a + b) / 2),
+                    (f'out {stamp(b - inset)}', b - inset)]
+    return moments
+
+
+def parse_pairs(text):
+    """[(reference time, recording time)] from `2.3=1.6,0:07=5.2`."""
+    pairs = []
+    for item in (p for p in text.split(',') if p.strip()):
+        ref, sep, rec = item.partition('=')
+        ref, rec = parse_time(ref), parse_time(rec)
+        if not sep or ref is None or rec is None:
+            raise ValueError(f'not a pair of times (REFERENCE=RECORDING): {item}')
+        pairs.append((ref, rec))
+    if not pairs:
+        raise ValueError('--pairs is empty')
+    return pairs
+
+
 def shot_report(shot_list, limit=40):
     lengths = [b - a for a, b in shot_list]
     if len(shot_list) == 1:
@@ -539,15 +582,15 @@ def cmd_watch(tools, a):
         sound = audio(tools, a.video, info, start, end, a.bin)
         if info['video']:
             times = even_times(start, end, a.count)
-            tiles = shot_tiles(shot_list) if len(shot_list) > 1 else []
-            middles = [(a_ + b_) / 2 for _, (a_, b_) in tiles]
-            paths = grab_many(tools, a.video, times + middles, work, info=info)  # one decode for both sheets
+            moments = shot_moments(shot_tiles(shot_list)) if len(shot_list) > 1 else []
+            paths = grab_many(tools, a.video, times + [t for _, t in moments], work, info=info)  # one decode for both sheets
             files += make_sheet(paths[:len(times)], [f'#{i + 1}  {stamp(t)}' for i, t in enumerate(times)], os.path.join(out, 'overview.png'),
                                 f'{name}  {stamp(start)}-{stamp(end)}  {a.count} frames, evenly spaced', a.cols, a.width)
-            if tiles:
-                files += make_sheet(paths[len(times):], [f'{label} {stamp(s)} ({e - s:.2f} s)' for label, (s, e) in tiles],
-                                    os.path.join(out, 'shots.png'), f'{name}  the middle of each of {len(shot_list)} shots '
-                                    '(a rapid run is one tile: burst it)', a.cols, a.width)
+            if moments:
+                portrait = info['video']['height'] > info['video']['width']
+                files += make_sheet(paths[len(times):], [label for label, _ in moments], os.path.join(out, 'shots.png'),
+                                    f'{name}  {len(shot_list)} shots: in, middle and out of each (a rapid run as one: burst it)',
+                                    9 if portrait else 6, a.width, group=3)
         files.append(make_timeline(os.path.join(out, 'timeline.png'), start, end, shot_list, sound, a.width))
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -596,6 +639,28 @@ def cmd_frames(tools, a):
     paths = grab_many(tools, a.video, times, a.out, a.frame_width, info)
     for t, path in zip(times, paths):
         print(f'{stamp(t)}  {path}')
+
+
+def cmd_compare(tools, a):
+    pairs = parse_pairs(a.pairs)
+    if a.cols and a.cols % 2:
+        raise ValueError('--cols must be even: each moment is two tiles')
+    sides = [(a.reference, probe(tools, a.reference), 'ref'), (a.recording, probe(tools, a.recording), 'yours')]
+    for (video, info, _), times in zip(sides, zip(*pairs)):
+        late = [t for t in times if t > info['duration']]
+        if late:
+            raise ValueError(f'{os.path.basename(video)} is {stamp(info["duration"])} long: nothing at {stamp(late[0])}')
+    work = tempfile.mkdtemp(prefix='compare_')
+    try:
+        grabbed = [grab_many(tools, video, list(times), os.path.join(work, side), info=info, prefix=side)
+                   for (video, info, side), times in zip(sides, zip(*pairs))]
+        paths = [path for pair in zip(*grabbed) for path in pair]
+        labels = [text for i, (ref, rec) in enumerate(pairs, 1) for text in (f'#{i} ref {stamp(ref)}', f'#{i} yours {stamp(rec)}')]
+        outs = make_sheet(paths, labels, a.out, f'{os.path.basename(a.reference)} (ref) beside {os.path.basename(a.recording)} (yours), '
+                          f'{len(pairs)} moments', a.cols, a.width, group=2)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    print('\n'.join(outs))
 
 
 def cmd_shots(tools, a):
@@ -650,6 +715,8 @@ def find_window(part):
 
 
 def cmd_record(tools, a):
+    if a.crop and not re.fullmatch(r'\d+:\d+:\d+:\d+', a.crop):
+        raise ValueError(f'--crop is W:H:X:Y in pixels of the full recording, not {a.crop}')
     if platform.system() != 'Windows':
         raise ValueError('record captures with gdigrab, so it runs on Windows only')
     title, left, top, width, height = find_window(a.window)
@@ -658,9 +725,10 @@ def cmd_record(tools, a):
         source = ['-i', f'title={title}']
     else:  # the screen area the window covers: whatever is on top is what is recorded
         source = ['-offset_x', str(left), '-offset_y', str(top), '-video_size', f'{width}x{height}', '-i', 'desktop']
+    chain = ([f'crop={a.crop}'] if a.crop else []) + ['pad=ceil(iw/2)*2:ceil(ih/2)*2']
     run([tools[0], '-v', 'error', '-f', 'gdigrab', '-framerate', str(a.fps), '-draw_mouse', '0', '-t', str(a.seconds), *source,
-         '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-y', a.out])
-    print(f'{a.out}  {a.seconds:g} s of "{title}" ({a.mode}), {a.fps:g} fps')
+         '-vf', ','.join(chain), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-y', a.out])
+    print(f'{a.out}  {a.seconds:g} s of "{title}" ({a.mode}' + (f', cropped to {a.crop}' if a.crop else '') + f'), {a.fps:g} fps')
 
 
 def cmd_find(tools, a):
@@ -720,6 +788,14 @@ def parser():
     q = add('frames', out=True)
     q.add_argument('--at', required=True)
     q.add_argument('--width', dest='frame_width', type=int)
+    q = sub.add_parser('compare')
+    q.add_argument('reference')
+    q.add_argument('recording')
+    q.add_argument('--pairs', required=True, help='REF=REC times, comma separated: a reference moment and the one built for it')
+    q.add_argument('-o', '--out', required=True)
+    q.add_argument('--cols', type=int, help='an even number: each moment is two tiles')
+    q.add_argument('--width', type=int, default=SHEET_WIDTH)
+    q.add_argument('--ffmpeg')
     add('audio', window_opts=True).add_argument('--bin', type=float, default=AUDIO_BIN)
     add('probe')
     q = sub.add_parser('record')
@@ -728,6 +804,7 @@ def parser():
     q.add_argument('--seconds', type=float, default=10)
     q.add_argument('--fps', type=float, default=30)
     q.add_argument('--mode', choices=['window', 'screen'], default='window')
+    q.add_argument('--crop', help='W:H:X:Y: keep only this part, such as the 3D view, measured on a full-size still')
     q.add_argument('--ffmpeg')
     add('find', video=False)
     sub.add_parser('install')
@@ -740,10 +817,11 @@ def main(argv=None):
         return cmd_install(a)
     try:
         tools = find_ffmpeg(getattr(a, 'ffmpeg', None))
-        if getattr(a, 'video', None) and not re.match(r'^[a-z]+://', a.video) and not os.path.isfile(a.video):
-            raise ValueError(f'no such file: {a.video}')
-        {'watch': cmd_watch, 'sheet': cmd_sheet, 'burst': cmd_burst, 'frames': cmd_frames, 'shots': cmd_shots, 'audio': cmd_audio,
-         'probe': cmd_probe, 'record': cmd_record, 'find': cmd_find}[a.command](tools, a)
+        for video in (getattr(a, name, None) for name in ('video', 'reference', 'recording')):
+            if video and not re.match(r'^[a-z]+://', video) and not os.path.isfile(video):
+                raise ValueError(f'no such file: {video}')
+        {'watch': cmd_watch, 'sheet': cmd_sheet, 'burst': cmd_burst, 'frames': cmd_frames, 'compare': cmd_compare, 'shots': cmd_shots,
+         'audio': cmd_audio, 'probe': cmd_probe, 'record': cmd_record, 'find': cmd_find}[a.command](tools, a)
     except Missing as e:
         print(e, file=sys.stderr)
         return 3

@@ -67,6 +67,20 @@ class Shots(unittest.TestCase):
         report = '\n'.join(wv.shot_report(shots))
         self.assertIn('rapid run #2-#4: 3 shots', report)
 
+    def test_each_shot_shows_in_middle_and_out_inside_its_cuts(self):
+        moments = wv.shot_moments([('#1', (0, 2)), ('#2-4 rapid', (2, 2.9)), ('#5', (2.9, 3.1))])
+        self.assertEqual(len(moments), 9)
+        times = [round(t, 3) for _, t in moments]
+        self.assertEqual(times[:3], [0.1, 1.0, 1.9], 'EDGE inside each cut')
+        self.assertEqual(times[6:], [2.95, 3.0, 3.05], 'a quarter of a shot shorter than 4 x EDGE')
+        self.assertEqual([label.split()[0] for label, _ in moments[:6]], ['#1', 'mid', 'out', '#2-4', 'mid', 'out'])
+
+    def test_pairs_read_reference_then_recording(self):
+        self.assertEqual(wv.parse_pairs('2.3=1.6, 0:07=5.2'), [(2.3, 1.6), (7.0, 5.2)])
+        for bad in ('2.3', '=1.6', '2.3=', ' , '):
+            with self.assertRaises(ValueError):
+                wv.parse_pairs(bad)
+
 
 class Sound(unittest.TestCase):
     def test_levels_are_rms_dbfs_per_bin(self):
@@ -95,6 +109,15 @@ class Sheets(unittest.TestCase):
             self.assertLessEqual(tile_w, width, 'a tile is never larger than the source')
             self.assertGreaterEqual(pages, 1)
         self.assertEqual(wv.layout(1080, 1920, 16)[0], 6, 'portrait video gets 6 columns')
+
+    def test_a_row_holds_whole_groups_within_the_width(self):
+        for width, height, count, cols, group in ((640, 348, 66, 6, 3), (1080, 1920, 27, 9, 3), (1920, 1080, 10, 4, 2), (640, 348, 3, 6, 3)):
+            got, tile_w, _, per_page = wv.layout(width, height, count, cols, group=group)
+            self.assertEqual(got % group, 0, (width, count))
+            self.assertEqual(per_page % group, 0, 'no group splits across pages')
+            self.assertLessEqual(6 + got * (tile_w + 6) + wv.group_gap(got - 1, group), wv.SHEET_WIDTH)
+        self.assertEqual(wv.layout(640, 348, 3, 6, group=3)[0], 3)
+        self.assertEqual(wv.group_gap(5, 1), 0, 'single tiles get no group gap')
 
 
 class Finding(unittest.TestCase):
@@ -210,9 +233,37 @@ class OnARealVideo(unittest.TestCase):
         self.assertIn('rapid run #3-#6', text)
         self.assertIn('onsets (1', text)
 
+    def test_compare_puts_each_reference_moment_beside_the_recordings(self):
+        # The recording: the same colors 0.5 s later, 4:3 instead of 16:9, so its tiles are fitted, not stretched.
+        recording = os.path.join(self.folder, 'later.mp4')
+        subprocess.run([TOOLS[0], '-v', 'error', '-i', self.video, '-vf', 'scale=240:180,tpad=start_duration=0.5',
+                        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', recording], check=True)
+        out = os.path.join(self.folder, 'compare.png')
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = wv.main(['compare', self.video, recording, '--pairs', '0.5=1.0,1.5=2.0,4.2=4.7', '-o', out])
+        self.assertEqual(code, 0)
+        sheet = Image.open(out).convert('RGB')
+        cols, tile_w, tile_h, _ = wv.layout(320, 180, 6, group=2)
+        self.assertEqual(cols, 4)
+        for i, want in enumerate([(255, 0, 0)] * 2 + [(0, 128, 0)] * 2 + [(0, 0, 255)] * 2):
+            x = 6 + (i % cols) * (tile_w + 6) + wv.group_gap(i % cols, 2) + tile_w // 2
+            y = 30 + (i // cols) * (tile_h + 28) + 22 + tile_h // 2
+            pixel = sheet.getpixel((x, y))
+            self.assertLess(sum(abs(p - w) for p, w in zip(pixel, want)), 60, (i, pixel))
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(wv.main(['compare', self.video, recording, '--pairs', '1=9', '-o', out]), 2, 'past the end')
+            self.assertEqual(wv.main(['compare', self.video, recording, '--pairs', '1=1', '--cols', '3', '-o', out]), 2)
+
+    def test_a_crop_must_be_four_numbers(self):
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            self.assertEqual(wv.main(['record', os.path.join(self.folder, 'r.mp4'), '--window', 'none', '--crop', '1280x720']), 2)
+        self.assertIn('--crop', errors.getvalue())
+
     def test_a_missing_file_is_refused(self):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(wv.main(['probe', os.path.join(self.folder, 'nothing.mp4')]), 2)
+            self.assertEqual(wv.main(['compare', self.video, os.path.join(self.folder, 'nothing.mp4'), '--pairs', '1=1', '-o', 'x.png']), 2)
 
 
 if __name__ == '__main__':

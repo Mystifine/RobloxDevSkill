@@ -1,6 +1,10 @@
 # Cutscenes and cinematic cameras
 
-A cutscene is a timeline: camera, clips, effects and sound keyed to one clock. Build it so any second can be reproduced, since that is the only way to check it. Effects inside it still pass [vfx.md](vfx.md); poses follow the animation route. A reference cutscene, or yours in motion, is watched with [video.md](video.md): its shot lengths, holds and beats are the numbers to build to.
+A cutscene is a timeline: camera, clips, effects and sound keyed to one clock. Build it so any second can be reproduced, since that is the only way to check it. Effects inside it still pass [vfx.md](vfx.md); poses follow the animation route.
+
+## From a reference
+- **Build to its numbers:** watch it with [video.md](video.md) and build each shot to what it records: length, holds, beats, size, where the subject sits and faces, camera move and lens. Check your recording against the reference with `compare`, shot by shot, not only by timing.
+- **List what is left out, and why:** a rule (all ages, any avatar) or something the cutscene cannot do yet (a focus pull, a bloom pulse). The second is a feature to raise with the user, never a silent drop.
 
 ## Framing
 - **Shots that must work on any avatar frame the body,** waist-up or wider, anchored to the root or torso. Close-ups anchored to `Head` or a hand showed an empty head under a floating crown (a headless avatar) or a wall of grey blocks; waist-up and medium shots of the same moments read on every avatar. Face close-ups are for rigs you control.
