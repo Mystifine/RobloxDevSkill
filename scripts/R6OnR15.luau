@@ -17,7 +17,7 @@
 --   verify(map, rig, source, sequence)   plays both through the engine and measures how far R15 strays from the R6 source
 --   check(map, sequence)        the joint policy: six joints move, the nine locked ones stay at identity
 --   dump(map)                   the body's R6 pivots and tips as plain data, for r6_on_r15.py in Blender
---   wire(animate, ids, options) published clip ids into an R15 Animate script's slots, retuned to R6's speeds
+--   wire(animate, ids, options) published clip ids into an R15 Animate script's slots and animNames, retuned to R6's speeds
 --
 -- retarget, defaults and verify step the engine by hand, which Studio allows only in Edit. A clip fits the proportions of the rig
 -- it was built on: it plays on any R15 with the same turns, but rebuild it for an exact fit where a limb slides far.
@@ -732,28 +732,64 @@ end
 -- walk's id, and it swims with its walk and idle. R15's Animate tunes its speeds to its own clips (locomotion at speed * 1.25 / 16
 -- with a walk-to-run blend, climbing at speed / 5), which runs R6's walk about 13% fast and its climb over twice as fast, so its
 -- source is retuned to R6's speed / 14.5 and speed / 12. That takes effect when the script next starts: wire a copy that has not
--- started yet (StarterCharacterScripts, in Edit). `R6Tempo = false` leaves the source alone. Returns what it filled and retuned.
+-- started yet (StarterCharacterScripts, in Edit). `R6Tempo = false` leaves the tempo alone.
+-- Animate reads its slots only while StarterPlayer.AllowCustomAnimations is true (Avatar animations: Player Choice); under
+-- Standard it plays the animNames table in its source instead. So every group it fills is written there too, copied from the
+-- slots with their Weight values (1 where a slot has none, as Animate reads it): Standard then plays the same clips. Returns what
+-- it filled, retuned and rewrote.
+local function slotsOf(value: Instance): { Animation }
+	local slots = {}
+	for _, child in value:GetChildren() do
+		if child:IsA("Animation") then
+			table.insert(slots, child)
+		end
+	end
+	table.sort(slots, function(a, b)
+		return a.Name < b.Name
+	end)
+	return slots
+end
+
+local function writeAnimNames(script: any, groups: { [string]: boolean }): string
+	local source = script.Source
+	local _, head = string.find(source, "local animNames%s*=%s*")
+	local open, close = string.find(source, "%b{}", (head or 0) + 1)
+	if not head or open ~= head + 1 then
+		return "not found: animNames"
+	end
+	local written = {}
+	local block = string.gsub(string.sub(source, open, close), "(\n%s*)([%w_]+)(%s*=%s*)(%b{})", function(indent, name, equals, body)
+		local value = groups[name] and script:FindFirstChild(name)
+		if not value then
+			return indent .. name .. equals .. body
+		end
+		local lines = {}
+		for _, animation in slotsOf(value) do
+			local weight = animation:FindFirstChild("Weight")
+			table.insert(lines, string.format('%s\t{ id = "%s", weight = %s }', indent, animation.AnimationId, tostring(if weight then (weight :: any).Value else 1)))
+		end
+		table.insert(written, name)
+		return indent .. name .. equals .. "{" .. table.concat(lines, ",") .. indent .. "}"
+	end)
+	script.Source = string.sub(source, 1, open - 1) .. block .. string.sub(source, close + 1)
+	table.sort(written)
+	return "animNames: " .. table.concat(written, ", ")
+end
+
 function R6OnR15.wire(animate: Instance, ids: { [string]: any }, options: { R6Tempo: boolean? }?): { string }
 	local filled = {}
+	local groups = {}
 	local function fill(group: string, slot: number, id: any)
 		local value = animate:FindFirstChild(group)
 		if not value then
 			return
 		end
-		local slots = {}
-		for _, child in value:GetChildren() do
-			if child:IsA("Animation") then
-				table.insert(slots, child)
-			end
-		end
-		table.sort(slots, function(a, b)
-			return a.Name < b.Name
-		end)
-		local animation = slots[slot]
+		local animation = slotsOf(value)[slot]
 		if animation then
 			-- A bare number is an asset id; anything else is whole already, such as RegisterKeyframeSequence's id for a test.
 			animation.AnimationId = if tonumber(id) then "rbxassetid://" .. tostring(id) else tostring(id)
 			table.insert(filled, group .. "/" .. animation.Name)
+			groups[group] = true
 		end
 	end
 	for _, entry in R6OnR15.DEFAULTS do
@@ -784,6 +820,7 @@ function R6OnR15.wire(animate: Instance, ids: { [string]: any }, options: { R6Te
 		end
 		script.Source = source
 	end
+	table.insert(filled, writeAnimNames(animate, groups))
 	return filled
 end
 

@@ -1,6 +1,6 @@
 # Rojo project: start one, or convert a Studio game
 
-The blueprint is [assets/templates/PROJECT_STRUCTURE.md](../../assets/templates/PROJECT_STRUCTURE.md): layout, Rojo mapping, startup order, packages (MysLib, Nexus, Pulse, SoulStore), toolchain, `AGENTS.md`, MCP and Graphify. Read it first; this file is the procedure. Work on saved copies of the place, never the published one or the owner's open session, and publish nothing.
+The blueprint is [assets/templates/PROJECT_STRUCTURE.md](../../assets/templates/PROJECT_STRUCTURE.md): layout, Rojo mapping, startup order, packages (MysLib, Nexus, Pulse, SoulStore), toolchain, `AGENTS.md`, MCP and Graphify. Read it first; this file is the procedure. Publish nothing. A conversion works on saved copies of the place, never the published one. Syncing into the owner's open session is the owner's call: ask once at setup and record it in `AGENTS.md` (the blueprint's Studio sync); where it is allowed and Studio is in Play, stop Play yourself and carry on *(default)*.
 
 ## 1. Folder
 
@@ -9,7 +9,7 @@ Find where the user keeps projects: the folder holding the most Rojo projects (`
 ## 2. Initialize
 
 1. **Create the files.** Copy the blueprint to `docs/project-structure.md` and create everything it lists:
-   - `default.project.json`, `rokit.toml`, `wally.toml` (all four packages at reviewed versions), `selene.toml`;
+   - `default.project.json`, `rokit.toml`, `wally.toml` (all four packages at their latest reviewed versions, never a sibling project's pin: the blueprint's Wally section), `selene.toml`;
    - `.gitignore`, `.graphifyignore` (MysLib kept in), `.mcp.json`;
    - `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `README.md`;
    - the `src/` skeleton, with `Server.server.luau` and `Client.client.luau` bootstrapping in an explicit order through MysLib's `Bootstrapper`.
@@ -50,8 +50,8 @@ This is a rewrite into systems, not a copy of the scripts:
 
 - **Order of work.** Domains with their own scripts and state migrate one at a time, each passing section 6 steps 1-3 before the next. A monolith whose systems share one session table cannot be split that way: list which domain owns each field, move each domain with its fields, and prove parity offline (configs equal to the old ones, the new save load equal to the old `load()`) before the switch-over.
 - **Composition roots only bootstrap,** in an explicit order. Client handlers register before the transport starts, so no early server event is dropped.
-- **One teardown per player.** The data service takes the final save, then releases each domain in reverse start order. A service with its own `PlayerRemoving` races that order (seen: a plot freed before its units were cleared, their loops still running).
-- **An unpublished copy has no DataStores:** with `game.PlaceId == 0` every DataStoreService call throws, and a save library may retry forever. Give the save layer a session-memory mode for that case so the copy stays playable; real saves are tested as in section 6.
+- **One teardown per player.** The data service releases each domain in reverse start order, then SoulStore 2 takes the final save, after every leave handler (the blueprint). A service with its own `PlayerRemoving` races that order (seen: a plot freed before its units were cleared, their loops still running).
+- **An unpublished copy has no DataStores:** with `game.PlaceId == 0` every DataStoreService call throws, and a save library may retry forever. Give the save layer a session-memory mode for that case, and for Studio without API access (the blueprint), so the copy stays playable; real saves are tested as in section 6.
 - **Fix the legacy mistakes as you go:** client-trusted values, missing validation, leaks, polling, `wait()`. Log every behaviour change in `docs/migration.md`; gameplay otherwise stays the same.
 - **UI:** with a reactive UI framework in the project, rebuild the Studio GUIs as reactive components in code. The blueprint installs Pulse; React, Fusion or Vide also count.
   - **Components:** a component function builds its instances. Framework values (Pulse `Value`, `Computed`) hold state: data, the open window, the selected tab. A component's effect (one, or a few) reads them and writes its instances. Never give each instance property its own value or effect: a port that did allocated 17x the original's Lua memory per second on an idle HUD. Reuse a shared components module for buttons and panels.

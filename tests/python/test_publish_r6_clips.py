@@ -22,13 +22,18 @@ def asset(name, creator, asset_id, kind='Animation'):
 
 
 class FakeServer:
-    """Answers search_asset from a list of assets, as Studio's server does: by phrase, whoever created them."""
+    """Answers search_asset from a list of assets, as Studio's server does: by phrase, whoever created them. execute_luau answers
+    the place's own owner (`place`; None: a reply with no JSON, as when Studio has no Edit DataModel)."""
 
-    def __init__(self, assets, context=None):
+    def __init__(self, assets, context=None, place='context'):
         self.assets, self.calls = assets, []
         self.context = context or {'creatorType': 'User', 'creatorId': USER, 'userId': USER}
+        self.place = {k: v for k, v in self.context.items() if k != 'userId'} if place == 'context' else place
 
     def call(self, tool, args, timeout):
+        if tool == 'execute_luau':
+            assert args['code'] == pub.PLACE_OWNER and args['datamodel_type'] == 'Edit'
+            return {'content': [{'type': 'text', 'text': json.dumps(self.place) if self.place is not None else 'error'}]}
         assert tool == 'search_asset'
         self.calls.append(args)
         phrase = args['query'].strip('"')
@@ -109,6 +114,21 @@ class Finding(unittest.TestCase):
 
     def test_an_argument_overrides_the_place(self):
         self.assertEqual(pub.owner_of({'creatorType': 'User', 'creatorId': USER}, group=GROUP), ('group', GROUP))
+
+    def test_the_place_owner_beats_the_search_context(self):
+        # search_asset's context named the signed-in user for a group's place, and the first upload went to the wrong account.
+        server = FakeServer([asset(self.NAMES['walk'], GROUP, '5'), asset(self.NAMES['idle'], GROUP, '6')],
+                            {'creatorType': 'User', 'creatorId': USER, 'userId': USER}, {'creatorType': 'Group', 'creatorId': GROUP, 'placeId': '9'})
+        code, report = run(options(), self.NAMES, server)
+        self.assertEqual((code, report['owner'], report['ids']), (0, ['group', GROUP], {'walk': '5', 'idle': '6'}))
+        self.assertTrue(all(c.get('groupId') == GROUP for c in server.calls))
+
+    def test_an_unpublished_place_falls_back_to_the_search_context(self):
+        for place in ({'creatorType': 'User', 'creatorId': '0', 'placeId': '0'}, None):
+            server = FakeServer([asset(self.NAMES['walk'], USER, '1'), asset(self.NAMES['idle'], USER, '2')],
+                                {'creatorType': 'User', 'creatorId': '0', 'userId': USER}, place)
+            code, report = run(options(), self.NAMES, server)
+            self.assertEqual((code, report['owner']), (0, ['user', USER]))
 
     def test_a_group_place_finds_clips_in_the_group(self):
         server = FakeServer([asset(self.NAMES['walk'], GROUP, '5'), asset(self.NAMES['idle'], GROUP, '6')], {'creatorType': 'Group', 'creatorId': GROUP, 'userId': USER})

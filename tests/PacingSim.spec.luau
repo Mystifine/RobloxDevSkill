@@ -235,6 +235,58 @@ check(seconds(casual, 1) == 10 and seconds(casual, 2) == 18, `casual: {seconds(c
 local optimizer = trade("value", { itemA(), bigB() }, 0)
 check(seconds(optimizer, 2) == 15 and seconds(optimizer, 1) == 16, `optimizer: {seconds(optimizer, 1)}, {seconds(optimizer, 2)}`)
 
+-- worth: packs add no income. Small costs 10 for 0.5 expected new cards, Big 30 for 3; income 1 a second.
+-- The casual player buys Small at 10 s; the worth player saves for Big (0.1 a coin against 0.05) and buys it at 30 s.
+local function pack(name: string, price: number, worth: number): PacingSim.Buy
+	return {
+		name = name,
+		cost = function(s: PacingSim.State)
+			return if s[name] then nil else price
+		end,
+		buy = function(s: PacingSim.State)
+			s[name] = true
+		end,
+		worth = function()
+			return worth
+		end,
+	}
+end
+local function collect(policy: string): PacingSim.Run
+	return PacingSim.simulate({
+		policy = policy,
+		init = function()
+			return { cash = 0, Small = false, Big = false }
+		end,
+		income = function()
+			return 1
+		end,
+		buys = { pack("Small", 10, 0.5), pack("Big", 30, 3) },
+		milestones = {
+			{
+				name = "small",
+				reached = function(s: PacingSim.State)
+					return s.Small
+				end,
+			},
+			{
+				name = "big",
+				reached = function(s: PacingSim.State)
+					return s.Big
+				end,
+			},
+		},
+		sessionMinutes = 5,
+		sessionsPerDay = 1,
+		days = 1,
+	})
+end
+local hoarder = collect("worth")
+check(seconds(hoarder, 2) == 30 and seconds(hoarder, 1) == 40, `worth saves for the better pack: {seconds(hoarder, 1)}, {seconds(hoarder, 2)}`)
+local browser = collect("cheapest")
+check(seconds(browser, 1) == 10 and seconds(browser, 2) == 40, `cheapest buys the small pack first: {seconds(browser, 1)}, {seconds(browser, 2)}`)
+local flat = collect("value")
+check(seconds(flat, 1) == 10, "value has nothing to rank in a collection game and buys cheapest first")
+
 -- when no buy raises income the optimizer buys cheapest first
 local unlocks = PacingSim.simulate({
 	policy = "value",

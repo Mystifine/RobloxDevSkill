@@ -7,7 +7,7 @@ Resolve visual direction through [visual-style.md](visual-style.md): match the s
 ## 1. Research before building
 
 1. Find the project's VFX player/utility, existing templates, and VFX packs (search Workspace, ServerStorage, ReplicatedStorage, the repo's `assets/`). Also check installed plugins' asset libraries ([assets.md, Plugin asset libraries](../safety/assets.md#plugin-asset-libraries)) before creating effects, and generate a texture or model a mesh only when none of these has one that fits: generation is the costly path. Read how existing effects are authored so yours plays through the same path.
-2. Inspect the available textures and pack emitters: list their texture ids, flipbook layouts and original settings. Render flipbooks as contact sheets (Roblox thumbnails API) or preview them in Studio; do not pick a texture by name alone. Reference unnamed carriers by texture id.
+2. Inspect the available textures and pack emitters: list their texture ids, flipbook layouts and original settings, and each emitter's `EmissionDirection` with its parent's orientation. A pack effect may fire out of one face by design (a wind ring's 13 emitters all left the part's Front face, so set to a character's root it rushed the way the character faced): rotate the carrier so that face points where the effect should travel, and keep the rotation the pack gave it (never overwrite it with `CFrame.identity`). Render flipbooks as contact sheets (Roblox thumbnails API) or preview them in Studio; do not pick a texture by name alone. Reference unnamed carriers by texture id.
 3. Decide the beats (anticipation, release, impact, residue) and the layers per beat (core flash, body, edge, sparks, smoke/dust, light, ground mark). Give each layer its own texture, size curve and timing.
 
 ## 2. Tune the properties, do not accept defaults
@@ -41,7 +41,7 @@ An effect that appears in the air, on a head or inside a body is a placement bug
 
 - **Never use a character's root position as a ground point.** `HumanoidRootPart` is about 3 studs above the floor and the head about 2.6 above that. A locked target position is a hip, not a floor.
 - **Ground effects** (rings, cracks, pools, telegraphs): ray straight down from just above the point (4 studs, not 8 or more, so a ceiling is not hit), 40 studs long, **ignoring every character, monster, shadow, other effect and non-collidable prop** (`RaycastParams.RespectCanCollide = true`, plus an exclude list built from all of them; reuse the project's helper, for example `SkillMath.params` + `ground`). The ray must not start inside what it ignores and must not stop on a head, a drop of VFX or a decal. On a **miss, drop to the feet (point minus the hip offset), never leave it at hip height**. Lift 0.1-0.5 studs over the floor's flat dressing, and use `hit.Normal` for slopes.
-- **Body effects** attach to the right part by an Attachment (a crown on the Head, a foot ring on the foot or root's floor point, a hand glow on the hand), never by a world offset from the root that drifts.
+- **Body effects** attach to the right part by an Attachment (a crown on the Head, a foot ring on the foot or root's floor point, a hand glow on the hand), never by a world offset from the root that drifts. An aura or other effect on a character the game moves sets `LockedToPart = true`, so it rides with the body instead of trailing behind *(default)*.
 - **Air effects** (meteors, auras at chest height) declare their height from a named constant and are marked `Airborne` for the inspector.
 - **Derive spawn points on the server from authoritative facts** (the target's floor point, the boss's feet) and send those; clients should not guess heights from hip positions.
 - Check with `Inspector.placement(container)` (section 8): it flags `floating` parts and parts `in-body`, run with a real character standing on the stage.
@@ -56,6 +56,9 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 - `Orientation = VelocityParallel` lays the texture's width along motion, so tip-up textures go sideways; pick or rotate textures accordingly.
 - Legacy `Fire`/`Smoke` objects follow the part's Y axis (sideways on rotated or cylinder parts); prefer `ParticleEmitter`.
 - Additive emission (`LightEmission = 1`) can show rectangular texture backgrounds; check the texture's alpha before trusting it.
+- Low `LightEmission` does not make fire solid: a pale-tinted fire texture turned dark olive smoke. Keep fire emissive and get contrast against a bright sky another way (a darker layer behind it).
+- **Beams:** the width runs along the attachments' Z axis and the curve along their X (`CurveSize0`/`CurveSize1` move the control points along X). With X along the chord the curve does nothing: point an end's X away from the chord for the ribbon to bend. Ribbons laid side by side show gaps, so cloth (a cape) reads better as a few broad overlapping beams.
+- **Scaling an effect prop:** `Model:ScaleTo(n)` scales part sizes, attachment offsets, emitters' `Size`, `Speed` and `Acceleration` and beam widths, but not `PointLight.Range`; `ScaleTo(1)` restores them all. Put a lone part in a Model first, and scale lights yourself.
 - Only the local client draws its own predicted effects; do not also replay them for that player.
 
 ## 8. Inspect (an effect is not done until it passes)
@@ -83,5 +86,7 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 5. **Clean up:** `Inspector.release()`, `stage:Clear()`, `Inspector.hideUI(false)`, delete the ModuleScript; confirm no instances, tweens or connections remain.
 
 Capture caveat: a Studio capture can return a stale or blank frame right after you change the camera or start an effect. Wait about 6 s, and treat two identical successive captures as a stale frame, not as an empty effect; judge time-varying effects by looping them every few seconds, or from held frames. An unpublished place (PlaceId 0) may load none of the game's own textures ([ui.md](../ui/ui.md)), so inspect in a published copy. `Inspector.hold` keeps emitters and beams that sit on parts as well as on attachments.
+
+A whole sequence (a cutscene, several effects on one clock) is held and checked by its own clock: [cutscenes.md](cutscenes.md).
 
 Notes: layers whose `EmitDelay` is later than the held time fire into the frozen frame as fresh births; compute `keyTimes` before `hold` (it empties the container). The Studio MCP runs calls one at a time: start long-running work from a fixture Script and poll, rather than expecting two calls to overlap.

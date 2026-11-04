@@ -30,8 +30,11 @@
 -- cheapest affordable item. "value" (an optimizer) picks the buy that pays for itself soonest, counting the wait to
 -- afford it, and saves for it; it tries each buy on a copy of the state, so buys must not roll dice (chance belongs in
 -- step), and currencies other than the model's own still buy cheapest first. "ordered" buys the first available item
--- in list order and waits for it (a player following the game's goal arrow). An available buy marked save = true comes
--- first in its currency and is saved for. The gap between cheapest and value is how much allocation choices matter.
+-- in list order and waits for it (a player following the game's goal arrow). "worth" (an optimizer where buys do not
+-- raise income: packs in a collection game) picks the buy with the most `worth` per cost and saves for it; `worth` is
+-- the expected progress the buy adds (new cards, deck power), so a random pack is valued without rolling it. Buys with
+-- no worth are left to the cheapest-first rule. An available buy marked save = true comes first in its currency and is
+-- saved for. The gap between cheapest and value (or worth) is how much allocation choices matter.
 -- Targets and times are minutes of active play. Between sessions the player is away: offline earnings are paid, then
 -- model.away runs.
 
@@ -45,6 +48,7 @@ export type Buy = {
 	buy: (state: State) -> (),
 	currency: string?, -- the state field it is paid from; default the model's currency
 	save: boolean?, -- while available: bought before anything else in its currency, and saved for
+	worth: ((state: State) -> number)?, -- policy "worth": the expected progress this buy adds now
 }
 
 export type Milestone = {
@@ -60,7 +64,7 @@ export type Model = {
 	income: (state: State) -> number, -- currency per second of active play
 	currency: string?, -- default "cash"
 	buys: { Buy }?,
-	policy: string?, -- "cheapest" (default), "value" or "ordered"
+	policy: string?, -- "cheapest" (default), "value", "worth" or "ordered"
 	step: ((state: State, dt: number, clock: Clock) -> ())?, -- rules for each step of play: rolls, timers, events
 	away: ((state: State, seconds: number, clock: Clock) -> ())?, -- rules for time away: growth, hatching
 	milestones: { Milestone },
@@ -257,6 +261,23 @@ local function choose(model: Model, policy: string, state: State, purse: Purse):
 			return (if bestCost <= balance then best else nil), bestCost
 		end
 		-- nothing raises income: buy as a casual player would
+	elseif policy == "worth" then
+		-- the buy that adds the most progress per cost, saved for
+		local best: Buy?, bestCost, most = nil, 0, 0
+		for _, item in purse.buys do
+			local cost = if item.worth then priceOf(item, state) else nil
+			if cost ~= nil then
+				local worth = (item.worth :: (State) -> number)(state)
+				assert(worth == worth, `{item.name}: worth is NaN`)
+				local rate = worth / math.max(cost, 1e-9)
+				if worth > 0 and rate > most then
+					best, bestCost, most = item, cost, rate
+				end
+			end
+		end
+		if best then
+			return (if bestCost <= balance then best else nil), bestCost
+		end
 	end
 	local cheapest: Buy?, low = nil, math.huge
 	for _, item in purse.buys do
@@ -290,7 +311,7 @@ local function run(model: Model, seed: number, early: boolean): Run
 	math.randomseed(seed)
 	local currency = model.currency or "cash"
 	local policy = model.policy or "cheapest"
-	assert(policy == "cheapest" or policy == "value" or policy == "ordered", `unknown policy "{policy}"`)
+	assert(policy == "cheapest" or policy == "value" or policy == "worth" or policy == "ordered", `unknown policy "{policy}"`)
 	local dt = model.dt or 1
 	local length = (model.sessionMinutes or 20) * 60
 	local perDay = model.sessionsPerDay or 2

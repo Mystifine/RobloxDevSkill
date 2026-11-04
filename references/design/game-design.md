@@ -33,7 +33,7 @@ A design is ready when all six hold (the review at the end checks each):
 8. **Economy:** currencies, faucets and sinks, curves; simulate with [PacingSim](../../scripts/PacingSim.luau) and adjust until the pacing targets hold ([game-economy.md](game-economy.md)).
 9. **Monetization:** offers mapped to the fantasy, prices, when offers appear, compliance ([game-economy.md](game-economy.md)).
 10. **Production:** systems mapped to code, data and save fields; launch content counts; a vertical slice; a build order with a measurement per step; a roadmap along the direction.
-11. **Metrics:** KPIs with targets, funnels (onboarding, then one post-tutorial funnel per progression feature: [onboarding.md](onboarding.md)), economy events, experiments, pivot criteria.
+11. **Metrics:** KPIs with targets, funnels (all 10 slots, onboarding included, each post-tutorial funnel holding one feature: [analytics.md](analytics.md)), custom and economy events, experiments, pivot criteria.
 12. **Review and write:** score the review table, fix every failing row or record why it stays, then write the plan and reply (Writing the plan, below).
 
 ## Fantasy
@@ -80,8 +80,10 @@ Depth is how many kinds of meaningful decisions and skills open up over time, no
 - **Layer it.** Each layer adds a new *kind* of decision and opens once the last is understood: the verb (minute 0), a first build choice (about 10 min), synergy (about an hour), prestige timing and optimization (days 1-3), mastery, min-maxing or the market (week 1 on) *(start)*.
 - **Bigger numbers are length, not depth.** A tier that only multiplies stats adds hours, not decisions; each major tier also changes a rule.
 - **Skill pays, idle stays valid.** Plan the factor by which active play beats idle (say 2-3x) and keep idle progress real. Skilled players climb faster; nobody has to be skilled.
-- **Measure allocation depth:** simulate the casual player (`cheapest`) and the optimizer (`value`) with PacingSim ([game-economy.md](game-economy.md)). No gap means allocation choices do not matter; a huge one punishes casual players. Aim for a noticeable but forgiving gap (1.2-2x as a start).
+- **Measure allocation depth:** simulate the casual player (`cheapest`) and the optimizer (`value`, or `worth` where buys add progress rather than income) with PacingSim ([game-economy.md](game-economy.md)). No gap means allocation choices do not matter; a huge one punishes casual players. Aim for a noticeable but forgiving gap (1.2-2x as a start).
 - Keep secrets for discovery, never for purchases: odds and prices are always shown.
+- **Solve the core rules before the plan.** Enumerate a match's outcomes exactly with a small script, or simulate them: the draw rate, how much skill or reading gains, and any dominant option. One brief's rules drew 66.7% of matches with each card spent once, made reading worthless under free replay, and left one deck never worse than even under perfect play; a small rule change cleared all three. PacingSim covers pacing, not match rules.
+- **Remove before adding** *(default)*. When tuning a rule set, test removing a rule first, and report what an added rule costs to explain: players took a simpler set over an added rule with better fairness numbers.
 
 ## Loops
 

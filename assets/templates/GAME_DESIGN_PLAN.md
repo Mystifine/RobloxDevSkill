@@ -252,12 +252,25 @@ income curve (PacingSim curve). -->
 
 ### Funnels and events
 
-<!-- The onboarding funnel, then one funnel per progression feature, each starting at tutorial completion
-(references/design/onboarding.md). Kind: lifetime or per attempt. Failures and friction are custom events, not steps. -->
+<!-- All 10 slots, onboarding included, planned before the first funnel ships (references/design/analytics.md).
+Progression funnels start at tutorial completion. Kind: lifetime, recurring or temporary. A variant (class, map, event,
+test arm) is a custom field, never another funnel; counts, values, failures and friction are custom events. -->
 
-| Funnel | Feature | Kind | Steps, in order | Custom fields |
-|---|---|---|---|---|
-| Onboarding | Tutorial | Lifetime | One per lesson | |
+| Slot | Funnel | Kind | Steps, in order | Custom fields | Status |
+|---|---|---|---|---|---|
+| 1 | Onboarding | Lifetime | Joined (tutorial not finished), then one per lesson | | |
+| 2 | First-session core loop | Lifetime | Post tutorial, | | |
+| 3 | Aha moment | Lifetime | Post tutorial, | | |
+| 4 | Monetization | Recurring, per store visit | Store opened, item viewed, purchase prompted, purchase granted | | |
+| 5 | Core feature A | | | | |
+| 6 | Core feature B | | | | |
+| 7 | Progression or endgame | Lifetime | Post tutorial, | | |
+| 8 | Flex: drill-down | Temporary | | | Empty until a step needs it |
+| 9 | Flex: live ops | Recurring, per event | | | |
+| 10 | Flex: sandbox | Empty | | | Headroom |
+
+| Custom event | Value | Custom fields | Question it answers |
+|---|---|---|---|
 
 ### Experiments
 ### Pivot criteria

@@ -97,8 +97,9 @@ src/ServerScriptService/Services/PlayerDataService.luau       # SoulStore lifecy
 
 - The server-only schema declares the default save; keep shared UI config out unless genuinely persistent. The server-only profile isolates production and development store names; client input never selects or resets a production store.
 - SoulStore is a Wally **server dependency**, required only through `ServerScriptService.ServerPackages`. Follow its pinned API; never copy package code.
-- `PlayerDataService` loads one session per player, reconciles from a fresh schema copy, registers save/removal, and exposes a small API. It is not a feature service. It initializes before save-dependent services, which register through a loaded-player lifecycle instead of assuming data during `PlayerAdded`. It also owns the leave order: final save first, then each service's teardown in reverse start order; services register teardown with it instead of connecting `PlayerRemoving` themselves.
+- `PlayerDataService` loads one session per player, reconciles from a fresh schema copy, registers save/removal, and exposes a small API. It is not a feature service. It initializes before save-dependent services, which register through a loaded-player lifecycle instead of assuming data during `PlayerAdded`. It also owns the leave order: each service's teardown in reverse start order, then the final save. SoulStore 2 defers its final save until every other `PlayerRemoving` handler has run, so what a teardown writes is saved (1.x saved first, and later writes were lost). Services register teardown with it instead of connecting `PlayerRemoving` themselves, so the order between them stays explicit.
 - An unpublished place (`game.PlaceId == 0`, a saved copy in Studio) has no DataStores: every call throws. The profile marks it, and `PlayerDataService` keeps that session's saves in memory so the place stays playable.
+- Studio without API access (a published place with Studio access to API services off) fails too: SoulStore 2 does not retry `must publish`, or `HTTP 403` in Studio, and `LoadData` returns false with `DataStoreError`. In Studio only, fall back to the memory save on that reason rather than kicking the tester; in a live server it is a real failure.
 - Writes are server-authoritative and validated; clients never send arbitrary save paths or values.
 - `PlayerDataController` owns the client cache: initial snapshot by request, then server-pushed changes. It queues updates arriving before the snapshot and cleans up subscriptions on teardown. UI reads and subscribes; it never mutates the save.
 - Declare remote names and payloads in one shared place; the server owns handlers and validation.
@@ -106,7 +107,7 @@ src/ServerScriptService/Services/PlayerDataService.luau       # SoulStore lifecy
 
 ## Wally packages
 
-The repository owns the manifest and lockfile; package folders are install outputs. Include every package below, pinned to reviewed versions (no angle-bracket placeholders in an installable manifest):
+The repository owns the manifest and lockfile; package folders are install outputs. Include every package below, pinned to reviewed versions (no angle-bracket placeholders in an installable manifest). Review each at setup: its latest version (`wally search <name>`, or `https://api.wally.run/v1/package-metadata/<scope>/<name>` when Rokit has no project to run Wally from) and its changelog or migration notes. Never copy a sibling project's pin: it can be a major version behind (SoulStore 2 takes the scope second in `new`, returns results from `LoadData` and `SaveData`, and saves last on leave).
 
 ```toml
 [package]
@@ -156,7 +157,8 @@ A Rojo build validates mapped source; it does not recreate Studio-owned content.
 
 ## Agent instruction files
 
-- **`AGENTS.md`** is the one canonical brief: purpose, ownership, architecture, security rules, verification, MCP discovery and Graphify usage (sections below). Link to `docs/` for details and volatile numbers rather than copying them.
+- **`AGENTS.md`** is the one canonical brief: purpose, ownership, architecture, security rules, verification, Studio sync, MCP discovery and Graphify usage (sections below). Link to `docs/` for details and volatile numbers rather than copying them.
+- **Studio sync** *(default)*: ask the owner at setup whether agents may sync into their open Studio session, and record the answer as a short `Studio sync` section. Where they may, an agent that needs Edit mode stops Play itself (Studio MCP `start_stop_play`), syncs and carries on, rather than asking the owner to stop it. Where they may not, agents work on a saved copy.
 - **`CLAUDE.md`** imports it with a line containing only `@AGENTS.md`. Claude Code expands `@path` imports into context at session start; a plain Markdown link such as `[AGENTS.md](AGENTS.md)` is **not** loaded. Add only short Claude-specific notes beneath the import, never a second copy of the rules.
 - `.claude/` holds optional Claude settings, hooks and skills; `.codex/config.toml` holds Codex configuration such as MCP servers. Neither replaces `AGENTS.md`.
 - Add other agent files only when a tool requires them, keep them short and point back to `AGENTS.md`. Never check in instructions that disagree about ownership, startup or verification.

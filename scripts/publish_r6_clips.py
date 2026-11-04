@@ -6,8 +6,10 @@ by its hard-coded name, trusts any match, and uploads only what is missing. Prin
 
 A clip's name is `RDSkill R6onR15 <set> <clip>`, for example `RDSkill R6onR15 v1 walk`.
 
-- Owner: --group or --user, else what the open place reports. An animation plays only in experiences owned by its creator, so a clip
-  under that name owned by anyone else does not count as found.
+- Owner: --group or --user, else the open place's own game.CreatorType and game.CreatorId (read with execute_luau: search_asset's
+  context can name the signed-in user for a group's place), else that context for a place never published. Printed to stderr
+  before any search or upload. An animation plays only in experiences owned by its creator, so a clip under that name owned by
+  anyone else does not count as found.
 - Finding: Studio's MCP server (search_asset, exact phrase, type Animation). Open Cloud cannot list private animations by name, so
   without Studio only --manifest says what exists.
 - Uploading: Open Cloud through upload_asset.py, one at a time, stopping at the first not approved. Needs the project's key.
@@ -36,8 +38,22 @@ def clips():
     return sorted(p.stem for p in CLIPS.glob('*.rbxm'))
 
 
+PLACE_OWNER = ('local HttpService = game:GetService("HttpService") return HttpService:JSONEncode({ creatorType = game.CreatorType.Name, '
+               'creatorId = tostring(game.CreatorId), placeId = tostring(game.PlaceId) })')
+
+
+def place_owner(server, studio):
+    """The open place's own CreatorType and CreatorId, or {} when Studio cannot say (no Edit DataModel, an error reply)."""
+    try:
+        res = server.call('execute_luau', {'studio_id': studio, 'code': PLACE_OWNER, 'datamodel_type': 'Edit'}, 60)
+        place = json.loads(res['content'][0]['text'])
+    except (KeyError, IndexError, TypeError, ValueError, SystemExit):
+        return {}
+    return place if isinstance(place, dict) and str(place.get('creatorId', '0')) != '0' else {}
+
+
 def owner_of(context, group=None, user=None):
-    """(kind, id) of the account that must own the clips: the arguments, else the open place's owner as search_asset reports it."""
+    """(kind, id) of the account that must own the clips: the arguments, else the place's owner as `context` gives it."""
     if group:
         return 'group', str(group)
     if user:
@@ -108,10 +124,15 @@ def run(a, names, server=None, studio=None):
     ids = {c: str(e['assetId']) for c, e in done.items() if c in names and e.get('name') == names[c] and owner and e.get('owner') == owner[1]}
     queried = 0
     if server and len(ids) < len(names):
+        if owner is None:
+            place = place_owner(server, studio)
+            owner = owner_of(place) if place else None
         wanted = {c: n for c, n in names.items() if c not in ids}
         owner, hits = find(server, studio, wanted, owner, a.group, a.user)
         ids.update(hits)
         queried = len(hits)
+    if owner:
+        print(f'owner: {owner[0]} {owner[1]}', file=sys.stderr)
     report = {'owner': list(owner) if owner else None, 'found': queried, 'uploaded': 0, 'ids': ids, 'missing': sorted(set(names) - set(ids))}
     if report['missing'] and not owner:
         print(json.dumps({**report, 'note': 'no owner: pass --group or --user, or open the place in Studio'}))

@@ -4,7 +4,7 @@
 
 For a modeling task that includes an animation-ready rig, first follow [rigs.md](../rigs/rigs.md) and its standard/custom route. Use representative poses or a short diagnostic motion to verify deformation before baking and after importing the rig into Studio. This does not require a full idle/walk/attack set, gameplay code or publication of diagnostic clips. The full clip authoring, inspection and publishing workflow below applies when production animations are part of the task. Custom creatures use anatomy-appropriate skeletons, not automatically R6/R15.
 
-For **R6-like motion on an R15 rig** ("R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15"), first read [r6-on-r15.md](r6-on-r15.md). It defines the six moving joints and nine locked joints, FK and IK that behave like R6's, rigid-limb retargeting, Roblox's default R6 set rebuilt for R15, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
+For **R6-like motion on an R15 rig** ("R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15"), first read [r6-on-r15.md](r6-on-r15.md). A project whose default animations are already R6-like gets R6-like clips too, unless the user says otherwise *(default)*. It defines the six moving joints and nine locked joints, FK and IK that behave like R6's, rigid-limb retargeting, Roblox's default R6 set rebuilt for R15, and motion/preview checks. Use the toolchain below with that joint policy; do not introduce normal articulated R15 knees, elbows or waist movement.
 
 ## Roblox characters (R15 / R6)
 
@@ -33,7 +33,7 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
 
 ## 3. Export, set up, publish
 
-1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig.
+1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig. A rig scripted from `Players:CreateHumanoidModelFromDescription` has AnimationConstraint joints (15, with 14 BallSocketConstraints) and no Motor6D, even before it is parented: forward kinematics that walks Motor6Ds finds nothing ([rigs.md](../rigs/rigs.md)); `R6OnR15.map` and AnimationInspector read both.
 2. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) instead of hardcoded times.
 3. To read an existing clip, `Clone` what `KeyframeSequenceProvider:GetKeyframeSequenceAsync` returns before changing it, and never `Destroy` it: it is cached and shared, and destroying it leaves that id empty for the rest of the Studio session (`AnimationClipProvider:GetAnimationClipAsync` still reads it). `Animator:StepAnimations` runs only in Edit.
 4. Pass section 4, then publish to the **group that owns the experience** (the project's cloud API key with that group as creator, or Studio publishing to that group; [uploading.md](../safety/uploading.md)). An animation plays only in experiences owned by its creator. Republishing makes a new id.
@@ -53,7 +53,7 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
    | `slide` | a planted foot drifts over 0.05 studs in a stationary clip | lock planted feet (IK) |
    | `stride` | in-place locomotion: a planted foot's backward speed varies over 25% | keep contact speed even; play the clip at `WalkSpeed / GroundSpeed` (in the report) |
    | `float` | a planted foot hovers over 0.05 studs above the floor, or a still foot rests 0.15 to 0.6 studs up without touching; error when still feet never touch the floor at all | lower the root or the leg onto the floor; `Ignore` it only for a foot lifted or a clip airborne on purpose |
-   | `clip` | a planted foot sinks over 0.05 studs into the floor, or its toe or heel dips over 0.1 (measured at the sole's `FootAttachment` and toe and heel points) | raise it; pivot rolls on the toe or heel, not the ankle |
+   | `clip` | a planted foot sinks over 0.05 studs into the floor, or its toe or heel dips over 0.1 (measured at the sole's `FootAttachment` and the corners of a sole 0.35 of the foot's length and 0.45 of its width from it, so a foot tipped onto its edge counts as touching) | raise it; pivot rolls on the toe or heel, not the ankle |
    | `end-offset` | a one-shot ends with the body over 0.5 studs from its start; the root does not follow, so it snaps back | move the character in code, or `Ignore` it for death and knockback clips |
    | `hyperextend` | a knee or elbow bends over 5° the wrong way | fix the pole target or IK |
    | `grid` | keys between frames | `snapKeys(sequence, fps)` |

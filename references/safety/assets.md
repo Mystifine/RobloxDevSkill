@@ -47,7 +47,5 @@ If anything is ambiguous or looks malicious, discard the asset and say so.
 
 ## Sounds
 
-- Sounds are the one Toolbox category meant to be kept. Prefer Roblox-licensed libraries (Pro Sound Effects userId `7462895450`, APM userId `7462718749`) found through the Toolbox API; Studio MCP search cannot filter by creator.
-- Choose by description, then measure: duration, onset, peak/loudness and spectrum (play it in a throwaway Studio script or a probe tool), so it fits the beat and mix.
-- Put ids in the project's sound table and play them through the project's audio path. Roblox now discourages `Sound`, `SoundGroup` and `SoundEffect` in favor of the Audio API ([audio objects](https://create.roblox.com/docs/audio/objects)): `AudioPlayer` -> `Wire` -> `AudioDeviceOutput` for 2D; `AudioPlayer` -> `Wire` -> `AudioEmitter`, heard through `AudioListener` -> `Wire` -> `AudioDeviceOutput`, for 3D; `AudioEqualizer`, `AudioCompressor` and `AudioReverb` on the wire. New audio systems use it; a project built on `Sound` stays consistent (`Volume`, `RollOffMaxDistance` and a `SoundGroup` matching the existing audio) until it migrates.
+- Sounds are the one Toolbox category meant to be kept. Finding licensed ones, measuring and playing them: [audio.md](../art/audio.md).
 

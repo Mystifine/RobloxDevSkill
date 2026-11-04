@@ -166,6 +166,26 @@ local ok, failure = pcall(function()
 	check(near(math.min(lowest(settledAt, "LeftFoot"), lowest(settledAt, "RightFoot")), floor), "settle brings the lowest foot down to the floor")
 	check(settled["Left Leg"] == swing["Left Leg"], "settle moves only the torso")
 
+	-- A wide stance rests each rigid foot on its inner edge, its sole's centre line in the air: the audit must read it as standing.
+	local function outward(limb, foot, sign)
+		return math.abs(Fake.world(map, { [limb] = CFrame.Angles(sign * math.rad(20), 0, 0) })[foot].Position.X) > math.abs(map.Rest[foot].Position.X)
+	end
+	local wide = Fake.settle(map, {
+		["Left Leg"] = CFrame.Angles((if outward("Left Leg", "LeftFoot", 1) then 1 else -1) * math.rad(20), 0, 0),
+		["Right Leg"] = CFrame.Angles((if outward("Right Leg", "RightFoot", 1) then 1 else -1) * math.rad(20), 0, 0),
+	})
+	local wideAt = Fake.world(map, wide)
+	local centreLift = (wideAt.LeftFoot.Position - wideAt.LeftFoot.UpVector * map.Sizes.LeftFoot.Y / 2).Y - floor
+	check(near(lowest(wideAt, "LeftFoot"), floor) and centreLift > 0.05, string.format("a wide stance stands on the feet's edges, the sole's centre %.2f studs up", centreLift))
+	local stance = own(Fake.clip(map, { { Frame = 0, Pose = wide }, { Frame = 60, Pose = wide } }, { Name = "wide" }))
+	local floats = {}
+	for _, finding in Inspector.audit(r15, stance).Findings do
+		if finding.Rule == "float" or finding.Rule == "clip" then
+			table.insert(floats, finding.Rule .. " " .. finding.Detail)
+		end
+	end
+	check(#floats == 0, "the inspector measures a tipped foot on its edge: " .. table.concat(floats, "; "))
+
 	-- IK through the engine: what a clip of those Transforms really does.
 	local reached = own(Fake.clip(map, { { Frame = 0, Pose = { ["Right Arm"] = transform } }, { Frame = 30, Pose = { ["Right Arm"] = transform } } }, { Name = "reach" }))
 	local reachedWorld = chain(map, evaluate(r15, { reached }, 0.25))
@@ -250,14 +270,24 @@ local ok, failure = pcall(function()
 	check(animate.walk:FindFirstChildOfClass("Animation").AnimationId == "rbxassetid://111", "wire fills the walk slot")
 	check(animate.run:FindFirstChildOfClass("Animation").AnimationId == "rbxassetid://111", "wire gives run the walk's clip, as R6 has")
 	check(animate.swim:FindFirstChildOfClass("Animation").AnimationId == "rbxassetid://111" and animate.swimidle:FindFirstChildOfClass("Animation").AnimationId == "rbxassetid://222", "wire swims on the walk and idle, as R6 does")
-	check(#filled == 9, "wire names what it filled and retuned")
+	check(#filled == 10, "wire names what it filled, retuned and rewrote")
 	for _, line in filled do
 		assert(not string.find(line, "not found", 1, true), "this Studio's Animate changed: " .. line)
 	end
 	check(string.find(animate.Source, "local normalizedRunSpeed = 1.1328", 1, true) and string.find(animate.Source, "local scale = 12.0", 1, true), "wire retunes Animate to R6's speeds")
+	-- Under Avatar animations "Standard" Animate skips the slots and plays animNames, so the same ids must be there.
+	local source = animate.Source
+	local _, walkIds = string.gsub(source, '{ id = "rbxassetid://111", weight = 1 }', "")
+	check(walkIds == 3, "animNames walks, runs and swims on the walk's id")
+	check(string.find(source, '{ id = "rbxassetid://222", weight = 9 },\n\t\t{ id = "http://www.roblox.com/asset/?id=507766666", weight = 1 }\n\t},', 1, true) ~= nil, "animNames copies the idle slots with their weights, 9 and 1")
+	check(not string.find(source, "507766951", 1, true), "animNames drops the R15 idle that has no slot")
+	check(string.find(source, '{ id = "rbxassetid://333", weight = 10 }', 1, true) ~= nil and string.find(source, "507771019", 1, true) ~= nil, "animNames mirrors a partly filled group, slot for slot")
+	check(string.find(source, "laugh = {", 1, true) ~= nil and string.find(source, "507770818", 1, true) ~= nil, "animNames leaves groups wire did not fill")
 	local untouched = own(r15:Clone())
 	local before = untouched.Animate.Source
-	check(#Fake.wire(untouched.Animate, { walk = 111 }, { R6Tempo = false }) == 3 and untouched.Animate.Source == before, "R6Tempo false leaves the source alone")
+	local plain = Fake.wire(untouched.Animate, { walk = 111 }, { R6Tempo = false })
+	check(#plain == 4 and plain[4] == "animNames: run, swim, walk", "R6Tempo false still writes animNames")
+	check(string.find(untouched.Animate.Source, "local scale = 5.0", 1, true) ~= nil and untouched.Animate.Source ~= before, "R6Tempo false leaves the tempo alone")
 
 	-- A retarget leaves the providers' shared clips whole.
 	check(#Provider:GetKeyframeSequenceAsync("rbxassetid://180426354"):GetKeyframes() > 0, "the provider's cached source survives")

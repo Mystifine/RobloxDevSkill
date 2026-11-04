@@ -58,6 +58,8 @@ Rules:
 - **Every MeshPart has `DoubleSided = true`, always.** Set it when the mesh enters the place; `RigSkin` does on what it touches and `RigSkin.audit` reports any it finds off.
 - Match shading to the chosen forms. For crisp plates, marking edges past about 40 degrees sharp (`kit.sharpen`) can avoid inflated-looking rims; do not apply that threshold to every organic or deliberately faceted asset.
 - Real-world scale, applied transforms, sensible origin/pivot, clear naming.
+- **Blender FBX into Roblox:** exported with `apply_unit_scale`, `apply_scale_options = 'FBX_SCALE_ALL'` and `bake_space_transform`, then uploaded as a Model, each object becomes a MeshPart named as in Blender at 1 unit = 1 stud, Blender +Y forward as Roblox +Z. Roblox recentres each mesh, so mark a hinge or pivot with a tiny object there.
+- **Blender metaballs:** an element's radius is its field's; the surface sits at about 0.6 of it (stiffness 2, threshold 0.6). Fields widened 1.65 times at threshold 0.5 gave the intended sizes, fused.
 - No hidden or interior faces that never render (a side a joint can swing into view does render: [skins.md](../rigs/skins.md)); no coplanar overlaps (z-fighting); consistent normals; no n-gons left unintended.
 - Gameplay actors follow [rigs.md](../rigs/rigs.md): compatible R15/R6 characters can use standard skins; custom anatomy uses its own skeleton. Character art also follows [characters.md](../safety/characters.md), renders included.
 - Every model, texture and decal you make is an upload: no blood or gore in it, and weapons, claws and tools carry no blood, though wear, rust and grime are fine ([no-gore.md](../safety/no-gore.md)).

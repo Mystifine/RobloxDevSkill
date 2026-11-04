@@ -5,7 +5,7 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILL_MD = 2000
+SKILL_MD = 2100
 DESCRIPTION = 450  # characters: read in every session, Roblox or not
 REFERENCE = 4500
 EXCEPTIONS = {'references/design/game-design.md': 6000}  # a design task reads it whole
@@ -18,7 +18,10 @@ ROUTES = {
     'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10000),
     'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 19500),
     'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8500),
-    'default r6 clips': (['animation/r6-default-set'], 3500),
+    'default r6 clips': (['animation/r6-default-set'], 4000),
+    'funnels': (['design/analytics'], 5000),
+    'audio': (['art/audio', 'safety/assets'], 6000),
+    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 9500),
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
 

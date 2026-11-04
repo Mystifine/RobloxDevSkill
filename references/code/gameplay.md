@@ -4,6 +4,7 @@
 
 - **Movers are constraints** ([mover constraints](https://create.roblox.com/docs/physics/mover-constraints)): `LinearVelocity` (a steady speed along a direction, a line or a plane), `AngularVelocity`, `AlignPosition` and `AlignOrientation` (pull toward a target or another attachment), `VectorForce` and `Torque` (constant), `LineForce`. `BodyVelocity`, `BodyPosition`, `BodyGyro`, `BodyForce`, `BodyThrust` and `RocketPropulsion` are deprecated: convert them when you touch them (the page maps each one).
 - **One-off pushes:** set `AssemblyLinearVelocity` / `AssemblyAngularVelocity`, or `BasePart:ApplyImpulse`, from the side that owns the assembly.
+- **A part's height is not its `Size.Y`:** pads and rings are often cylinders lying on their side. Its world height is `|RightVector.Y| * Size.X + |UpVector.Y| * Size.Y + |LookVector.Y| * Size.Z`. A 0.6 x 9 x 9 pad on its side, read by `Size.Y`, stood every character 4.5 studs up, and looked plausible in screenshots: print the numbers.
 - **Collisions:** `PhysicsService:RegisterCollisionGroup` and `CollisionGroupSetCollidable`, then `BasePart.CollisionGroup`. Decor gets `CanCollide`, `CanTouch` and `CanQuery` off, which is cheaper than a group.
 - **Network ownership.** An unanchored assembly is simulated by its network owner, and the server hands assemblies near a player to that player's client by default, which can then move them anywhere. NPCs, projectiles, loot and anything authoritative: `SetNetworkOwner(nil)` on an unanchored part of the assembly. A player's own vehicle: `SetNetworkOwner(player)` for responsive driving, with the server checking speed and position. Anchored parts are never owned. Security rules: [coding.md](coding.md).
 
@@ -20,6 +21,7 @@
 ## Playing animations in game
 
 - **Load each animation once per Animator (the Humanoid's, or the AnimationController's) and keep the track.** Calling `animator:LoadAnimation(animation)` on every use piles up tracks until Roblox warns, and the old ones keep their memory.
-- The local player's character animates from the client (it replicates); NPCs animate from the server.
+- The local player's character animates from the client (it replicates); NPCs animate from the server. A client may also play a cosmetic clip on a server-owned NPC's Animator: it shows on that client only, at full weight.
+- **An anchored character moved by CFrame** (its owner's client lifting it for a pose or cutscene) goes to Freefall at once and stays there after it is back on the floor, until unanchored, so the fall clip plays under every later pose; holding a movement key on an anchored root does not start the walk. Disable Freefall while it is moved (`Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)`), then `ChangeState(Enum.HumanoidStateType.Running)` and enable it again.
 - `track:Play(fadeTime, weight, speed)`. Priorities, low to high: `Core`, `Idle`, `Movement`, `Action`, then `Action2` to `Action4`. Time gameplay to `track:GetMarkerReachedSignal("Hit")`, never to `task.wait` guesses ([animation.md](../animation/animation.md)).
 - Stop tracks with the same fade on death, unequip and teardown, through the project's maid.

@@ -675,14 +675,21 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		local item = rig.ByName[name]
 		if find and item then
 			measured += 1
-			-- contact points: the sole attachment (R15 and R6 feet carry a *FootAttachment at the sole) with a toe and a heel
-			-- point along the foot, so a rolling foot is measured where the shoe is, not at its box's corners
+			-- contact points: the sole attachment (R15 and R6 feet carry a *FootAttachment at the sole), then the corners of a sole
+			-- 0.35 of the foot's length to toe and heel, so a rolling foot is measured where the shoe is, not at its box's ends,
+			-- and 0.45 of its width to each side, so a foot tipped onto its edge (a rigid R6 leg on a wide stance) is measured on
+			-- that edge, not at its centre, which hovers. A tilted flat sole's lowest point is always one of its corners.
 			local soles: { CFrame }? = nil
 			if item:IsA("BasePart") then
 				for _, child in item:GetChildren() do
 					if child:IsA("Attachment") and string.find(child.Name, "FootAttachment$") then
-						local reach = item.Size.Z * 0.35
-						soles = { child.CFrame, child.CFrame * CFrame.new(0, 0, -reach), child.CFrame * CFrame.new(0, 0, reach) }
+						local reach, side = item.Size.Z * 0.35, item.Size.X * 0.45
+						soles = { child.CFrame }
+						for _, x in { -side, side } do
+							for _, z in { -reach, reach } do
+								table.insert(soles, child.CFrame * CFrame.new(x, 0, z))
+							end
+						end
 						break
 					end
 				end

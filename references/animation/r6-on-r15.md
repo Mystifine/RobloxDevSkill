@@ -65,6 +65,8 @@ local raise = R6OnR15.clip(map, {
 }, { Name = "raise", Priority = Enum.AnimationPriority.Action, Parent = game.ServerStorage })
 ```
 
+**A pose that touches or points at something is IK, not FK:** a hand at the chin, on the chest or on a prop, or an arm aimed at a target. Author the point and let `R6OnR15.reach(map, limb, point, { Torso })` find the turn ([r6-ik.md](r6-ik.md)); three tries of guessed angles left a hand beside the face and an aimed arm 25 degrees off, and `reach` placed both first time.
+
 Rotation normally supplies the motion. A translation slides the whole rigid block, which is how R6 clips imitate a bend: R6's climb slides its legs 1.5 studs. Sparse keys interpolate the R15 joint, so a limb turning far between two keys strays from R6's arc by up to about 0.1 studs; add a key where that shows. `retarget` does so by itself.
 
 ## Shape the motion
@@ -75,6 +77,7 @@ Inspect supplied frames/video and the existing animation family before inventing
 - **Walk/run:** use hip-driven leg pendulums and opposed shoulder swings, with smaller torso/head counter-motion. Reduce vertical amplitude and abrupt acceleration when asked for smoother motion. A forward run posture comes from the root/whole torso, with a partial head counter-tilt to keep looking ahead; keep the waist locked.
 - **Jump:** use a compact forward-and-outward shoulder arc when that is what the reference shows. Do not turn a small circular sweep into an overhead 360-degree windmill. Review hand paths and total span from the front and side.
 - **Fall:** follow the reference's held or alternating shoulder motion rather than automatically spreading both arms into a T. Keep it distinct from a new jump or body spin.
+- **Held poses** (a card pose, a victory stance): plant every key's feet where the final pose puts them (`plant`), anticipation keys included, and breathe with the head only. Settling each key on its own slid the feet 0.5 to 1.4 studs, and a torso breath lifted a planted foot; planted, slides fell to 0.11 studs or less.
 
 New motion uses sparse, deliberately eased Bezier authoring curves with controlled overlap. Loops need matching endpoint poses **and tangents**. Retain a duplicate closing key for checking/export when needed, but omit it from rendered loop playback.
 

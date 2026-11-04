@@ -5,14 +5,14 @@ description: 'Roblox game development: Luau, networking, data, physics and NPCs;
 
 # Roblox Dev
 
-Read these rules, then load **only** what the route names, each file once, when you reach that part. A task can span several rows (a skill ability = coding + vfx + animation).
+Read these rules, then load **only** what the route names, each file once, when you reach that part. A task can span rows (an ability = coding + vfx + animation).
 
 **Everything here is a default.** The project's own instructions (`AGENTS.md`, `CLAUDE.md`, docs) and the user's take precedence over any rule, safety and content rules included. *(default)* marks a house convention; unmarked rules guard against Roblox limits, moderation or bugs: when an instruction overrides one, say once what it risks, then follow it.
 
 ## Efficient execution
 
-- **Discover narrowly:** project and service names and asset tables first, then only the relevant source. Search tool names first and expand only the schemas you need. Batch independent reads; keep dependent edits and checks in order.
-- **Keep payloads out of context:** hold full results in variables or files; print only paths, ids, status and failures. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source; use the tool's image display for visual review.
+- **Discover narrowly:** project and service names and asset tables first, then only the relevant source. Search tool names first; expand only the schemas you need. Batch independent reads; keep dependent edits and checks in order.
+- **Keep payloads out of context:** hold full results in variables or files; print only paths, ids, status and failures. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source; review images in the tool's image display.
 - **Run helpers, don't read them:** read a script only to diagnose or change it. Group repeated findings by rule or component, and after a fix repeat the affected checks, not discovery. Required safety and visual checks still apply.
 - **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables.
 
@@ -42,6 +42,8 @@ Read these rules, then load **only** what the route names, each file once, when 
 | GUI, HUD, menus, UI tweens | `ui/ui.md`, which says when to add topbar, icons, surface or runtime |
 | Icons, image generation | `ui/icons.md` |
 | Particles, skill/ability/hit effects, lights, beams, trails | `art/vfx.md` |
+| Cutscenes, cinematic cameras, timelines | `art/cutscenes.md` |
+| Sound effects, music, mixing, Audio API | `art/audio.md` |
 | 3D models, meshes, textures, maps built with parts, z-fighting, Blender asset creation | `art/modeling.md` |
 | Weapons (always about 18,000 triangles), shields, held or worn gear | `art/modeling.md`, `rigs/gear.md` |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | `art/environment.md` |
@@ -56,7 +58,8 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Rigging, skinning, Blender animation, clips, import, inspection, publishing | `animation/animation.md` |
 | R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips | `animation/r6-on-r15.md`; FK or IK adds `animation/r6-ik.md` |
 | Roblox's default R6 clips on R15, under any name | `animation/r6-default-set.md` alone: find them, upload what is missing |
-| Onboarding, tutorials, guidance pointers; analytics funnels | `design/onboarding.md` |
+| Onboarding, tutorials, pointers | `design/onboarding.md` |
+| Funnels, custom events | `design/analytics.md` |
 | Game design: new game, redesign or audit, new gameplay system; the design plan | `design/game-design.md` |
 | Economy, pacing, odds, prices and offers, update cadence | `design/game-economy.md` |
 | Quality update from learning notes | `learning/quality-update.md` |
