@@ -26,9 +26,8 @@ Match the selected layout, palette, typography, corners, outlines and image trea
 Roblox is a phone platform: **design, build and verify for the phone first**, then scale up to tablet and desktop, unless the user says otherwise. The smallest case is the case.
 
 - Start from the phone's landscape size (about 844 x 390) and its safe area; add layout for larger screens with constraints, not the reverse. Reserve the thumbstick and jump/action zones; never put a control under them.
-- Touch first: every button at least 44 px in both directions (after the device scale), no hover-only information, no tiny close buttons, text no smaller than about 11 px a line after scaling (`TextScaled` text wraps by itself when its box is tall enough, so `TextBounds.Y` can hold two lines).
+- Touch first: every button at least 44 px in both directions (after the device scale), no hover-only information (an action that cannot be undone takes two taps: the first selects it and shows what will happen, the second confirms), no tiny close buttons, text no smaller than about 11 px a line after scaling (`TextScaled` text wraps by itself when its box is tall enough, so `TextBounds.Y` can hold two lines).
 - Verify at phone, then tablet, then desktop; with the Studio device emulator on, mouse input becomes touch. A script cannot send touch: [studio-testing.md](../code/studio-testing.md#play-tests-with-real-input). A layout that only works on desktop is unfinished.
-- **An irreversible pick on touch** *(default)*: a phone has no hover, so the first tap raises the choice, with a hint naming the next step, and a second tap plays it; tapping another switches, and when a timer runs out the raised one is played. Not yet judged by players on a phone.
 - Unless the project says portrait is unsupported, check both orientations; if it is unsupported, say so and do not add portrait layouts.
 
 ## Stay in bounds
