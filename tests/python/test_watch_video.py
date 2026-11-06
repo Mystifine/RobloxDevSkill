@@ -68,12 +68,24 @@ class Shots(unittest.TestCase):
         self.assertIn('rapid run #2-#4: 3 shots', report)
 
     def test_each_shot_shows_in_middle_and_out_inside_its_cuts(self):
-        moments = wv.shot_moments([('#1', (0, 2)), ('#2-4 rapid', (2, 2.9)), ('#5', (2.9, 3.1))])
-        self.assertEqual(len(moments), 9)
+        moments = wv.shot_moments([('#1', (0, 0.6)), ('#2-4 rapid', (0.6, 1.1)), ('#5', (1.1, 1.3))])
+        self.assertEqual(len(moments), 9, 'none is long enough for more')
         times = [round(t, 3) for _, t in moments]
-        self.assertEqual(times[:3], [0.1, 1.0, 1.9], 'EDGE inside each cut')
-        self.assertEqual(times[6:], [2.95, 3.0, 3.05], 'a quarter of a shot shorter than 4 x EDGE')
+        self.assertEqual(times[:3], [0.1, 0.3, 0.5], 'EDGE inside each cut')
+        self.assertEqual(times[6:], [1.15, 1.2, 1.25], 'a quarter of a shot shorter than 4 x EDGE')
         self.assertEqual([label.split()[0] for label, _ in moments[:6]], ['#1', 'mid', 'out', '#2-4', 'mid', 'out'])
+
+    def test_the_longer_half_of_the_shots_shows_twice_the_frames(self):
+        moments = wv.shot_moments([('#1', (0, 4)), ('#2', (4, 4.6)), ('#3', (4.6, 6.6)), ('#4', (6.6, 7.2))])
+        self.assertEqual(len(moments), 18, 'half as many frames again as 3 for each of 4 shots')
+        labels = [label.split()[0] for label, _ in moments]
+        self.assertEqual(labels[:6], ['#1', '2/6', '3/6', '4/6', '5/6', 'out'])
+        self.assertEqual(labels[6:9], ['#2', 'mid', 'out'], 'the shorter half keeps three')
+        self.assertEqual([round(t, 2) for _, t in moments[:6]], [0.1, 0.86, 1.62, 2.38, 3.14, 3.9], 'evenly from in to out')
+        self.assertEqual(moments, sorted(moments, key=lambda m: m[1]), 'in the order they happen')
+
+    def test_a_short_shot_stays_at_three_even_in_the_longer_half(self):
+        self.assertEqual(len(wv.shot_moments([(f'#{i}', (i * 0.5, i * 0.5 + 0.5)) for i in range(4)])), 12)
 
     def test_pairs_read_reference_then_recording(self):
         self.assertEqual(wv.parse_pairs('2.3=1.6, 0:07=5.2'), [(2.3, 1.6), (7.0, 5.2)])
@@ -205,6 +217,32 @@ class OnARealVideo(unittest.TestCase):
                     pixel = Image.open(path).convert('RGB').getpixel((160, 90))
                     self.assertLess(abs(pixel[0] - r) + abs(pixel[1] - g) + abs(pixel[2] - bl), 60, (path, pixel))
 
+    def test_more_frames_than_one_expression_holds_come_out_in_order(self):
+        times = [(i + 0.25) / 30 for i in range(130)]  # (ffmpeg's select expression parsed 100 and failed at 110)
+        with tempfile.TemporaryDirectory() as folder:
+            paths = wv.grab_many(TOOLS, self.video, times, folder, info=self.info)
+            self.assertEqual(len(set(paths)), 130)
+            self.assertTrue(all('_pass' in os.path.basename(path) for path in paths), 'decoded in passes, not a seek each')
+            for i, (r, g, bl) in ((0, (255, 0, 0)), (27, (255, 0, 0)), (33, (0, 128, 0)), (71, (0, 128, 0)), (79, (255, 255, 255))):  # (within a frame, as seeks are)
+                pixel = Image.open(paths[i]).convert('RGB').getpixel((160, 90))
+                self.assertLess(abs(pixel[0] - r) + abs(pixel[1] - g) + abs(pixel[2] - bl), 60, (i, pixel))
+
+    def test_a_failed_pass_falls_back_to_seeks(self):
+        real = wv.run
+
+        def no_select(cmd, binary=False):
+            if any('select=' in str(part) for part in cmd):
+                raise wv.Failed('Error while parsing expression')
+            return real(cmd, binary)
+
+        times = [0.5, 1.5, 4.2]
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(wv, 'run', no_select):
+            self.assertIsNone(wv.grab_pass(TOOLS, self.video, times, folder, self.info))
+            paths = wv.grab_many(TOOLS, self.video, times, folder, info=self.info)
+            for path, (r, g, bl) in zip(paths, ((255, 0, 0), (0, 128, 0), (0, 0, 255))):
+                pixel = Image.open(path).convert('RGB').getpixel((160, 90))
+                self.assertLess(abs(pixel[0] - r) + abs(pixel[1] - g) + abs(pixel[2] - bl), 60, (path, pixel))
+
     def test_a_burst_keeps_only_new_frames(self):
         with tempfile.TemporaryDirectory() as folder:
             still, _ = wv.burst_frames(TOOLS, self.video, 1.1, 1.0, 24, folder, source_fps=30)
@@ -217,6 +255,9 @@ class OnARealVideo(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             flashes, _ = wv.burst_frames(TOOLS, self.video, 2.5, 1.2, 24, folder, source_fps=30)
             self.assertEqual(len(flashes), 4, 'each of the four flashes once')
+        with tempfile.TemporaryDirectory() as folder:
+            every, _ = wv.burst_frames(TOOLS, self.video, 1.1, 1.0, wv.BURST_FPS, folder, unique=False, source_fps=30)
+            self.assertEqual(len(every), 30, 'by default a 30 fps source keeps all its frames')
 
     def test_watch_writes_its_sheets_and_summary(self):
         out = os.path.join(self.folder, 'watched')

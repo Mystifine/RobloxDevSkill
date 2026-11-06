@@ -10,14 +10,14 @@ An agent cannot play a video. [scripts/watch_video.py](../../scripts/watch_video
 ## Watch, cheapest first
 1. **Run `python scripts/watch_video.py watch VIDEO -o DIR`,** with DIR in the session's scratch folder. Read the printed summary before any image: length, size and frame rate, every shot with its start and length, rapid runs, the audio peak, onsets (and how many land on a cut) and silences.
 2. **Look in this order, and stop when the task has what it needs:**
-   - `overview.png`: 16 frames across the video, about 2,000 tokens.
-   - `shots.png`: each shot's in, middle and out frame (a rapid run as one), about 3,000 tokens for 29 shots. Read each shot's camera move and the path of its action across its three tiles: the middle alone hid both in 10 of a clip's 22 shots and runs.
+   - `overview.png`: 24 frames across the video, about 3,000 tokens.
+   - `shots.png`: each shot's in, middle and out frame (a rapid run as one), and six frames from in to out for the longer half of the shots, about 3,100 tokens a page for 12 shots (a 45-shot clip takes three pages, about 7,700). Read each shot's camera move and the path of its action across its tiles: the middle alone hid both in 10 of a clip's 22 shots and runs, and in, middle and out skipped four beats inside one 6.8 s shot. A long shot can wrap to the next row; its labels (`2/6`) say so.
    - `timeline.png`: loudness with cuts and onsets marked, about 500 tokens.
 3. **Zoom in only where it matters:**
-   - `burst VIDEO --start T --duration 1 -o OUT.png`: each new frame of one second, at most 24, labelled with source frame numbers, so a gap is a hold. Use it for anticipation, impact frames, how long a pose holds and a flash's rhythm. A rapid run in the summary is one of these.
-   - `sheet VIDEO --start T --end T --count 12 -o OUT.png`: one stretch in more detail.
+   - `burst VIDEO --start T --duration 1 -o OUT.png`: each new frame of one second, at most 36, labelled with source frame numbers, so a gap is a hold. Use it for anticipation, impact frames, how long a pose holds and a flash's rhythm. A rapid run in the summary is one of these.
+   - `sheet VIDEO --start T --end T --count 18 -o OUT.png`: one stretch in more detail.
    - `frames VIDEO --at T,T -o DIR`: full-size stills, to match color, framing or UI exactly.
-4. **Never pull every frame or a fixed 30 or 60 a second.** Decoding is cheap and viewing is not: an image costs about width × height / 750 tokens, and a sheet shows 12 to 24 moments for the price of one large still.
+4. **Never pull every frame or a fixed 30 or 60 a second.** Decoding is cheap and viewing is not: an image costs about width × height / 750 tokens, and a sheet shows 18 to 36 moments for the price of one large still.
 5. **Write down what you read as numbers,** per shot: its length, holds in frames, beat times and where sounds land against cuts; its size (wide, full, waist-up, close), where the subject sits in the frame and which way it faces or moves, the camera (static, push in, pan, orbit, shake), the lens (long and flat, or wide and deep), the light's direction and the main colors. A one-line description per shot loses most of this. Build from those numbers and check the result against the same ones.
 6. **Keep the analysis with the work's record:** `summary.md` and the sheets you read go in the project's notes, so a later change starts from them. The video stays where the user keeps it.
 

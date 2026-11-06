@@ -2,8 +2,8 @@
 shot list, labelled contact sheets, a loudness timeline and stills, written to a folder; it prints only paths and a summary.
 
   python watch_video.py watch VIDEO [-o DIR] [--start T] [--end T]       everything below, once (start here)
-  python watch_video.py sheet VIDEO -o OUT.png [--count 16 | --every S] [--start T] [--end T]
-  python watch_video.py burst VIDEO --start T [--duration 1] [--fps 24] -o OUT.png   every new frame: motion, timing
+  python watch_video.py sheet VIDEO -o OUT.png [--count 24 | --every S] [--start T] [--end T]
+  python watch_video.py burst VIDEO --start T [--duration 1] [--fps 36] -o OUT.png   every new frame: motion, timing
   python watch_video.py frames VIDEO --at 1.5,0:03.2 -o DIR [--width W]           full-size stills
   python watch_video.py compare REFERENCE RECORDING --pairs 2.3=1.6,0:07=5.2 -o OUT.png   moments side by side
   python watch_video.py shots VIDEO [--threshold 0.35] [--min-shot 0.2]           cut times only
@@ -25,16 +25,19 @@ Settings, measured on a 47 s, 640x348, 30 fps anime clip with flashes, quick cut
   A still border dilutes the score: the clip padded to 45% of the frame (the 3D view's share of a recorded Studio
   window) gave 6 of its 29 shots, and cropped back all 29. So `record --crop` keeps only the 3D view.
 - Frames: one decode pass that keeps the frames asked for (1.1 s for 44 frames, against 4.9 s for 44 seeks) when the
-  span is 2 minutes or less; seeks beyond that. Hardware decoding was slower on a short clip (start-up cost): not used.
+  span is 2 minutes or less; seeks beyond that. A pass picks at most 60 frames: ffmpeg's select expression parsed 100 and failed at 110,
+  so a 31 s clip of 46 shots could not be watched whole. Hardware decoding was slower on a short clip (start-up cost): not used.
 - Sheets: 1536 px wide at most, 4 columns (6 for portrait video and bursts), tiles never larger than the source, each
-  frame fitted whole within its tile. An image costs about width x height / 750 tokens to view: a 16-frame sheet
-  (1534 x 964) about 2,000, the timeline about 500.
-- Shots sheet: each shot's in, middle and out frame, 0.1 s inside its cuts (a quarter of a shorter shot), two shots a row
-  (three for portrait video). The middle alone hid every camera move and the path of the action within a shot.
+  frame fitted whole within its tile. An image costs about width x height / 750 tokens to view: a 24-frame sheet
+  (1534 x 1476) about 3,000, the timeline about 500.
+- Shots sheet: each shot's in, middle and out frame, 0.1 s inside its cuts (a quarter of a shorter shot), two shots' worth a
+  row (three for portrait video). The middle alone hid every camera move and the path of the action within a shot. The
+  longer half of the shots, those of at least 0.75 s, show six frames instead of three: half as many frames again, spent
+  where a shot has the most to hide (one 6.8 s shot held four beats that in, middle and out skipped), at the same tile size.
 - Compare: a reference moment and the recording's beside it, two pairs a row, so the picture is checked, not only timing.
-- Burst: duplicates dropped (mpdecimate), then at most --fps 24 a second, each tile labelled with its source frame. The
+- Burst: duplicates dropped (mpdecimate), then at most --fps 36 a second, each tile labelled with its source frame. The
   clip held about 24 new images a second though stored at 30, so 12 fps would skip every other drawing, impact frames
-  included; a 60 fps recording is thinned to 24. Gaps in the frame numbers are holds.
+  included; a 30 fps source keeps every new frame and a 60 fps recording is thinned to 36. Gaps in the frame numbers are holds.
 - Audio: decoded at 8 kHz mono, 0.05 s bins (under two frames at 30 fps), onsets at a 9 dB rise above -45 dBFS.
 
 ffmpeg comes from --ffmpeg, FFMPEG, the PATH, then the usual install folders (winget, Chocolatey, Scoop, Homebrew, /usr),
@@ -65,7 +68,11 @@ RAPID = 0.5  # shots shorter than this, three or more in a row, are one rapid ru
 EDGE = 0.1  # seconds inside each cut for a shot's in and out frames
 GROUP_GAP = 14  # px between groups of tiles in a row: one shot's three, or one compared pair
 ONE_PASS = 120.0  # seconds: decode once for frames up to this span, seek beyond it
-BURST_FPS = 24
+PASS_FRAMES = 60  # frames one decode pass picks: ffmpeg's select expression parsed 100 and failed at 110
+OVERVIEW = 24  # frames in `watch`'s overview, and in a `sheet` unless told otherwise
+LONG_SHOT = 0.75  # seconds: a shot this long, in the longer half of its video, shows LONG_FRAMES instead of 3
+LONG_FRAMES = 6  # twice 3, so a long shot takes a whole row of the shots sheet
+BURST_FPS = 36
 AUDIO_RATE = 8000
 AUDIO_BIN = 0.05
 ONSET_RISE = 9.0  # dB above the quietest of the last few bins
@@ -247,10 +254,13 @@ def grab_pass(tools, video, times, folder, info, width=None, prefix='pass'):
     numbers = sorted(set(wanted.values()))
     chain = "select='" + '+'.join(f'eq(n\\,{n})' for n in numbers) + "'" + (f',scale={width}:-2' if width else '')
     pattern = os.path.join(folder, f'{prefix}_%04d.png')
-    run([tools[0], '-v', 'error', '-ss', f'{start:.3f}', '-to', f'{end:.3f}', '-i', video, '-an', '-sn', '-vf', chain,
-         '-fps_mode', 'passthrough', '-y', pattern])
+    try:
+        run([tools[0], '-v', 'error', '-ss', f'{start:.3f}', '-to', f'{end:.3f}', '-i', video, '-an', '-sn', '-vf', chain,
+             '-fps_mode', 'passthrough', '-y', pattern])
+    except Failed:  # (the seeks may still work)
+        numbers = None
     written = sorted(glob.glob(os.path.join(folder, f'{prefix}_*.png')))
-    if len(written) != len(numbers):  # past the last frame, or a variable frame rate
+    if numbers is None or len(written) != len(numbers):  # past the last frame, or a variable frame rate
         for path in written:
             os.remove(path)
         return None
@@ -259,12 +269,22 @@ def grab_pass(tools, video, times, folder, info, width=None, prefix='pass'):
 
 
 def grab_many(tools, video, times, folder, width=None, info=None, prefix='frame'):
-    """A PNG per time, in order: one decode pass when the times span ONE_PASS seconds or less, else a seek per frame."""
+    """A PNG per time, in order: decode passes of at most PASS_FRAMES frames when the times span ONE_PASS seconds or less, else
+    a seek per frame, as when a pass fails."""
     os.makedirs(folder, exist_ok=True)
     if info and times and max(times) - min(times) <= ONE_PASS:
-        paths = grab_pass(tools, video, times, folder, info, width, prefix + '_pass')
-        if paths:
-            return paths
+        ordered = sorted(set(times))
+        found = {}
+        for i in range(0, len(ordered), PASS_FRAMES):
+            chunk = ordered[i:i + PASS_FRAMES]
+            paths = grab_pass(tools, video, chunk, folder, info, width, f'{prefix}_pass{i}')
+            if not paths:
+                for path in set(found.values()):
+                    os.remove(path)
+                break
+            found.update(zip(chunk, paths))
+        else:
+            return [found[t] for t in times]
     paths = [os.path.join(folder, f'{prefix}_{i + 1:03d}.png') for i in range(len(times))]
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(lambda job: grab(tools, video, job[0], job[1], width, info), zip(times, paths)))
@@ -513,12 +533,22 @@ def shot_tiles(shot_list):
 
 
 def shot_moments(tiles):
-    """[(label, time)]: each tile's in, middle and out frame, EDGE inside its cuts (a quarter of a shorter shot)."""
+    """[(label, time)]: each tile's in, middle and out frame, EDGE inside its cuts (a quarter of a shorter shot). The longer
+    half of the tiles, if at least LONG_SHOT, show LONG_FRAMES, evenly from in to out: half as many frames again."""
+    lengths = [b - a for _, (a, b) in tiles]
+    by_length = sorted(range(len(tiles)), key=lambda i: -lengths[i])
+    longer = {i for i in by_length[:(len(tiles) + 1) // 2] if lengths[i] >= LONG_SHOT}
     moments = []
-    for label, (a, b) in tiles:
+    for i, (label, (a, b)) in enumerate(tiles):
         inset = min(EDGE, (b - a) / 4)
-        moments += [(f'{label} {stamp(a + inset)}', a + inset), (f'mid {stamp((a + b) / 2)}', (a + b) / 2),
-                    (f'out {stamp(b - inset)}', b - inset)]
+        if i in longer:
+            times = [a + inset + (b - a - 2 * inset) * k / (LONG_FRAMES - 1) for k in range(LONG_FRAMES)]
+            moments += [(f'{label} {stamp(times[0])}', times[0])]
+            moments += [(f'{k + 1}/{LONG_FRAMES} {stamp(times[k])}', times[k]) for k in range(1, LONG_FRAMES - 1)]
+            moments += [(f'out {stamp(times[-1])}', times[-1])]
+        else:
+            moments += [(f'{label} {stamp(a + inset)}', a + inset), (f'mid {stamp((a + b) / 2)}', (a + b) / 2),
+                        (f'out {stamp(b - inset)}', b - inset)]
     return moments
 
 
@@ -589,7 +619,7 @@ def cmd_watch(tools, a):
             if moments:
                 portrait = info['video']['height'] > info['video']['width']
                 files += make_sheet(paths[len(times):], [label for label, _ in moments], os.path.join(out, 'shots.png'),
-                                    f'{name}  {len(shot_list)} shots: in, middle and out of each (a rapid run as one: burst it)',
+                                    f'{name}  {len(shot_list)} shots: in to out of each, more of the longer half (a rapid run as one: burst it)',
                                     9 if portrait else 6, a.width, group=3)
         files.append(make_timeline(os.path.join(out, 'timeline.png'), start, end, shot_list, sound, a.width))
     finally:
@@ -765,7 +795,7 @@ def parser():
         return p
 
     p = add('watch', out=True, window_opts=True)
-    p.add_argument('--count', type=int, default=16)
+    p.add_argument('--count', type=int, default=OVERVIEW)
     for q in (p, add('shots', window_opts=True)):
         q.add_argument('--threshold', type=float, default=SCENE)
         q.add_argument('--min-shot', type=float, default=MIN_SHOT)
@@ -774,7 +804,7 @@ def parser():
     p.add_argument('--cols', type=int)
     p.add_argument('--width', type=int, default=SHEET_WIDTH)
     q = add('sheet', out=True, window_opts=True)
-    q.add_argument('--count', type=int, default=16)
+    q.add_argument('--count', type=int, default=OVERVIEW)
     q.add_argument('--every', type=float)
     q.add_argument('--cols', type=int)
     q.add_argument('--width', type=int, default=SHEET_WIDTH)
