@@ -6,6 +6,9 @@
 Prints one JSON line a file: assetId, assetType, displayName, moderation (Approved, Rejected, ...) and the operation id.
 Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending after --timeout.
 
+- An asset whose operation finishes as Reviewing is polled (GET assets/v1/assets/{id}, every 20 s) until it settles or --timeout runs out; it
+  took about two minutes for one audio file. Still under review, it goes in the manifest as that, and a rerun asks again instead of resending.
+
 - Several files go in order and stop at the first that is not approved, so nothing more is sent after a rejection.
 - --manifest keeps each file's result by its stem with its hash: a file already approved at the same hash is reused, not resent, so a
   batch can be rerun after any change. It holds ids only, never the key.
@@ -27,6 +30,8 @@ import urllib.request
 import uuid
 
 API = 'https://apis.roblox.com/assets/v1'
+REVIEWING = ('Reviewing', 'MODERATION_STATE_REVIEWING')
+SETTLE_POLL = 20  # seconds between reads of an asset still under review
 TYPES = {'.png': ('Decal', 'image/png'), '.jpg': ('Decal', 'image/jpeg'), '.jpeg': ('Decal', 'image/jpeg'),
          '.bmp': ('Decal', 'image/bmp'), '.tga': ('Decal', 'image/tga'), '.fbx': ('Model', 'model/fbx'),
          '.obj': ('Model', 'model/obj'), '.gltf': ('Model', 'model/gltf+json'), '.glb': ('Model', 'model/gltf-binary'),
@@ -62,6 +67,26 @@ def call(key, method, url, body=None, headers=None):
     sys.exit(1)
 
 
+def status(state):
+    """The exit code for a moderation state."""
+    return 0 if approved(state) else 3 if state in REVIEWING else 2
+
+
+def approved(state):
+    return state in ('Approved', 'MODERATION_STATE_APPROVED')
+
+
+def settle(key, asset_id, state, end):
+    """The asset's moderation state once it leaves review, or the last one read when `end` comes first. A failed read is not a verdict."""
+    while state in REVIEWING and asset_id and time.time() < end:
+        time.sleep(SETTLE_POLL)
+        try:
+            state = call(key, 'GET', f'{API}/assets/{asset_id}').get('moderationResult', {}).get('moderationState', state)
+        except SystemExit:
+            return state
+    return state
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
     ap.add_argument('file', nargs='+')
@@ -84,11 +109,19 @@ def main():
         stem = os.path.splitext(os.path.basename(path))[0]
         with open(path, 'rb') as f:
             sha = hashlib.sha256(f.read()).hexdigest()
-        if done.get(stem, {}).get('sha256') == sha and done[stem].get('moderation') == 'Approved':
-            print(json.dumps({**done[stem], 'reused': True}))
+        entry = done.get(stem, {})
+        if entry.get('sha256') == sha and approved(entry.get('moderation')):
+            print(json.dumps({**entry, 'reused': True}))
             continue
-        code, record = upload(a, path)
-        if record and code == 0 and a.manifest and not a.dry_run:
+        if entry.get('sha256') == sha and entry.get('moderation') in REVIEWING and not a.dry_run:
+            # (sent already: ask again, never send it twice)
+            state = settle(read_key(a.key_var, a.env_file), entry.get('assetId'), entry['moderation'], time.time() + a.timeout)
+            record = {k: v for k, v in entry.items() if k != 'sha256'} | {'moderation': state}
+            print(json.dumps(record))
+            code = status(state)
+        else:
+            code, record = upload(a, path)
+        if record and record.get('assetId') and code in (0, 3) and a.manifest and not a.dry_run:
             done[stem] = {**record, 'sha256': sha}
             with open(a.manifest, 'w', encoding='utf-8') as f:
                 json.dump(done, f, indent=2)
@@ -122,11 +155,11 @@ def upload(a, path):
         res = call(key, 'GET', f'{API}/operations/{op_id}')
         if res.get('done'):
             r = res.get('response', {})
-            state = r.get('moderationResult', {}).get('moderationState')
+            state = settle(key, r.get('assetId'), r.get('moderationResult', {}).get('moderationState'), end)
             record = {'assetId': r.get('assetId'), 'assetType': r.get('assetType'), 'displayName': r.get('displayName'),
                       'moderation': state, 'operation': op_id, 'error': res.get('error')}
             print(json.dumps(record))
-            return (0 if state in ('Approved', 'MODERATION_STATE_APPROVED') else 2), record
+            return status(state), record
         time.sleep(3)
     print(json.dumps({'operation': op_id, 'moderation': 'pending', 'poll': f'{API}/operations/{op_id}'}))
     return 3, None

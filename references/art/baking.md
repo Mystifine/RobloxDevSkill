@@ -7,3 +7,4 @@ What goes wrong inside a bake into one atlas, from a high-poly source or from se
 - **Keep procedural detail under the texel density:** a strand noise at about 26 cycles a stud on an atlas of about 48 texels a stud (under 2 texels a cycle) aliased into grey patches; about 7 a stud (about 7 texels a cycle) read as strands.
 - **Hide the high-poly source before judging a bake:** three re-bakes chased blotches and a mosaic eye that were the source z-fighting with the game mesh; the maps were fine.
 - **A long call drops while the work goes on:** Blender MCP calls returned "No data received" after about 2 to 3 minutes while Blender finished the bake and wrote its files. Wait on the output files' modification times instead of baking again, or run long bakes headless ([modeling.md](modeling.md), Running Blender).
+- **Blender 5.1's bundled Python has no Pillow:** run image work for a bake in the system Python.

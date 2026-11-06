@@ -8,6 +8,7 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 - **Time and sun:** `ClockTime` (or `TimeOfDay`) and `GeographicLatitude`; `Brightness` and `ExposureCompensation`.
 - **Fill and reflections:** `Ambient` (areas the sky cannot reach) and `OutdoorAmbient`; `EnvironmentDiffuseScale` and `EnvironmentSpecularScale` (how much the sky lights and reflects on surfaces: PBR materials look flat at 0).
 - **Shadows:** `GlobalShadows`, `ShadowSoftness`. Every `PointLight`, `SpotLight` or `SurfaceLight` with `Shadows` on costs on phones: keep shadow casters few and ranges short, and give decorative glows no shadows.
+- **A roofed set:** with the sun blocked and Bloom on, `PointLight`s at brightness 2.2 to 5 blew pale bodies to white, and 0.5 to 1 read correctly. Scaled up, `Wood`'s grain became stripes across a mesh, where `SmoothPlastic` read as a clean dark silhouette.
 
 ## Atmosphere and sky
 
@@ -18,6 +19,7 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 
 - In Lighting an effect shows for every player; in the Camera, for one (a blur behind a menu) ([post-processing](https://create.roblox.com/docs/environment/post-processing-effects)).
 - `BloomEffect` (glow on bright surfaces: neon parts and particle `LightEmission` feed it), `ColorCorrectionEffect` (brightness, contrast, saturation, tint; a red tint at low health), `ColorGradingEffect` (`TonemapperPreset` `Default` or `Retro`), `DepthOfFieldEffect`, `SunRaysEffect`, `BlurEffect`.
+- **A grade cannot add a hue the picture lacks:** `TintColor` multiplies each channel, so gold or red over a blue or teal sky gave navy, teal or olive at every strength tried. Drain first: `Saturation` -0.4 to -0.7, a little `Brightness`, then the tint, turned the same sky gold. Too much drain turned fire cream, so shots with fire drain less.
 - Keep them subtle and judge them on a phone: heavy bloom and depth of field cost fill rate and smear small detail. Studio hides some effects below the highest editor quality level.
 
 ## Terrain and materials

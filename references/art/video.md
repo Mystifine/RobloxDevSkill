@@ -21,10 +21,13 @@ An agent cannot play a video. [scripts/watch_video.py](../../scripts/watch_video
 5. **Write down what you read as numbers,** per shot: its length, holds in frames, beat times and where sounds land against cuts; its size (wide, full, waist-up, close), where the subject sits in the frame and which way it faces or moves, the camera (static, push in, pan, orbit, shake), the lens (long and flat, or wide and deep), the light's direction and the main colors. A one-line description per shot loses most of this. Build from those numbers and check the result against the same ones.
 6. **Keep the analysis with the work's record:** `summary.md` and the sheets you read go in the project's notes, so a later change starts from them. The video stays where the user keeps it.
 
+**Speech:** `python scripts/watch_video.py words VIDEO [--language en]` prints each word's time from a local speech model (faster-whisper, through `uv` if this Python lacks it; a model downloads on first use), with the onsets beside them. Use it to time captions and beats, and to screen a track's language before upload. Word times are a guess under music or a hum: one word came back over a second early inside a steady hum, so check each start against the onsets.
+
 **What it misses:**
 - A dissolve or slow fade is not a cut, so a long shot can hide one: sheet it.
 - Two shots that look alike are one.
 - A still border (an app's panels, black bars) dilutes the cut score: a clip filling 45% of the frame gave 6 of its 29 shots. Crop it out (`record --crop`).
+- A variable frame rate (a screen recording, often) is named in the summary: frame numbers land on the wrong moments there, so frames are sought by timestamp.
 - Onsets inside continuous music are its rhythm, not events.
 - `--threshold` (0.35) finds subtler cuts lower down but splits flashes; higher up it loses real cuts.
 

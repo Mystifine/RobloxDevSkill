@@ -8,6 +8,8 @@ For **R6-like motion on an R15 rig** ("R6 like", "fake R6", "fake R15", "R15 R6 
 
 ## Roblox characters (R15 / R6)
 
+For **realistic R15 motion written from code**, with no plugin (dump the rig through Studio MCP, bake in Blender, import and audit back), read [r15-motion.md](r15-motion.md).
+
 Load the **`animate-roblox-characters`** skill only for what it adds: moving an authentic rig into Blender and exporting from it (rig import, joint names, export format, Blender-side audits). It costs about 13,000 tokens with its required references, so a clip written in Studio does not load it. Where it differs, this reference wins: 60 FPS rather than its 30 FPS default, and the Studio fallback below when Blender is unavailable. If it is not installed, proceed with the rest of this reference and the Blender rigging/animation skills. Either way, section 4 is the check on the real Roblox rig.
 
 ## Authoring workflow: Blender first, Studio fallback

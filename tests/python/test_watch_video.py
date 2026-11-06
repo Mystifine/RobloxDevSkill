@@ -87,6 +87,19 @@ class Shots(unittest.TestCase):
     def test_a_short_shot_stays_at_three_even_in_the_longer_half(self):
         self.assertEqual(len(wv.shot_moments([(f'#{i}', (i * 0.5, i * 0.5 + 0.5)) for i in range(4)])), 12)
 
+    def test_speech_runs_where_it_can_and_says_how_when_it_cannot(self):
+        self.assertEqual(wv.speech_command(has_package=True)[:2], [sys.executable, '-I'])
+        self.assertEqual(wv.speech_command(has_package=False, uv='uv')[:4], ['uv', 'run', '--no-project', '--with'])
+        with mock.patch.object(wv.shutil, 'which', return_value=None), self.assertRaises(wv.Missing) as caught:
+            wv.speech_command(has_package=False)
+        self.assertIn('Ask the user', str(caught.exception))
+
+    def test_spoken_words_keep_the_videos_own_times(self):
+        out = 'a log line\n{"start": 1.0, "end": 2.0, "text": "I win.", "words": [{"word": "I", "start": 1.1, "end": 1.3}, {"word": "win.", "start": 1.5, "end": 1.9}]}\n'
+        segment = wv.parse_segments(out, offset=10.0)[0]
+        self.assertEqual((segment['start'], segment['end']), (11.0, 12.0))
+        self.assertEqual([w['start'] for w in segment['words']], [11.1, 11.5])
+
     def test_pairs_read_reference_then_recording(self):
         self.assertEqual(wv.parse_pairs('2.3=1.6, 0:07=5.2'), [(2.3, 1.6), (7.0, 5.2)])
         for bad in ('2.3', '=1.6', '2.3=', ' , '):
@@ -242,6 +255,23 @@ class OnARealVideo(unittest.TestCase):
             for path, (r, g, bl) in zip(paths, ((255, 0, 0), (0, 128, 0), (0, 0, 255))):
                 pixel = Image.open(path).convert('RGB').getpixel((160, 90))
                 self.assertLess(abs(pixel[0] - r) + abs(pixel[1] - g) + abs(pixel[2] - bl), 60, (path, pixel))
+
+    def test_a_variable_frame_rate_is_sought_by_timestamp(self):
+        # Red for 10 frames over 1 s, then green at 30 fps: frame numbers from the average rate land on the wrong moments.
+        video = os.path.join(self.folder, 'vfr.mp4')
+        chain = "[0:v]setpts=N/10/TB[a];[1:v]setpts=N/30/TB[b];[a][b]concat=n=2:v=1:a=0[v]"
+        subprocess.run([TOOLS[0], '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=320x180:r=10:d=1', '-f', 'lavfi', '-i', 'color=c=lime:s=320x180:r=30:d=1',
+                        '-filter_complex', chain, '-map', '[v]', '-fps_mode', 'vfr', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', video], check=True)
+        info = wv.probe(TOOLS, video)
+        self.assertTrue(info['video']['vfr'], info['video'])
+        self.assertIn('variable', wv.describe(info))
+        self.assertFalse(self.info['video']['vfr'], 'a constant rate is not called variable')
+        with tempfile.TemporaryDirectory() as folder:
+            paths = wv.grab_many(TOOLS, video, [0.5, 1.5], folder, info=info)
+            self.assertFalse(any('_pass' in os.path.basename(path) for path in paths), 'sought, not counted')
+            red, lime = (Image.open(path).convert('RGB').getpixel((160, 90)) for path in paths)
+            self.assertGreater(red[0], 200, red)
+            self.assertGreater(lime[1], 200, lime)
 
     def test_a_burst_keeps_only_new_frames(self):
         with tempfile.TemporaryDirectory() as folder:

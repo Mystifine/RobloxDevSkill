@@ -36,6 +36,7 @@
 
 ## Known pitfalls
 
+- **A statement cannot start with a parenthesis after a line ending in a name or a call:** `local a = b` then `(x :: any).y = 1` does not compile ("Ambiguous syntax: this looks like an argument list for a function call"), which `execute_luau` reports only as "Failed to parse command code". Cast into a local first, or end the line before with `;`.
 - `GetPartBoundsInBox`/`GetPartBoundsInRadius` count a wedge (or any non-block) by its whole bounding box; use `GetPartsInPart` for shape-accurate tests.
 - A ray or cast starting inside a part does not hit that part. Thin spherecasts can skip seams, and `Spherecast` results can contain a NaN position on wedge edges: validate `Position` before use.
 - `Humanoid.Health` is float32: adding 1 HP vanishes above roughly 16.8M max health. Carry fractional heals yourself.

@@ -55,7 +55,7 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 ## 7. Budget and gotchas
 
 - Set and respect a budget per cast (particles, parts, beams, lights) and per-viewer limits (distance cull, concurrent effects). Preload textures. Avoid big stacked transparent quads (overdraw). Never create instances per frame.
-- `Orientation = VelocityParallel` lays the texture's width along motion, so tip-up textures go sideways; pick or rotate textures accordingly.
+- `Orientation = VelocityParallel` lays the texture's width along motion, so tip-up textures go sideways; pick or rotate textures accordingly. A streak along the motion needs a negative `Squash`: -2.4 drew along it, +2.4 as dashes across it.
 - Legacy `Fire`/`Smoke` objects follow the part's Y axis (sideways on rotated or cylinder parts); prefer `ParticleEmitter`.
 - Additive emission (`LightEmission = 1`) can show rectangular texture backgrounds; check the texture's alpha before trusting it.
 - Low `LightEmission` does not make fire solid: a pale-tinted fire texture turned dark olive smoke. Keep fire emissive and get contrast against a bright sky another way (a darker layer behind it).

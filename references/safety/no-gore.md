@@ -25,6 +25,7 @@ Keep the look, lose the risk:
 - **Saving a model, package or plugin is an upload** under your account, even when everything inside already exists: screen what it shows.
 
 Screen every file at full size and at 128 px (play a flipbook through) and fix what fails by recoloring to neutral, reshaping or cropping. Then send it through the upload gate in [uploading.md](uploading.md): one of a new kind first, wait for approval, never test moderation.
+- **A mark that shares colors with lit shading goes back as an image edit:** three hue and value masks for smudges caught lit folds and outlines and made the art worse. A local recolor only works on flat color.
 
 ## Existing assets: trusted
 

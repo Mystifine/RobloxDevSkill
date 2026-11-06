@@ -8,6 +8,7 @@ shot list, labelled contact sheets, a loudness timeline and stills, written to a
   python watch_video.py compare REFERENCE RECORDING --pairs 2.3=1.6,0:07=5.2 -o OUT.png   moments side by side
   python watch_video.py shots VIDEO [--threshold 0.35] [--min-shot 0.2]           cut times only
   python watch_video.py audio VIDEO [--bin 0.05]                                    loudness and onsets only
+  python watch_video.py words VIDEO [--model small] [--language en]                 each spoken word's time, a local speech model
   python watch_video.py probe VIDEO                                                 streams as JSON
   python watch_video.py record OUT.mp4 --window TITLE [--seconds 10] [--fps 30] [--crop W:H:X:Y]   Windows: record a window
   python watch_video.py find | install                                              the ffmpeg in use / install it
@@ -39,6 +40,11 @@ Settings, measured on a 47 s, 640x348, 30 fps anime clip with flashes, quick cut
   clip held about 24 new images a second though stored at 30, so 12 fps would skip every other drawing, impact frames
   included; a 30 fps source keeps every new frame and a 60 fps recording is thinned to 36. Gaps in the frame numbers are holds.
 - Audio: decoded at 8 kHz mono, 0.05 s bins (under two frames at 30 fps), onsets at a 9 dB rise above -45 dBFS.
+- Words: faster-whisper on 16 kHz mono, in the Python here if it has the package, else through `uv run --no-project --with faster-whisper`
+  (a model downloads on first use). Word times are a guess under music or a hum: one word came back over a second early inside a steady
+  hum, where silence and an onset showed the truth, so the onsets print beside them.
+- A variable frame rate (a screen recording): frame numbers land on the wrong moments, so each frame is sought by timestamp, and the
+  summary says so. Told by the declared rate and the average rate differing by over 2%.
 
 ffmpeg comes from --ffmpeg, FFMPEG, the PATH, then the usual install folders (winget, Chocolatey, Scoop, Homebrew, /usr),
 so an install made after the shell started is still found. Sheets and the timeline need Pillow.
@@ -48,6 +54,7 @@ import argparse
 import array
 from concurrent.futures import ThreadPoolExecutor
 import glob
+import importlib.util
 import json
 import math
 import os
@@ -73,6 +80,18 @@ OVERVIEW = 24  # frames in `watch`'s overview, and in a `sheet` unless told othe
 LONG_SHOT = 0.75  # seconds: a shot this long, in the longer half of its video, shows LONG_FRAMES instead of 3
 LONG_FRAMES = 6  # twice 3, so a long shot takes a whole row of the shots sheet
 BURST_FPS = 36
+VFR_GAP = 0.02  # the declared and average frame rates differ by more than this share: a variable frame rate
+SPEECH_RATE = 16000
+SPEECH_MODEL = 'small'
+TRANSCRIBE = '''
+import json, sys
+from faster_whisper import WhisperModel
+wav, size, language = sys.argv[1:4]
+segments, _ = WhisperModel(size, device='cpu', compute_type='int8').transcribe(wav, language=language or None, word_timestamps=True)
+for segment in segments:
+    print(json.dumps({'start': segment.start, 'end': segment.end, 'text': segment.text.strip(),
+                      'words': [{'word': w.word.strip(), 'start': w.start, 'end': w.end} for w in segment.words or []]}))
+'''
 AUDIO_RATE = 8000
 AUDIO_BIN = 0.05
 ONSET_RISE = 9.0  # dB above the quietest of the last few bins
@@ -202,6 +221,8 @@ def probe(tools, video):
         if stream.get('codec_type') == 'video' and info['video'] is None and stream.get('disposition', {}).get('attached_pic') != 1:
             num, _, den = (stream.get('avg_frame_rate') or '0/1').partition('/')
             fps = float(num) / float(den or 1) if float(den or 1) else 0.0
+            num, _, den = (stream.get('r_frame_rate') or '0/1').partition('/')
+            declared = float(num) / float(den or 1) if float(den or 1) else 0.0
             width, height = int(stream.get('width') or 0), int(stream.get('height') or 0)
             rotation = 0
             for side in stream.get('side_data_list', []):
@@ -210,6 +231,7 @@ def probe(tools, video):
             if abs(rotation) % 180 == 90:  # ffmpeg turns the picture upright when decoding
                 width, height = height, width
             info['video'] = {'codec': stream.get('codec_name'), 'width': width, 'height': height, 'fps': round(fps, 3),
+                             'vfr': bool(fps and declared and abs(declared - fps) / declared > VFR_GAP),
                              'frames': int(stream['nb_frames']) if str(stream.get('nb_frames', '')).isdigit() else None}
             if not info['duration']:
                 info['duration'] = float(stream.get('duration') or 0)
@@ -272,7 +294,8 @@ def grab_many(tools, video, times, folder, width=None, info=None, prefix='frame'
     """A PNG per time, in order: decode passes of at most PASS_FRAMES frames when the times span ONE_PASS seconds or less, else
     a seek per frame, as when a pass fails."""
     os.makedirs(folder, exist_ok=True)
-    if info and times and max(times) - min(times) <= ONE_PASS:
+    constant = not ((info or {}).get('video') or {}).get('vfr')  # (a frame number means nothing at a variable rate)
+    if info and times and constant and max(times) - min(times) <= ONE_PASS:
         ordered = sorted(set(times))
         found = {}
         for i in range(0, len(ordered), PASS_FRAMES):
@@ -499,7 +522,7 @@ def describe(info):
     v, a = info['video'], info['audio']
     text = f'{os.path.basename(info["file"])}: {info["duration"]:.2f} s'
     if v:
-        text += f', {v["width"]}x{v["height"]}, {v["fps"]:g} fps, {v["codec"]}'
+        text += f', {v["width"]}x{v["height"]}, {v["fps"]:g} fps' + (' (variable: frames sought by timestamp)' if v.get('vfr') else '') + f', {v["codec"]}'
     text += f', audio {a["codec"]} {a["rate"]} Hz {a["channels"]} ch' if a else ', no audio'
     return text
 
@@ -705,6 +728,58 @@ def cmd_audio(tools, a):
     print('\n'.join([describe(info), *audio_report(audio(tools, a.video, info, start, end, a.bin))]))
 
 
+def speech_command(has_package=None, uv=None):
+    """How to run the transcriber: this Python if it has faster-whisper, else uv, else Missing with how to get one."""
+    has_package = has_package if has_package is not None else importlib.util.find_spec('faster_whisper') is not None
+    if has_package:
+        return [sys.executable, '-I', '-c', TRANSCRIBE]
+    uv = uv if uv is not None else shutil.which('uv')
+    if uv:
+        return [uv, 'run', '--no-project', '--with', 'faster-whisper', 'python', '-I', '-c', TRANSCRIBE]
+    raise Missing('A speech model is not installed. Ask the user, then: pip install faster-whisper (or install uv, which fetches it for each run)')
+
+
+def parse_segments(stdout, offset=0.0):
+    """[segment] from the transcriber's JSON lines, in the video's own seconds; anything else it printed is skipped."""
+    segments = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line.startswith('{'):
+            continue
+        segment = json.loads(line)
+        segment['start'] += offset
+        segment['end'] += offset
+        for word in segment['words']:
+            word['start'] += offset
+            word['end'] += offset
+        segments.append(segment)
+    return segments
+
+
+def cmd_words(tools, a):
+    info = probe(tools, a.video)
+    if not info['audio']:
+        raise ValueError(f'{a.video}: no audio stream')
+    start, end = window(info, a.start, a.end)
+    command = speech_command()
+    work = tempfile.mkdtemp(prefix='words_')
+    try:
+        wav = os.path.join(work, 'speech.wav')
+        run([tools[0], '-v', 'error', '-ss', f'{start:.3f}', '-to', f'{end:.3f}', '-i', a.video, '-vn', '-ac', '1', '-ar', str(SPEECH_RATE), '-y', wav])
+        segments = parse_segments(run(command + [wav, a.model, a.language or '']).stdout, start)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    sys.stdout.reconfigure(errors='replace')
+    print(describe(info))
+    for segment in segments:
+        print(f'{stamp(segment["start"])}-{stamp(segment["end"])}  {segment["text"]}')
+        print('  ' + ' '.join(f'{w["word"]}@{w["start"]:.2f}' for w in segment['words']))
+    if not segments:
+        print('no speech found')
+    print('\n'.join(audio_report(audio(tools, a.video, info, start, end, AUDIO_BIN))))
+    print('word times are a guess under music or a hum: check each start against the onsets')
+
+
 def cmd_probe(tools, a):
     print(json.dumps(probe(tools, a.video), indent=2))
 
@@ -827,6 +902,9 @@ def parser():
     q.add_argument('--width', type=int, default=SHEET_WIDTH)
     q.add_argument('--ffmpeg')
     add('audio', window_opts=True).add_argument('--bin', type=float, default=AUDIO_BIN)
+    q = add('words', window_opts=True)
+    q.add_argument('--model', default=SPEECH_MODEL, help='a faster-whisper model: small, medium.en; downloads on first use')
+    q.add_argument('--language', help='its code, such as en; otherwise detected')
     add('probe')
     q = sub.add_parser('record')
     q.add_argument('out')
@@ -851,7 +929,7 @@ def main(argv=None):
             if video and not re.match(r'^[a-z]+://', video) and not os.path.isfile(video):
                 raise ValueError(f'no such file: {video}')
         {'watch': cmd_watch, 'sheet': cmd_sheet, 'burst': cmd_burst, 'frames': cmd_frames, 'compare': cmd_compare, 'shots': cmd_shots,
-         'audio': cmd_audio, 'probe': cmd_probe, 'record': cmd_record, 'find': cmd_find}[a.command](tools, a)
+         'audio': cmd_audio, 'words': cmd_words, 'probe': cmd_probe, 'record': cmd_record, 'find': cmd_find}[a.command](tools, a)
     except Missing as e:
         print(e, file=sys.stderr)
         return 3
