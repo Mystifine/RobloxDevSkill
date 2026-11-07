@@ -61,7 +61,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 | R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips | `animation/r6-on-r15.md`; FK or IK adds `animation/r6-ik.md` |
 | Roblox's default R6 clips on R15, under any name | `animation/r6-default-set.md` alone: find them, upload what is missing |
 | Onboarding, tutorials, pointers | `design/onboarding.md` |
-| Funnels, custom events | `design/analytics.md` |
+| Funnels, journeys, custom events, analytics plans and reviews | `design/analytics.md` |
 | Game design: new game, redesign or audit, new gameplay system; the design plan | `design/game-design.md` |
 | Economy, pacing, odds, prices and offers, update cadence | `design/game-economy.md` |
 | Quality update from learning notes | `learning/quality-update.md` |

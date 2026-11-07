@@ -14,7 +14,7 @@ references/              read only when the route names them; each file serves o
   rigs/                  rigs (R15, R6, no Humanoid, audits), custom-creatures, skins, hair, gear
   animation/             animation (clips, export, inspection), r6-on-r15, r6-ik, r6-default-set
   safety/                characters (all-ages), no-gore (uploads), stylized-violence (what players see), assets (Toolbox intake), uploading
-  design/                game-design, game-economy, onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots)
+  design/                game-design, game-economy, onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys
   codex/                 handoff (Claude only)
   learning/              learning (notes kept on the maintainer's machine), quality-update (turning them into skill changes)
 scripts/                 run, not read: Studio audits and helpers, Blender kits, upload tools, the Codex wrapper, learning notes
