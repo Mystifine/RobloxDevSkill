@@ -5,7 +5,7 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILL_MD = 2100
+SKILL_MD = 2200
 DESCRIPTION = 450  # characters: read in every session, Roblox or not
 REFERENCE = 4500
 EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads it whole
@@ -13,19 +13,19 @@ EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads i
 # What a typical task loads, SKILL.md included.
 ROUTES = {
     'luau code': (['code/coding'], 5000),
-    'studio testing': (['code/coding', 'code/studio-testing'], 6100),
+    'studio testing': (['code/coding', 'code/studio-testing'], 6500),
     'hud': (['art/visual-style', 'ui/ui'], 8000),
     'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 9000),
-    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9300),
+    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9800),
     'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8000),
-    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10200),
-    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 19800),
-    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8500),
+    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10700),
+    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 20300),
+    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8900),
     'default r6 clips': (['animation/r6-default-set'], 4000),
     'funnels': (['design/analytics'], 5000),
     'audio': (['art/audio', 'safety/assets'], 6000),
     'video': (['art/video', 'art/visual-style'], 6000),
-    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 9500),
+    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 10000),
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
 

@@ -92,14 +92,18 @@ class Server:
             time.sleep(0.5)
         else:
             sys.exit('no Roblox Studio found: is Studio open with its MCP server enabled?')
+        # A Studio window can list with no name (null): match ids first, and prefer a named window when none is asked for.
+        def name(s):
+            return s.get('name') or ''
         if want:
-            match = [s for s in studios if s['id'] == want or want.lower() in s['name'].lower()]
+            match = [s for s in studios if s['id'] == want] or [s for s in studios if want.lower() in name(s).lower()]
             if not match:
-                sys.exit('no Studio matches ' + want + ': ' + ', '.join(s['name'] for s in studios))
+                sys.exit('no Studio matches ' + want + ': ' + ', '.join(name(s) or s['id'] for s in studios))
             return match[0]['id']
+        pick = next((s for s in studios if name(s)), studios[0])
         if len(studios) > 1:
-            print('several Studios open, using ' + studios[0]['name'] + ' (--studio to choose)', file=sys.stderr)
-        return studios[0]['id']
+            print('several Studios open, using ' + (name(pick) or pick['id']) + ' (--studio to choose)', file=sys.stderr)
+        return pick['id']
 
     def close(self):
         try:

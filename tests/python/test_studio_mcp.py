@@ -57,6 +57,31 @@ class PlayTests(unittest.TestCase):
         self.assertEqual(Slow.calls, [True, False])
 
 
+class StudioLookupTests(unittest.TestCase):
+    """A Studio window can list with a null name; the lookup must not fail on it."""
+
+    def lookup(self, studios, want):
+        server = studio_mcp.Server.__new__(studio_mcp.Server)
+        reply = {'content': [{'text': json.dumps({'studios': studios})}]}
+        with patch.object(studio_mcp.Server, 'call', return_value=reply), contextlib.redirect_stderr(io.StringIO()):
+            return server.studio(want)
+
+    def test_unnamed_window_does_not_break_a_lookup_by_id_or_name(self):
+        studios = [{'id': 'a', 'name': None}, {'id': 'b', 'name': 'My Place (placeId: 1)'}]
+        self.assertEqual(self.lookup(studios, 'b'), 'b')
+        self.assertEqual(self.lookup(studios, 'my place'), 'b')
+        self.assertEqual(self.lookup(studios, 'a'), 'a')
+
+    def test_a_named_window_is_preferred_when_none_is_asked_for(self):
+        self.assertEqual(self.lookup([{'id': 'a', 'name': None}, {'id': 'b', 'name': 'Place'}], None), 'b')
+        self.assertEqual(self.lookup([{'id': 'a'}], None), 'a')
+
+    def test_no_match_lists_unnamed_windows_by_id(self):
+        with self.assertRaises(SystemExit) as caught:
+            self.lookup([{'id': 'a', 'name': None}], 'other')
+        self.assertIn('a', str(caught.exception.code))
+
+
 class OutputTests(unittest.TestCase):
     def test_unicode_text_and_image_have_separate_outputs(self):
         payload = json.dumps({'name': '竜の娘', 'motion': '▂▇█'}, ensure_ascii=False)

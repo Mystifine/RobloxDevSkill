@@ -15,7 +15,7 @@
   - `UIBounds`, `AssetAudit`, `ZFight`, `RigAudit`, `AnimationInspector` and `GameInventory` run in Edit.
   - `RigSkin` runs in Edit, or on a game's server to dress characters; `roblox_rig.py` and `skin_kit.py` run inside Blender (`import roblox_rig, skin_kit`; tested on 5.1).
   - `studio_mcp.py`, `upload_asset.py` and `find_blender.py` run locally with Python 3 (standard library only), `ref_sheet.py` with Pillow; `studio_mcp.py` starts Studio's MCP server (`STUDIO_MCP`, or `mcp.bat` on Windows).
-  - `VFXInspector` lints in Edit and photographs in Play (`references/art/vfx.md` section 8).
+  - `VFXInspector` lints in Edit (`layer` breaks the ZOffset ties it finds) and photographs in Play (`references/art/vfx.md` section 8).
   - `ParticlePlayer` and `UIParity` run on the client (Play); prefer the project's own particle player.
   - `icon_outlines.py` runs locally: `uv run --with numpy --with pillow python icon_outlines.py <folder>`.
   - `learn.py` runs locally with Python 3 (standard library only).

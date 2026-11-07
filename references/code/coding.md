@@ -36,7 +36,7 @@
 
 ## Known pitfalls
 
-- **A statement cannot start with a parenthesis after a line ending in a name or a call:** `local a = b` then `(x :: any).y = 1` does not compile ("Ambiguous syntax: this looks like an argument list for a function call"), which `execute_luau` reports only as "Failed to parse command code". Cast into a local first, or end the line before with `;`.
+- **A statement cannot start with a parenthesis after a line ending in a name or a call:** `local a = b` then `(x :: any).y = 1` does not compile ("Ambiguous syntax: this looks like an argument list for a function call"), which `execute_luau` reports only as "Failed to parse command code", while selene and `rojo build` pass it. Cast into a local first, or end the line before with `;`.
 - `GetPartBoundsInBox`/`GetPartBoundsInRadius` count a wedge (or any non-block) by its whole bounding box; use `GetPartsInPart` for shape-accurate tests.
 - A ray or cast starting inside a part does not hit that part. Thin spherecasts can skip seams, and `Spherecast` results can contain a NaN position on wedge edges: validate `Position` before use.
 - `Humanoid.Health` is float32: adding 1 HP vanishes above roughly 16.8M max health. Carry fractional heals yourself.
@@ -47,6 +47,6 @@
 
 ## Verify
 
-Run the project's linter/formatter/builder (for example `selene`, `stylua`, `rojo build`) and its tests. Then test in a Studio Play session: the console is clean, no leaked instances/connections after the feature ends, and behaviour holds for two players and after rejoin. State anything you could not run.
+Run the project's linter/formatter/builder (for example `selene`, `stylua`, `rojo build`) and its tests. None of them parses Luau as Roblox does: a module Roblox refuses fails every module that requires it, so read the Play boot output on server and client for "Failed to REQUIRE" and the project's loader warnings. Then test in a Studio Play session: the console is clean, no leaked instances/connections after the feature ends, and behaviour holds for two players and after rejoin. State anything you could not run.
 
 **In Studio:** specs that drive live services, and Play tests with real input (keys, clicks, the camera, moving the character, timing, gamepad and touch), so the client path is tested, not only the remotes: [studio-testing.md](studio-testing.md).

@@ -2,6 +2,7 @@
 -- Visual-effect inspection for Studio MCP. Three tools, cheapest first:
 --
 --   lint(root)         static, instant, works in Edit: every particle must leave by Transparency, Size or Squash
+--                      and no two emitters on one host tie on ZOffset (layer(root) breaks such ties)
 --   stage() + watch()  Play: a caster sphere and a target cube to play the effect between (or a real rig playing a
 --                      passed animation, and a dummy target); flags anything destroyed while still visible and
 --                      emitters cut off with particles alive
@@ -38,6 +39,16 @@ local GONE_ALPHA = 0.95
 local GONE_SIZE = 0.05 -- fraction of the emitter's largest size (and never above 0.05 studs)
 local GONE_SQUASH = 1 -- |Squash| at the end of life, and at least 0.5 more than at the start. Calibrate against a held frame.
 local SKIP = "InspectIgnore" -- boolean attribute: opt a deliberately hard-edged layer out (say why in a comment)
+-- Draw-order roles that break a ZOffset tie, back to front; an emitter's name picks its role, 2 (cores, flashes, bursts
+-- and the rest) when no word matches.
+local LAYER_ROLES: { { any } } = {
+	{ 0, { "smoke", "dust", "haze", "mist", "fog", "cloud", "steam", "ash", "shadow", "gloom", "soot", "veil", "murk", "smog" } },
+	{ 1, { "glow", "aura", "bloom", "halo", "wash", "fill", "fire", "flame", "blaze", "heat", "body" } },
+	{ 3, { "ring", "wave", "shock", "ripple", "wind", "swirl", "slash", "streak", "line", "beam", "crescent" } },
+	{ 4, { "spark", "ember", "mote", "glint", "glitter", "needle", "shard", "chunk", "grit", "debris", "rock", "petal",
+		"leaf", "leaves", "drop", "splash", "chip", "flake", "snow" } },
+}
+local LAYER_STEP = 0.02 -- studs between layers that tied, or less to stay below the host's next ZOffset
 
 -- Value and envelope of a sequence at life fraction t.
 local function at(sequence: NumberSequence, t: number): (number, number)
@@ -83,6 +94,58 @@ local function gone(emitter: ParticleEmitter, t: number): (boolean, string)
 		string.format("Transparency %.2f, Size %.2f (peak %.2f), Squash %.2f", alpha, size, peak(emitter.Size), squash)
 end
 
+local function layerRole(name: string): number
+	local lower = string.lower(name)
+	for _, entry in LAYER_ROLES do
+		for _, word in entry[2] do
+			if string.find(lower, word, 1, true) then
+				return entry[1]
+			end
+		end
+	end
+	return 2
+end
+
+-- Emitters under `root` that share a host (their parent) and a ZOffset, where the tie can show: tied layers swap draw
+-- order as the camera moves, unless every one of them is additive (LightEmission 1). Each group comes with the host's
+-- next higher ZOffset, if any.
+local function zTies(root: Instance): { { Emitters: { ParticleEmitter }, Next: number? } }
+	local hosts: { [Instance]: { ParticleEmitter } } = {}
+	for _, item in root:GetDescendants() do
+		local host = item.Parent
+		if item:IsA("ParticleEmitter") and host and not item:GetAttribute(SKIP) then
+			local list = hosts[host] or {}
+			hosts[host] = list
+			table.insert(list, item)
+		end
+	end
+	local out = {}
+	for _, list in hosts do
+		local byOffset: { [number]: { ParticleEmitter } } = {}
+		for _, emitter in list do
+			local group = byOffset[emitter.ZOffset] or {}
+			byOffset[emitter.ZOffset] = group
+			table.insert(group, emitter)
+		end
+		for offset, group in byOffset do
+			local alpha = false
+			for _, emitter in group do
+				alpha = alpha or emitter.LightEmission < 1
+			end
+			if #group > 1 and alpha then
+				local nextOffset: number? = nil
+				for other in byOffset do
+					if other > offset and (nextOffset == nil or other < nextOffset) then
+						nextOffset = other
+					end
+				end
+				table.insert(out, { Emitters = group, Next = nextOffset })
+			end
+		end
+	end
+	return out
+end
+
 -- Static pass over `root` and everything under it. Returns the findings and a one-line-per-finding text.
 function Inspector.lint(root: Instance): ({ Finding }, string)
 	local findings: { Finding } = {}
@@ -121,12 +184,52 @@ function Inspector.lint(root: Instance): ({ Finding }, string)
 			end
 		end
 	end
+	for _, tie in zTies(root) do
+		local names = {}
+		for _, emitter in tie.Emitters do
+			table.insert(names, emitter.Name)
+		end
+		table.sort(names)
+		table.insert(findings, { Severity = "error", Path = relative(root, tie.Emitters[1].Parent :: Instance), Rule = "zoffset-tie",
+			Detail = string.format("%d emitters share ZOffset %g (%s) and swap draw order as the camera turns: Inspector.layer(root)",
+				#tie.Emitters, tie.Emitters[1].ZOffset, table.concat(names, ", ")) } :: Finding)
+	end
 	local lines = {}
 	for _, finding in findings do
 		table.insert(lines, string.format("%s %s [%s] %s", string.upper(finding.Severity), finding.Path, finding.Rule, finding.Detail))
 	end
 	table.insert(lines, string.format("%d emitters, %d findings", emitters, #findings))
 	return findings, table.concat(lines, "\n")
+end
+
+-- Repairs lint's zoffset-tie: each tie is ordered back to front by role (LAYER_ROLES: smoke and dust; glow and fire;
+-- cores, flashes and the rest; rings, waves and slashes; sparks, embers and debris), then alpha before additive, then
+-- name, and spread from the shared ZOffset by LAYER_STEP, or less so it stays below the host's next ZOffset: every
+-- order already set between different ZOffsets is kept. Edit-time, on a template; returns the paths it changed.
+function Inspector.layer(root: Instance): { string }
+	local changed = {}
+	for _, tie in zTies(root) do
+		local group = tie.Emitters
+		local base = group[1].ZOffset
+		local nextOffset = tie.Next
+		local step = if nextOffset then math.min(LAYER_STEP, (nextOffset - base) / #group) else LAYER_STEP
+		table.sort(group, function(a, b)
+			local ra, rb = layerRole(a.Name), layerRole(b.Name)
+			if ra ~= rb then
+				return ra < rb
+			elseif a.LightEmission ~= b.LightEmission then
+				return a.LightEmission < b.LightEmission
+			end
+			return a.Name < b.Name
+		end)
+		for index, emitter in group do
+			if index > 1 then
+				emitter.ZOffset = base + (index - 1) * step
+				table.insert(changed, relative(root, emitter))
+			end
+		end
+	end
+	return changed
 end
 
 -- Repairs what lint flags: every emitter without an exit gets a Transparency that holds its own curve until the last

@@ -66,16 +66,22 @@ Rules:
 - Run `blender-asset-qa` before calling a model done. Verify triangle count, UVs, normals and materials after export.
 - After import in Studio: set `CollisionFidelity` (`Box`/`Hull` for most; precise only when needed), `CanCollide/CanTouch/CanQuery` off for decor, `Anchored` as appropriate, `RenderFidelity` as fits, and confirm textures applied. Remove leftover empty Models or Folders.
 
+## Structures and maps
+
+- **Check each structure from where players approach, in Play,** since Edit captures can skip SurfaceGuis: its sign, its centerpiece and any floating feature stay clear of the posts, beams, lanterns and gates in front of them, and bright materials and Neon trims are toned for the scene's bloom. A hanging sign hid its building's centerpiece and a lantern hung in front of the sign, two inner posts hid a stall sign's first and last letters, a gate beam hid an altar's floating card, and white marble with Neon trims bloomed to white at dusk; the ZFight audit and Edit captures showed none of it.
+- **Props on a generated map live in their own re-runnable scripts,** run after its builder and named in the builder's header: a builder that rebuilds its folder erases whatever was placed by hand.
+- **A label over a prop** is a BillboardGui with `StudsOffsetWorldSpace` on an upright anchor part: [runtime.md](../ui/runtime.md).
+
 ## No z-fighting (flicker)
 
-Two visible faces that look the same way, lie in the same plane and overlap flicker in game (z-fighting), and so do two decals or textures sharing a face and a ZIndex. Only exact coincidence fights: a 0.002-stud gap was clean at 1500 studs, so 0.03 is a safe separation.
+Two visible faces that look the same way, lie in the same plane and overlap flicker in game (z-fighting), and so do two decals or textures sharing a face and a ZIndex. In Studio only exact coincidence fights (a 0.002-stud gap was clean at 1500 studs), but ZFight counts faces closer than 0.015 studs as fighting, since coarser depth buffers fight sooner: a generator's 0.006-stud steps rendered clean and failed the audit. Build to 0.03.
 
 - **Build so faces never coincide.** Lay plates, trims, paths and overlays at least 0.03 studs in front of what they sit on, or butt them edge to edge instead of overlapping. Never stack two plates at the same height. Delete duplicate parts. Give every decal or texture on a face its own ZIndex.
 - **Check actively** whenever a model is built, generated, imported or edited, in Edit mode with [scripts/ZFight.luau](../../scripts/ZFight.luau). `return select(2, ZFight.audit(model))` must report 0.
   - The report sorts pairs as `flicker` (two different surfaces: plainly visible), `shimmer` (one textured surface, tiled from two origins) and `hidden` (one smooth surface). Fix all three.
   - `ZFight.settle(model)` fixes what it finds: it grows the thinner part 0.03 studs out on the fighting side, so nothing else moves, and renumbers tied decals. Audit again afterwards. On a real 18,882-part map, the audit took 0.8 s and the settle 2 s, with no part changed by more than 0.13 studs.
-- **ZFight reads Parts, not MeshParts or unions,** and its report counts those it skipped, so its 0 says nothing about a skin or other mesh. For meshes, in Blender: blender-asset-qa compares separate pieces, and `rr.folds(objects)` must return `{}`. It measures a mesh overlapping itself where it can be seen (0.002 studs² or more), which QA skips (it ignores triangles that share a vertex), and both exports refuse one. A buckle's crossing outline folded its cap into a filled hollow that flickered, with QA and ZFight at 0; `kit.prism` now refuses such an outline.
   - A generated map runs settle as its builder's last step, and the fix goes back into the builder or source.
+- **ZFight reads Parts, not MeshParts or unions,** and its report counts those it skipped, so its 0 says nothing about a skin or other mesh. For meshes, in Blender: blender-asset-qa compares separate pieces, and `rr.folds(objects)` must return `{}`. It measures a mesh overlapping itself where it can be seen (0.002 studs² or more), which QA skips (it ignores triangles that share a vertex), and both exports refuse one. A buckle's crossing outline folded its cap into a filled hollow that flickered, with QA and ZFight at 0; `kit.prism` now refuses such an outline.
   - It analyses Parts, wedges and cylinders. MeshParts, unions and terrain are not analysed: offset those by hand and look at them in Studio.
 - **Blender meshes:** `blender-asset-qa` catches coplanar overlaps inside a mesh before export.
 

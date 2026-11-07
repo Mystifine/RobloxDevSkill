@@ -24,6 +24,7 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
 - **Author at 60 FPS** *(default)*: scene at that rate before keying, keys on whole frames, export/import at the same rate.
 - **Proper weighted joints.** Normalized weights, at most 4 influences per vertex, no stray weights on distant bones, clean falloff. Test deformation in extreme poses before animating (`blender-character-rigging`).
 - **Clean animation.** Readable silhouette, anticipation/overshoot/settle, eased curves, no foot sliding, no jitter or flips, loops whose last frame meets the first, sparse keys rather than a bake of every frame unless needed.
+- **A strike is driven by the whole body** *(default)*: a windup (fist or weapon back, hips and chest coiled away, weight back), a short charge (a sink at the top of the coil), a release of about 0.06 s (hips and chest whip through, weight drops forward, the back heel peels) and a dead stop on impact. Fifteen eased punches read as dancing and 36 fast jabs on a still body as shaking arms: speed alone does not make a hit read. Fewer heavy blows beat many light ones; quicken them through a sequence, and switch off follow-through lag and idle sway while they run.
 - **Feet meet the ground exactly.** A foot that is meant to touch the ground (stance, landing, stomp, idle) sits on the in-game floor, where the HumanoidRootPart's bottom minus HipHeight puts it (with no Humanoid, `RootHeight` below the root's centre), within 0.05 studs while planted. It never hovers above the floor, and no heel or toe sinks through it. Pose against that floor height, not by eye.
 
 ## 2. Route
@@ -51,7 +52,7 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
    |---|---|---|
    | `rest-only` | the rig never left its rest pose: the clip did not apply, so every other result is void (cannot be ignored) | check the id, its owner and the pose names |
    | `unmatched` | error: the clip moves none of the rig's parts; warn: posed names the rig lacks, whose motion is dropped (fine for extra finger or face bones) | rename the poses to the rig's parts |
-   | `pop` | one frame turns 15°+ and 4x more than every frame within two of it, or 45°+ in one 60 fps frame (or jumps 0.4+ studs) | an Euler flip or a missing key: re-key with quaternions or add a key |
+   | `pop` | one frame turns 15°+ and 4x more than every frame within two of it, or 45°+ in one 60 fps frame (or jumps 0.4+ studs) | an Euler flip or a missing key: re-key with quaternions or add a key. A strike hidden under flash frames still gives its joints 4+ frames with an out ease and moves only the root in one frame: snaps over 2-6 frames popped by 45-87°, and the same poses over 4-16 frames passed and still finished inside the flash |
    | `seam`, `seam-speed` | a loop's last frame misses the first (over 1° / 0.05 studs); with smooth easing, its speed changes across the seam | `closeLoop(sequence)`; match the curve tangents |
    | `slide` | a planted foot drifts over 0.05 studs in a stationary clip | lock planted feet (IK) |
    | `stride` | in-place locomotion: a planted foot's backward speed varies over 25% | keep contact speed even; play the clip at `WalkSpeed / GroundSpeed` (in the report) |

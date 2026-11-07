@@ -14,6 +14,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 - **Discover narrowly:** project and service names and asset tables first, then only the relevant source. Search tool names first; expand only the schemas you need. Batch independent reads; keep dependent edits and checks in order.
 - **Keep payloads out of context:** hold full results in variables or files; print only paths, ids, status and failures. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source; review images in the tool's image display.
 - **Run helpers, don't read them:** read a script only to diagnose or change it. Group repeated findings by rule or component, and after a fix repeat the affected checks, not discovery. Required safety and visual checks still apply.
+- **One agent, step by step** *(default)*: parallel agents each re-read the context and queue on one Studio, whose calls run one at a time. Split work only when the user asks, keep Studio work with one agent, and batch Studio checks into one background run that prints only problems.
 - **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables.
 
 ## Always

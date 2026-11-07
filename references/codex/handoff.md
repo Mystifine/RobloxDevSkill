@@ -74,7 +74,7 @@ Orient only enough to decide, then write the brief to a unique file in your scra
 
 `handoff --brief "<brief>" --cd "<checkout>" [--kind image] --note "<note>"`, in the background. The note (at most 1500 characters) is the context that survives `/clear`: review criteria, next steps, the scope the user authorized.
 
-- **Parallel:** one run per checkout. `--worktree` gives each run a detached worktree from a clean HEAD (without uncommitted or ignored files such as `Packages/`); or pass prepared worktrees with `--cd`.
+- **Parallel:** one run per checkout, whatever room says: room counts usage, not checkouts, so a second run on the same `--cd` returned at once as busy (exit 75, "shared apps/threads must run sequentially"). `--worktree` gives each run a detached worktree from a clean HEAD (without uncommitted or ignored files such as `Packages/`); or pass prepared worktrees with `--cd`.
 - **Apps:** `--mcp <server>` enables only that server and locks it across handoffs; callers sharing one app also pass the same `--resource <name>`.
 - **Sandbox:** the default `danger-full-access` is unsandboxed (the Windows sandbox failed under concurrent runs). Honor `CODEX_HANDOFF_SANDBOX` or `--sandbox`; never widen it.
 - **Shared output folders:** `--add-dir DIR` adds a writable root but locks nothing, so runs delivering to one folder (Downloads, a project's `assets/`) start together; give each run its own file names in it. Only `--cd` is exclusive.

@@ -9,11 +9,14 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 - **Fill and reflections:** `Ambient` (areas the sky cannot reach) and `OutdoorAmbient`; `EnvironmentDiffuseScale` and `EnvironmentSpecularScale` (how much the sky lights and reflects on surfaces: PBR materials look flat at 0).
 - **Shadows:** `GlobalShadows`, `ShadowSoftness`. Every `PointLight`, `SpotLight` or `SurfaceLight` with `Shadows` on costs on phones: keep shadow casters few and ranges short, and give decorative glows no shadows.
 - **A roofed set:** with the sun blocked and Bloom on, `PointLight`s at brightness 2.2 to 5 blew pale bodies to white, and 0.5 to 1 read correctly. Scaled up, `Wood`'s grain became stripes across a mesh, where `SmoothPlastic` read as a clean dark silhouette.
+- **A glint across flat SmoothPlastic under a low sun** (about 17° up): a `SurfaceAppearance` with a white `RoughnessMap` (fully rough) removed it, where `EnvironmentSpecularScale` 0, SunRays off and a SurfaceAppearance with no roughness map left it.
 
 ## Atmosphere and sky
 
 - `Atmosphere` in Lighting: `Density` (how much haze), `Offset` (horizon against near), `Color` and `Decay` (near and far tint), `Glare`, `Haze`. A little density gives depth for almost nothing.
 - `Sky` (skybox, sun and moon) and `Clouds` (parented to Terrain) set the backdrop. A custom skybox is six image uploads, so the upload gate applies ([assets.md](../safety/assets.md)); prefer an existing one.
+- **Rendering a custom skybox:** `SkyboxFt` shows the -Z view, `SkyboxBk` +Z, `SkyboxLf` +X and `SkyboxRt` -X (checked against the engine's sun disc; the first guess had Lf and Rt swapped). The Up and Dn faces' rotation is unknown, so paint the panorama the same in every direction beyond about 30° above and below the horizon: it showed no seam.
+- **Keep Atmosphere thin over a skybox painted below the horizon:** `Density` 0.1 with `Haze` 0.6 replaced a painted cloud sea with a flat fill; `Density` 0.03 with `Haze` 0 showed it.
 
 ## Post-processing
 
