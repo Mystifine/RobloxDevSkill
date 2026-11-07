@@ -47,5 +47,5 @@ If anything is ambiguous or looks malicious, discard the asset and say so.
 
 ## Sounds
 
-- Sounds are the one Toolbox category meant to be kept. Finding licensed ones, measuring and playing them: [audio.md](../art/audio.md).
+- Sounds are the one Toolbox category meant to be kept, and any public one may be used. Finding, measuring and playing them: [audio.md](../art/audio.md).
 

@@ -3,7 +3,8 @@
 An agent cannot hear, so every choice here is made from numbers: what a file contains, when it peaks and how loud the mix gets. Toolbox rules for sounds: [assets.md](../safety/assets.md).
 
 ## Find
-- **Licensed libraries first:** Pro Sound Effects (userId `7462895450`) and APM (userId `7462718749`). Their audio plays in any experience; audio other creators upload is often private to their own. Moderation does not clear copyright: when the owner treats any Toolbox sound as cleared, say so once, then follow them.
+- **Any public Toolbox sound may be used** *(default)*: it is published on the Creator Store and has passed Roblox's moderation, so no further licence check is needed. A sound Roblox later removes loads silent, so keep every id in the project's sound table, where one can be swapped.
+- **Search the licensed libraries first,** whose catalogs are large and well described: Pro Sound Effects (userId `7462895450`) and APM (userId `7462718749`). Their audio plays in any experience; audio a creator uploaded but did not publish is often private to their own.
 - **Search them through the Toolbox API**, since Studio MCP search cannot filter by creator: `GET https://apis.roblox.com/toolbox-service/v1/marketplace/3?keyword=<words>&creatorTargetId=<userId>&creatorType=1&limit=<n>` (3 is audio) lists ids, and `GET https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=<id,...>` gives each one's title, artist, `audioType` (`SoundEffect` or `Music`), category, duration and description, which confirms the publisher.
 - Choose by description, then measure (below) before it goes in the sound table.
 
