@@ -10,7 +10,7 @@ The goal: fewer tokens each time the skill is used, with every detail kept. Keep
 - **A script:** only when it is read or run.
 - **`README.md` and `INSTALL.md`:** never. They are for people and for developing the skill, so test records, history and this section live here, not in the references.
 
-Characters / 4 is close enough to tokens. `tests/python/test_skill_shape.py` holds the budgets and fails CI over them: `SKILL.md` at 2,200 tokens, its description at 450 characters, a reference at 4,500 (`game-design.md`, read whole by design tasks, at 6,000, and `ui.md` at 5,000), and the total a typical task loads. It also fails on a broken link or anchor, and on a reference no route can reach.
+Characters / 4 is close enough to tokens. `tests/python/test_skill_shape.py` holds the budgets and fails CI over them: `SKILL.md` at 2,200 tokens, its description at 450 characters, a reference at 4,500 (`game-design.md`, read whole by design tasks, at 6,000, and `ui.md` at 5,200), and the total a typical task loads. It also fails on a broken link or anchor, and on a reference no route can reach.
 
 The skill grew from 880 tokens in `SKILL.md` and 4,000 in references to 3,600 and 57,000 before these limits existed, with almost no repeated text: what cost tokens was what each task was made to load. So, in order: move rare detail out of `SKILL.md`, split a file whose routes need only part of it, and name other skills only for the case that needs them. A skill outside this repository counts: one route cost 13,000 tokens that way. Folders are for people and save nothing.
 

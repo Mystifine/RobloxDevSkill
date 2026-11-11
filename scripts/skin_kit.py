@@ -1876,17 +1876,28 @@ def _hidden(objs, reach=0.12):
     return out
 
 
-def _shrink_hidden(objs, keep):
+def _shrink_hidden(objs, keep, plain=(), plain_scale=.3, plain_area=None):
     """Scale UV islands that are nearly all hidden by `keep`, leaving their texels to what shows: a shell spends half its area
-    on an inner side no one sees. Tiny ornaments (rivets, a stud's rim) carry no paint worth a full share, so they get a little less."""
-    hidden = _hidden(objs)
+    on an inner side no one sees. Tiny ornaments (rivets, a stud's rim) carry no paint worth a full share, so they get a little less.
+    Small islands all in a `plain` look (a flat metal), under `plain_area` (default 1% of the pieces' whole surface), get
+    `plain_scale`: about a hundred chain links, rivets and studs took most of a 2048 atlas, leaving the panels 18 px a stud,
+    and 0.3 on the Gold and Steel ones roughly doubled the panels' share."""
+    hidden = _hidden(objs) if keep < 1 else {ob.name: set() for ob in objs}
+    small = plain_area if plain_area is not None else .01 * sum(p.area for ob in objs for p in ob.data.polygons)
     for ob in objs:
+        looks = [s.material.name.split('M_', 1)[-1].split('.')[0] if s.material else '' for s in ob.material_slots]
         t = bmesh.new(); t.from_mesh(ob.data); t.faces.ensure_lookup_table()
         uv = t.loops.layers.uv.active
         for island in bmesh_utils.bmesh_linked_uv_islands(t, uv):
             area = sum(f.calc_area() for f in island) or 1
-            scale = keep if sum(f.calc_area() for f in island if f.index in hidden[ob.name]) / area >= .85 else .55 if area < .02 else 1.0
-            if scale == 1.0:
+            flat = plain and area < small and all(f.material_index < len(looks) and looks[f.material_index] in plain for f in island)
+            if sum(f.calc_area() for f in island if f.index in hidden[ob.name]) / area >= .85:
+                scale = keep
+            elif flat:
+                scale = plain_scale
+            elif area < .02 and keep < 1:
+                scale = .55
+            else:
                 continue
             loops = [lp for f in island for lp in f.loops]
             c = sum((lp[uv].uv for lp in loops), Vector((0, 0))) / len(loops)
@@ -1920,9 +1931,10 @@ def _break_rings(objs, sectors=8):
         t.to_mesh(ob.data); t.free()
 
 
-def unwrap(objs, margin=0.004, hidden=0.1):
+def unwrap(objs, margin=0.004, hidden=0.1, plain=(), plain_scale=0.3, plain_area=None):
     """Smart-project every object into one shared 0-1 atlas at one texel density, hollow islands split so packing can fill the
-    map. Islands that never show get `hidden` of it; 1 turns that off."""
+    map. Islands that never show get `hidden` of it; 1 turns that off. Small islands all in a look named in `plain` (flat metals:
+    ('Gold', 'Steel')) get `plain_scale` (_shrink_hidden)."""
     if not objs:
         return
 
@@ -1938,8 +1950,8 @@ def unwrap(objs, margin=0.004, hidden=0.1):
     bpy.ops.uv.select_all(action='SELECT')
     bpy.ops.uv.average_islands_scale()
     bpy.ops.object.mode_set(mode='OBJECT')
-    if hidden < 1:
-        _shrink_hidden(objs, hidden)
+    if hidden < 1 or plain:
+        _shrink_hidden(objs, hidden, plain, plain_scale, plain_area)
     _break_rings(objs)
     pick()
     bpy.ops.uv.select_all(action='SELECT')

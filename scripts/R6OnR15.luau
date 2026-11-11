@@ -13,6 +13,7 @@
 --   world(map, pose)            where each R15 part ends up, in the root's space
 --   clip(map, keys, options)    keys of poses -> a KeyframeSequence on the 60 fps grid
 --   retarget(map, source)       an R6 clip -> its R15 KeyframeSequence, sampled from the engine
+--   plantFeet(map, sequence, track)   every key's legs reach for where a Blender clip's foot IK targets were (r6_rig.feet)
 --   defaults(map, parent)       Roblox's whole default R6 set (DEFAULTS), retargeted
 --   verify(map, rig, source, sequence)   plays both through the engine and measures how far R15 strays from the R6 source
 --   check(map, sequence)        the joint policy: six joints move, the nine locked ones stay at identity
@@ -64,7 +65,12 @@ export type RetargetOptions = {
 	Fps: number?, -- key grid (default 60)
 	Degrees: number?, -- how far a thinned curve may stray in rotation (default 0.2)
 	Studs: number?, -- and in position (default 0.003)
+	Thin: boolean?, -- false keeps a key every frame: needed before editing keys afterwards (plantFeet), since thinning judges
+	-- the R6 source alone and dropped a quick step's lifted frame, which planting then turned into a 0.65-stud slide
 }
+-- A Blender clip's feet (r6_rig.feet): each leg's IK target a frame from 0, { x, z, lift } in studs right and back of the
+-- root and above the floor; Rest the targets' { x, z } at rest; Fps the frames' rate (default 60).
+export type FootTrack = { Feet: { [string]: { { number } } }, Rest: { [string]: { number } }, Fps: number? }
 export type Finding = { Rule: string, Detail: string }
 
 local FPS = 60
@@ -589,7 +595,12 @@ function R6OnR15.retarget(map: Map, source: any, options: RetargetOptions?): Key
 		series[#series] = series[1]
 	end
 	local sequence = newSequence({ Name = settings.Name or copy.Name, Loop = copy.Loop, Priority = copy.Priority })
-	local frames = thin(series, moving, settings.Degrees or 0.2, settings.Studs or 0.003)
+	local frames = if settings.Thin == false then {} else thin(series, moving, settings.Degrees or 0.2, settings.Studs or 0.003)
+	if settings.Thin == false then
+		for f = 1, #series do
+			frames[f] = f
+		end
+	end
 	for index, f in frames do
 		local joints = table.clone(series[f])
 		for name in names do
@@ -610,6 +621,49 @@ function R6OnR15.retarget(map: Map, source: any, options: RetargetOptions?): Key
 	end
 	sequence.Parent = settings.Parent
 	return sequence
+end
+
+-- The foot targets at `time`, between the frames either side.
+local function trackAt(track: { { number } }, time: number, fps: number): (number, number, number)
+	local at = math.clamp(time * fps, 0, #track - 1)
+	local i = math.floor(at)
+	local a, b = track[i + 1], track[math.min(i + 1, #track - 1) + 1]
+	local f = at - i
+	return a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f
+end
+
+-- After retarget (Thin = false): each key's legs reach for their IK targets (plant: aimed from the hip and slid along the leg,
+-- R6's fake knee), the sole that far off the floor. An R6 rig's legs are rigid, so in a crouch they miss their targets and the
+-- soles sink 0.2-0.5 studs; switching a floor fix on and off by contact spans popped legs 34-51 degrees at every step, and
+-- planting every key toward the targets gave no slide and no pop. The targets are measured from the R6 rig's rest; the R15's
+-- feet stand where this body puts them. Returns the furthest any foot stopped short of its target (studs).
+function R6OnR15.plantFeet(map: Map, sequence: KeyframeSequence, track: FootTrack): number
+	local fps = track.Fps or FPS
+	local rest = R6OnR15.world(map, {})
+	local worst = 0
+	for _, key in sequence:GetKeyframes() do
+		local poses: { [string]: Pose } = {}
+		for _, item in key:GetDescendants() do
+			if item:IsA("Pose") then
+				poses[item.Name] = item
+			end
+		end
+		local lower = poses[map.Roles.Torso.Joint]
+		local body = if lower then R6OnR15.fromR15(map, "Torso", lower.CFrame) else CFrame.identity
+		for leg, foot in FEET do
+			local hip = poses[map.Roles[leg].Joint]
+			local feet, from = track.Feet[leg], track.Rest[leg]
+			if hip and feet and from then
+				local x, z, lift = trackAt(feet, (key :: Keyframe).Time, fps)
+				local home = rest[foot].Position
+				local at = Vector3.new(home.X + x - from[1], 0, home.Z + z - from[2])
+				local planted, missed = R6OnR15.plant(map, leg, at, { Torso = body, From = R6OnR15.fromR15(map, leg, hip.CFrame), Floor = map.Floor + lift })
+				hip.CFrame = R6OnR15.toR15(map, leg, planted)
+				worst = math.max(worst, missed)
+			end
+		end
+	end
+	return worst
 end
 
 -- Roblox's whole default R6 set, retargeted: { [DEFAULTS name] = KeyframeSequence }, each named after its slot.

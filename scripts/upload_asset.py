@@ -17,7 +17,8 @@ Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending afte
 - The key comes from the environment (--key-var) or the --env-file (KEY=VALUE lines) and is never printed.
 - The type follows the extension: .png .jpg .jpeg .bmp .tga a Decal (its image id: InsertService:LoadAsset in Studio),
   .fbx .obj .gltf .glb .rbxm a Model, .mp3 .ogg .wav .flac Audio. Tested with .png Decals and .fbx Models. An animation is a .rbxm saved
-  by Studio with --type Animation (publish_r6_clips.py for the default set); Roblox documents that path, but it has not been run live.
+  by Studio (SerializationService, as `studio_mcp.py save` and clip_import.py write it) with --type Animation (publish_r6_clips.py
+  for the default set): eight KeyframeSequences uploaded to a group this way were approved and played in that group's game.
 - --dry-run prints the request without the key and sends nothing."""
 import argparse
 import hashlib

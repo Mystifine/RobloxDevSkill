@@ -25,6 +25,8 @@ export type Finding = { Severity: "error" | "warn", Path: string, Rule: string, 
 export type Options = {
 	Fps: number?, -- key grid to check (default 60; a project may author some rigs at 30)
 	Feet: { string }?, -- parts or bones that plant (default R15/R6 feet; custom rigs: names with Foot, Paw, Hoof or Toe)
+	Soles: { [string]: Vector3 }?, -- per foot, the point that touches the floor in that foot's own frame, for a joint above the
+	-- sole (a creature's ankle bone): measure at rest, foot.WorldCFrame:PointToObjectSpace(the sole's lowest point)
 	Tip: string?, -- attachment, part or bone whose path times the swing (default RightGripAttachment when present)
 	Markers: { string }?, -- markers the clip must have; the first is compared with the tip's fastest moment
 	Ignore: { string }?, -- rules to skip, say { "end-offset" } for a death or knockback clip
@@ -680,7 +682,9 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			-- and 0.45 of its width to each side, so a foot tipped onto its edge (a rigid R6 leg on a wide stance) is measured on
 			-- that edge, not at its centre, which hovers. A tilted flat sole's lowest point is always one of its corners.
 			local soles: { CFrame }? = nil
-			if item:IsA("BasePart") then
+			if settings.Soles and settings.Soles[name] then
+				soles = { CFrame.new(settings.Soles[name]) }
+			elseif item:IsA("BasePart") then
 				for _, child in item:GetChildren() do
 					if child:IsA("Attachment") and string.find(child.Name, "FootAttachment$") then
 						local reach, side = item.Size.Z * 0.35, item.Size.X * 0.45

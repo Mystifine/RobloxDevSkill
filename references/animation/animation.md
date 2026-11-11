@@ -8,15 +8,13 @@ For **R6-like motion on an R15 rig** ("R6 like", "fake R6", "fake R15", "R15 R6 
 
 ## Roblox characters (R15 / R6)
 
-For **realistic R15 motion written from code**, with no plugin (dump the rig through Studio MCP, bake in Blender, import and audit back), read [r15-motion.md](r15-motion.md).
-
-Load the **`animate-roblox-characters`** skill only for what it adds: moving an authentic rig into Blender and exporting from it (rig import, joint names, export format, Blender-side audits). It costs about 13,000 tokens with its required references, so a clip written in Studio does not load it. Where it differs, this reference wins: 60 FPS rather than its 30 FPS default, and the Studio fallback below when Blender is unavailable. If it is not installed, proceed with the rest of this reference and the Blender rigging/animation skills. Either way, section 4 is the check on the real Roblox rig.
+A clip keyed in Blender, the default below, follows [blender.md](blender.md): the rig to animate, the process, the Blender audit, the way into Studio and the GIF preview. For **realistic R15 motion written from code**, with no plugin (dump the rig through Studio MCP, bake in Blender, import and audit back), read [r15-motion.md](r15-motion.md). Either way, section 4 is the check on the real Roblox rig.
 
 ## Authoring workflow: Blender first, Studio fallback
 
 1. **Check Blender MCP first.** Discover the available Blender tools and test Python execution in the connected interactive Blender session. Confirm that the intended rig is accessible; having Blender open or an MCP tool listed is not proof that the connection works.
 2. **Attempt to animate in Blender at 60 FPS.** Set `scene.render.fps = 60` and `scene.render.fps_base = 1.0` before keying. Inspect the rig, then author and verify an initial pose or motion batch through MCP. Resolve routine connection, context or rig-mapping errors before abandoning that path; do not skip straight to Studio when Blender authoring is available.
-3. **Fall back to Roblox Studio at 60 FPS** if Blender MCP is unavailable, cannot connect to a usable interactive session, or an actual authoring blocker remains after a reasonable repair attempt. State what failed and continue in Studio rather than stopping solely because Blender MCP is missing. Use the actual target rig and retain the same motion brief, joint restrictions and validation requirements. The companion Blender skill supplies rig/export guidance; its Blender-only workflow must not prevent this Studio fallback.
+3. **Fall back to Roblox Studio at 60 FPS** if Blender MCP is unavailable, cannot connect to a usable interactive session, or an actual authoring blocker remains after a reasonable repair attempt. State what failed and continue in Studio rather than stopping solely because Blender MCP is missing. Use the actual target rig and retain the same motion brief, joint restrictions and validation requirements.
 4. **Keep the Studio authoring grid at 60 FPS.** Set the Animation Editor timeline to 60 FPS when using the editor. For scripted KeyframeSequences, place keys at `Keyframe.Time = frame / 60` and audit with `{ Fps = 60 }`. Preserve durations, loop seams and this timebase through import/export. This is the animation authoring rate, not a guarantee of viewport or game rendering speed; a 30 FPS GIF can still preview a 60 FPS clip.
 
 ## 1. Non-negotiables
@@ -30,14 +28,14 @@ Load the **`animate-roblox-characters`** skill only for what it adds: moving an 
 ## 2. Route
 
 - R6-like animation on R15, under any of its names: [r6-on-r15.md](r6-on-r15.md) for its joint policy, [r6-ik.md](r6-ik.md) for FK and IK, [r6-default-set.md](r6-default-set.md) for the default clips, then the Roblox character toolchain below.
-- Roblox R6/R15 actions (walk, run, idle, attacks, emotes): this reference; `animate-roblox-characters` for Blender rig transfer and export.
-- Custom skeletons and creatures: `blender-character-rigging` -> `blender-animation` (actions, NLA, baking control rigs to the export skeleton) -> `blender-export-pipelines`.
+- Roblox R6/R15 actions (walk, run, idle, attacks, emotes): this reference, and [blender.md](blender.md) to key them in Blender.
+- Custom skeletons and creatures: `blender-character-rigging` for the rig, `blender-animation` for NLA and baking control rigs to the export skeleton, [blender.md](blender.md) for keying and the world-delta import.
 - Nothing fitting installed: search `find-skills`, then do it yourself.
 - A video of the motion to match: [video.md](../art/video.md); its `burst` gives the timing in frames.
 
 ## 3. Export, set up, publish
 
-1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig. A rig scripted from `Players:CreateHumanoidModelFromDescription` has AnimationConstraint joints (15, with 14 BallSocketConstraints) and no Motor6D, even before it is parented: forward kinematics that walks Motor6Ds finds nothing ([rigs.md](../rigs/rigs.md)); `R6OnR15.map` and AnimationInspector read both.
+1. Keep the deform skeleton separate from controls; bake to it for export. Import into Studio as a KeyframeSequence on the actual rig (`clip_import.py`, [blender.md](blender.md#into-studio)). A rig scripted from `Players:CreateHumanoidModelFromDescription` has AnimationConstraint joints (15, with 14 BallSocketConstraints) and no Motor6D, even before it is parented: forward kinematics that walks Motor6Ds finds nothing ([rigs.md](../rigs/rigs.md)); `R6OnR15.map` and AnimationInspector read both.
 2. Set priority (`Core`/`Idle`/`Movement`/`Action`), `Looped`, and `KeyframeMarkers` for gameplay events (hit frames, footsteps, VFX triggers) instead of hardcoded times.
 3. To read an existing clip, `Clone` what `KeyframeSequenceProvider:GetKeyframeSequenceAsync` returns before changing it, and never `Destroy` it: it is cached and shared, and destroying it leaves that id empty for the rest of the Studio session (`AnimationClipProvider:GetAnimationClipAsync` still reads it). `Animator:StepAnimations` runs only in Edit.
 4. Pass section 4, then publish to the **group that owns the experience** (the project's cloud API key with that group as creator, or Studio publishing to that group; [uploading.md](../safety/uploading.md)). An animation plays only in experiences owned by its creator. Republishing makes a new id.

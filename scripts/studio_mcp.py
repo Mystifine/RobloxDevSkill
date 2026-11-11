@@ -9,6 +9,8 @@
   python studio_mcp.py luau FILE [--datamodel Edit|Server|Client]
   python studio_mcp.py play FILE                             starts Play, runs FILE on the server, stops Play
   python studio_mcp.py call TOOL ['{"json": "args"}' | @args.json] [--image out.png]
+  python studio_mcp.py save INSTANCE OUT.rbxm                one instance (a dotted path from game, such as
+                                                             ServerStorage.Clips.Walk) as an .rbxm file, ready to upload
   options: --studio NAME (a part of the place name, when several Studios are open; or STUDIO_ID), --timeout SECONDS
            --output FILE (text blocks as UTF-8, no BOM; avoids PowerShell redirect encoding)
 
@@ -165,7 +167,7 @@ def show(result, image, output=None):
 def play(s, studio, a):
     """FILE on the Play server, between a start and a stop of Play. Stopping discards what the run changed; the place's own scripts run,
     so audit what was inserted first (references/safety/assets.md)."""
-    with open(a.target, encoding='utf-8') as f:
+    with open(a.target, encoding='utf-8-sig') as f:  # a BOM hides the --@use line from Studio
         source = f.read()
     try:
         # Inside the try: a Studio slow to start Play may have started it by the time this call gives up.
@@ -184,12 +186,66 @@ def play(s, studio, a):
         s.call('start_stop_play', {'is_start': False, 'studio_id': studio}, a.timeout)
 
 
+SAVE = '''local item: Instance = game
+for name in string.gmatch(__PATH__, "[^%.]+") do
+	item = assert(item:FindFirstChild(name), "no " .. name .. " under " .. item:GetFullName())
+end
+local data = buffer.tostring(game:GetService("SerializationService"):SerializeInstancesAsync({ item }))
+if __AT__ < 0 then
+	return tostring(#data)
+end
+local piece = string.sub(data, __AT__ + 1, __AT__ + __CHUNK__)
+local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local out = table.create(math.ceil(#piece / 3) * 4)
+for i = 1, #piece, 3 do
+	local a, b, c = string.byte(piece, i, i + 2)
+	local n = a * 65536 + (b or 0) * 256 + (c or 0)
+	for j = 3, 0, -1 do
+		local index = bit32.band(bit32.rshift(n, j * 6), 63) + 1
+		table.insert(out, string.sub(alphabet, index, index))
+	end
+	if not b then
+		out[#out], out[#out - 1] = "=", "="
+	elseif not c then
+		out[#out] = "="
+	end
+end
+return table.concat(out)'''
+
+
+def text_of(result):
+    """A tool result's text, a returned string unquoted."""
+    text = '\n'.join(c['text'] for c in result.get('content', []) if c.get('type') == 'text').strip()
+    if result.get('isError'):
+        raise RuntimeError(text[-2000:])
+    return json.loads(text) if text.startswith('"') else text
+
+
+def luau(s, studio, code, timeout=300, datamodel='Edit'):
+    """Runs code (with its --@use line) and returns the text it returned; raises on a Studio error."""
+    args = {'code': inline_uses(code, datamodel), 'datamodel_type': datamodel, 'studio_id': studio}
+    return text_of(s.call('execute_luau', args, timeout))
+
+
+def save(s, studio, path, out, timeout=300, chunk=60000):
+    """The instance at `path` (dots from game) serialized by Studio (SerializationService, as an upload expects) into `out`."""
+    def run(at):
+        code = SAVE.replace('__PATH__', json.dumps(path)).replace('__AT__', str(at)).replace('__CHUNK__', str(chunk))
+        return luau(s, studio, code, timeout)
+    total, raw = int(run(-1)), bytearray()
+    while len(raw) < total:
+        raw += base64.b64decode(run(len(raw)))
+    with open(out, 'wb') as f:
+        f.write(bytes(raw))
+    return total
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description=__doc__.split('\n', 1)[0])
-    ap.add_argument('command', choices=['list', 'luau', 'play', 'call'])
+    ap.add_argument('command', choices=['list', 'luau', 'play', 'call', 'save'])
     ap.add_argument('target', nargs='?', help='luau, play: the .luau file; call: the tool name')
-    ap.add_argument('args', nargs='?', default='{}', help='call: JSON arguments or @file.json')
+    ap.add_argument('args', nargs='?', default='{}', help='call: JSON arguments or @file.json; save: the .rbxm to write')
     ap.add_argument('--datamodel', default='Edit', choices=['Edit', 'Server', 'Client'])
     ap.add_argument('--image', help='where to write an image result (screen_capture)')
     ap.add_argument('--output', help='write response text as UTF-8 without a BOM (use instead of shell redirection)')
@@ -210,9 +266,13 @@ def main():
             ap.error(a.command + ' needs a target')
         if a.command == 'play':
             return play(s, s.studio(a.studio), a)
+        if a.command == 'save':
+            size = save(s, s.studio(a.studio), a.target, a.args, a.timeout)
+            print(f'saved {a.target}: {size} bytes to {os.path.abspath(a.args)}')
+            return 0
         if a.command == 'luau':
             tool = 'execute_luau'
-            args = {'code': inline_uses(open(a.target, encoding='utf-8').read(), a.datamodel), 'datamodel_type': a.datamodel}
+            args = {'code': inline_uses(open(a.target, encoding='utf-8-sig').read(), a.datamodel), 'datamodel_type': a.datamodel}
         else:
             tool = a.target
             args = json.load(open(a.args[1:], encoding='utf-8')) if a.args.startswith('@') else json.loads(a.args)

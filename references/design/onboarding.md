@@ -19,4 +19,6 @@
 | Far place | Beam from the character (`Attachment0`) to the target, both ends about 1.5 studs above the floor (ground the target with a ray, then lift) so it never digs in; fade both ends; chevrons flowing to the target, drawn pointing down their image |
 | Key reveal | Camera nudge of 2 s or less, then hand control back. Never during movement lessons |
 
+A hand or arrow image points the way its texture draws it, not the way its name says: one placed left of its button pointed away from it, which only a zoomed capture showed. Check the direction in a capture and mirror it to the side with room ([icons.md](../ui/icons.md)).
+
 Templates: [scripts/TutorialGuide.luau](../../scripts/TutorialGuide.luau): `spotlight` (dark hole plus input sinks), `screenRect`, `arrow`, `beam`, `lookAt`, `lock` (hide HUD, sink keys, restore). Checked in Studio. Use the project's own pointer or beam first if it has one, and match its style.

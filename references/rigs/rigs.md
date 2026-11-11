@@ -33,7 +33,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 ```
 
 - **What a description can set:** body part ids (`Head`, `Torso`, ...), scales (`HeightScale`, `WidthScale`, `DepthScale`, `HeadScale`, `BodyTypeScale`, `ProportionScale`), classic `Shirt`/`Pants`, and per-accessory `Position`, `Rotation`, `Scale` and `Puffiness`.
-- **Catalog clothing only when the request asks for it:** layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps without a Humanoid; never classic 2D Shirt/Pants, which show only with one.
+- **Catalog clothing only when the request asks for it:** layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps without a Humanoid; never classic 2D Shirt/Pants, which show only with one (except an R6 from catalog parts: [R6](#r6)).
 - **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place.
 - **Give each accessory its asset's own type.** The generator silently drops an entry whose `AccessoryType` differs from the asset's, with no error. Read the type first (`MarketplaceService:GetProductInfo(id).AssetTypeId`: 8 Hat, 41 Hair, 42 Face, 43 Neck, 44 Shoulder, 45 Front, 46 Back, 47 Waist), then count the Accessories on the built rig.
   - Catalog hairs are often uploaded as face accessories. Four black messy hairs from the catalog's hair category were all type 42; declared as `Hair`, each left the rig bald.
@@ -43,7 +43,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 2. **Remove the generated scripts** (Animate, Health) when the project animates characters itself.
 3. **Remove the default face under a face accessory:** the Head's Decal and the head MeshPart's TextureID (the default head texture is a face, which shows through as two dots). `clean` handles Face accessories; a hair or hat with a face built in needs the same by hand.
 4. **Remove the handles' TouchInterests** unless the game listens for Touched on accessories. Catalog accessories arrive with one saved in, and it stays until removed.
-5. **Finish the template:** name it, put metadata in attributes, keep the HumanoidRootPart as PrimaryPart, and store it in ReplicatedStorage only when clients show it (ServerStorage otherwise).
+5. **Finish the template:** name it, put metadata in attributes, keep the HumanoidRootPart as PrimaryPart, and store it in ReplicatedStorage only when clients show it (ServerStorage otherwise). A model with a PrimaryPart pivots by `PrimaryPart.PivotOffset`: setting `Model.WorldPivot` there was ignored (`GetPivot` unchanged; a monster stood facing backwards), and a template whose `WorldPivot` read back right cloned 180 degrees off.
 6. **Swap the Humanoid** *(default)*: `RigAudit.controller(model)`, last, once accessories (and a skin) are on (Without a Humanoid, below).
 
 **What it is made of** (all of it stays):
@@ -79,6 +79,9 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
   - Torso: Neck, BodyFront, BodyBack, collars, waist points;
   - arms: Shoulder and Grip; legs: Foot.
 - **A generated R6 makes the Head its PrimaryPart;** set it to the root (`clean`).
+- **A recognisable R6 from catalog parts,** the common format (studied on 98 built characters): `Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R6)` gives the plain rig (six Parts, a SpecialMesh head, BodyColors for the skin). The outfit is a classic Shirt and Pants (2D templates, 585 x 559, wrapped on the blocks), which show only with a Humanoid, so this build keeps it. Everything with volume is a rigid Accessory (a Part Handle with a SpecialMesh) on the points above: hair and hats (`HairAttachment`, `HatAttachment`), the face (`FaceFrontAttachment`, `FaceCenterAttachment`), back and waist items (weapons, capes, tails). Layered clothing does not apply to R6, so a coat or armour is drawn into the template or made an accessory. The face is usually an accessory too: a shell over the head carrying the drawn face, sometimes with 3D parts (a nose) in the same mesh.
+  - **Judge a template from a close capture of the torso front:** each torso face gets 128 x 128 pixels over 2 studs, so a template drawn small and scaled up shows blocks at gameplay zoom where a well-made one on the same rig reads clean. No rig or engine setting changes that, and a script cannot read another creator's template (`CreateEditableImageAsync` refuses without permission).
+  - **No drawn faces:** clear the face accessory's texture and color its handle with the head's BodyColors, keeping its mesh; removing the accessory would remove its 3D parts too. Real 3D face items (blindfolds, masks, moustaches), found by looking at all the heads on one grid, stay.
 
 ## Without a Humanoid (the default)
 

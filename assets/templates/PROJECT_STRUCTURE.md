@@ -99,7 +99,8 @@ src/ServerScriptService/Services/PlayerDataService.luau       # SoulStore lifecy
 - SoulStore is a Wally **server dependency**, required only through `ServerScriptService.ServerPackages`. Follow its pinned API; never copy package code.
 - `PlayerDataService` loads one session per player, reconciles from a fresh schema copy, registers save/removal, and exposes a small API. It is not a feature service. It initializes before save-dependent services, which register through a loaded-player lifecycle instead of assuming data during `PlayerAdded`. It also owns the leave order: each service's teardown in reverse start order, then the final save. SoulStore 2 defers its final save until every other `PlayerRemoving` handler has run, so what a teardown writes is saved (1.x saved first, and later writes were lost). Services register teardown with it instead of connecting `PlayerRemoving` themselves, so the order between them stays explicit.
 - An unpublished place (`game.PlaceId == 0`, a saved copy in Studio) has no DataStores: every call throws. The profile marks it, and `PlayerDataService` keeps that session's saves in memory so the place stays playable.
-- Studio without API access (a published place with Studio access to API services off) fails too: SoulStore 2 does not retry `must publish`, or `HTTP 403` in Studio, and `LoadData` returns false with `DataStoreError`. In Studio only, fall back to the memory save on that reason rather than kicking the tester; in a live server it is a real failure.
+- Studio without API access (a published place with Studio access to API services off) fails too: SoulStore 2 does not retry `must publish`, or `HTTP 403` in Studio, and `LoadData` returns false with `DataStoreError`. In Studio only, fall back to the memory save on that reason rather than kicking the tester; in a live server it is a real failure. A newer Edit-mode refusal reads "502: API Services rejected request ... Access forbidden", with no `HTTP 403`; whether Play with API access off gives that text is untested, so check the fallback against it.
+- A wrapper watching SoulStore's session end acts on its reason: `Saved`, `OwnershipLost`, `SaveRejected`, `InternalError` or `Cancelled`. Only `OwnershipLost` (another server claimed the record) means the player must rejoin: SoulStore's `BindToClose` ends every session `Saved` while players are still in the server, so a message on any end would reach everyone at shutdown. Cover it with a spec that runs the close callbacks.
 - Writes are server-authoritative and validated; clients never send arbitrary save paths or values.
 - `PlayerDataController` owns the client cache: initial snapshot by request, then server-pushed changes. It queues updates arriving before the snapshot and cleans up subscriptions on teardown. UI reads and subscribes; it never mutates the save.
 - Declare remote names and payloads in one shared place; the server owns handlers and validation.
@@ -126,6 +127,8 @@ soulstore = "mystifine/soulstore@<reviewed-version>"
 ```
 
 `[dependencies]` install to `ReplicatedStorage.Packages`; `[server-dependencies]` to `ServerPackages`, server code only. Commit `wally.toml` and `wally.lock`, run `wally install` after manifest changes or on a fresh checkout, never edit package internals, and require packages through the Rojo-mounted folders.
+
+**Upgrading:** packages may ship no changelog, so copy `Packages/_Index` aside before `wally install`, then diff the modules the project calls, old against new, adapt the code, and update `.graphifyignore` where it names a versioned folder. Tests find an installed package's folder by its name, never by a path with its version in it (one spec failed "path not found" after an upgrade).
 
 ## Toolchain and linting
 

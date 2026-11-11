@@ -14,6 +14,7 @@ Options: `Torso` (the torso's Transform in this pose: always pass it when the to
 - The results are ordinary R6 Transforms, so **blend FK and IK** with `fk:Lerp(ik, weight)` and key them with `clip`.
 - A rigid foot tips with its leg, so it rests on a corner, not flat. That is R6's look; do not unlock an ankle for it.
 - A shared `settle` seats one foot; `plant` the other for both.
+- **A free arm aimed by direction** (nothing in its hand to set the roll) turns by the shortest swing from hanging: pass its rest as `From`, or `r6.swing` on the R6 rig ([blender.md](blender.md#the-r6-rig)). A fixed roll reference flips the arm over as it swings through that reference.
 - Check the second return value of `reach`: a miss means the target is out of reach for this slide, not that the limb got there.
 - **Do not use Studio's Animation Editor IK or an ordinary chain** on these clips: they solve through elbows and knees (an `IKControl` down the whole arm bent the elbow 24 degrees). Use `reach` instead.
 

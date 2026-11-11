@@ -134,5 +134,45 @@ class OutputTests(unittest.TestCase):
             self.assertEqual(json.loads(output.read_text(encoding='utf-8')), result)
 
 
+class SaveTests(unittest.TestCase):
+    def test_save_joins_base64_chunks_into_the_file(self):
+        data = bytes(range(256)) * 3
+        calls = []
+
+        class FakeServer:
+            def call(self, tool, args, timeout):
+                at = int(args['code'].split('if ', 1)[1].split(' < 0', 1)[0])
+                calls.append(at)
+                text = str(len(data)) if at < 0 else base64.b64encode(data[at:at + 500]).decode()
+                return {'content': [{'type': 'text', 'text': json.dumps(text)}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'clip.rbxm'
+            size = studio_mcp.save(FakeServer(), 'studio', 'ServerStorage.Clips.Walk', out, chunk=500)
+            self.assertEqual((size, out.read_bytes()), (len(data), data))
+        self.assertEqual(calls, [-1, 0, 500])
+
+    def test_a_studio_error_is_raised_not_returned(self):
+        with self.assertRaises(RuntimeError):
+            studio_mcp.text_of({'isError': True, 'content': [{'type': 'text', 'text': 'no Walk under ServerStorage.Clips'}]})
+
+    def test_a_bom_does_not_hide_the_use_line(self):
+        class Stdout(io.StringIO):
+            def reconfigure(self, **_):
+                pass
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(studio_mcp, 'Server') as constructor:
+            script = Path(tmp) / 'audit.luau'
+            script.write_bytes('﻿--@use ZFight\nreturn 1'.encode('utf-8'))
+            server = constructor.return_value
+            server.studio.return_value = 'test-studio'
+            server.call.return_value = {'content': [{'type': 'text', 'text': '1'}]}
+            with patch.object(sys, 'argv', ['studio_mcp.py', 'luau', str(script)]), contextlib.redirect_stdout(Stdout()):
+                self.assertEqual(studio_mcp.main(), 0)
+            code = server.call.call_args[0][1]['code']
+            self.assertIn('local ZFight = assert(loadstring(', code)
+            self.assertNotIn('﻿', code)
+
+
 if __name__ == '__main__':
     unittest.main()

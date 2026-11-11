@@ -75,7 +75,9 @@ python scripts/learn.py on     # off stops new notes and keeps the ones there
 
 The [R6-like references](references/animation/r6-on-r15.md) cover R6-like animation on real R15 rigs, also called "R6 like", "fake R6", "fake R15" or "R15 R6 animation": six moving joints, nine locked joints, FK and IK that behave like R6's in Studio and Blender, Roblox's default R6 clips rebuilt for R15, smooth locomotion, compact jump/fall arcs, and validation. The dispatcher routes matching requests to them.
 
-The skill hands off to Blender and animation skills when they are installed, loading only those a task needs (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `animate-roblox-characters`, `find-skills`, and others named in the references). Without them it falls back to the rules in each reference.
+The skill hands off to Blender skills when they are installed, loading only those a task needs (`blender-director`, `blender-asset-qa`, `blender-game-optimization`, `blender-export-pipelines`, `blender-character-rigging`, `find-skills`, and others named in the references). Without them it falls back to the rules in each reference.
+
+Keying Roblox clips in Blender needs no other skill: [blender.md](references/animation/blender.md) carries the workflow that `animate-roblox-characters` provided (the pinned R6 IK + FK rig, Cautioned's `.rbxanim` exporter, staged posing with front and side review, the Blender-side audit, GIF previews), adapted to this skill's 60 fps clips and Studio checks, and adds the way into Studio (`clip_import.py`).
 
 ## Repository MCP access
 
@@ -85,4 +87,4 @@ The installers exclude `.mcp.json` from skill copies and global updates. Develop
 
 ## License
 
-MIT
+MIT. Code adapted from `animate-roblox-characters` keeps its MIT notice, and the R6 rig and Cautioned's add-on are downloaded, never bundled: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

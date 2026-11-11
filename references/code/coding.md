@@ -46,6 +46,7 @@
 - Code a Studio MCP call requires gets its own module copy, and calls run one at a time: [studio-testing.md](studio-testing.md#studio-mcp-calls).
 - `AvatarEditorService:PromptSetFavorite` for an item the account already favorites showed nothing in Studio and never fired `PromptSetFavoriteCompleted`, and every later call errored "PromptSetFavorite can not be called again while currently in progress". The state cannot be read first either: `GetFavoriteAsync` errors "Permission must be obtained with PromptAllowInventoryReadAccess". Prompt once, then offer any reward as a plain claim that does not depend on the favorite.
 - With the default Backpack, number keys 1-9 reach `UserInputService.InputBegan` with `gameProcessedEvent` true (the hotbar takes them), so a handler that skips processed input misses every number-key pick. For those keys, skip only while `UserInputService:GetFocusedTextBox()` returns a box.
+- **"Players can't join" with nothing in the scripts kicking them:** read the universe before the code (Open Cloud `GET https://apis.roblox.com/cloud/v2/universes/{id}`). An `ageRating` of `AGE_RATING_UNSPECIFIED`, no maturity questionnaire filled in, kept every player out; then check its visibility and the place's own settings.
 
 ## Verify
 

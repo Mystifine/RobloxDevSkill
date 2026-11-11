@@ -326,6 +326,39 @@ class SkinKitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'no skin objects'):
             kit.bake([], {}, '.', 'unused')
 
+    def test_plain_looks_give_tiny_islands_less_of_the_atlas(self):
+        def share():
+            pieces = kit.Pieces()
+            plate = bmesh.new()
+            bmesh.ops.create_cube(plate, size=1)
+            bmesh.ops.scale(plate, vec=(2, 2, .2), verts=plate.verts)
+            pieces.put('Torso', 'Cloth', plate)
+            for i in range(60):
+                stud = bmesh.new()  # a smooth rivet head: one island
+                bmesh.ops.create_uvsphere(stud, u_segments=12, v_segments=6, radius=.1)
+                bmesh.ops.translate(stud, vec=(-1 + (i % 10) * .2, -1 + (i // 10) * .2, .15), verts=stud.verts)
+                pieces.put('Torso', 'Gold', stud)
+            return pieces.objects({'Cloth': '#7A4A2A', 'Gold': '#C9A23A'})  # an object a look, one shared atlas
+
+        def cloth(objs):
+            total = 0.0
+            for ob in objs:
+                uv = ob.data.uv_layers.active.data
+                for poly in ob.data.polygons:
+                    if ob.material_slots[poly.material_index].material.name.split('M_', 1)[-1].split('.')[0] == 'Cloth':
+                        q = [uv[i].uv for i in poly.loop_indices]
+                        total += abs(sum(q[i].x * q[(i + 1) % len(q)].y - q[(i + 1) % len(q)].x * q[i].y for i in range(len(q)))) / 2
+            return total
+
+        objs = share()
+        kit.unwrap(objs, hidden=1)
+        before = cloth(objs)
+        for ob in objs:
+            bpy.data.objects.remove(ob)
+        objs = share()
+        kit.unwrap(objs, hidden=1, plain=('Gold',))
+        self.assertGreater(cloth(objs), before * 1.05)
+
     def test_valid_batch_bakes_four_nonempty_maps(self):
         ob = self.piece()
         kit.unwrap([ob])

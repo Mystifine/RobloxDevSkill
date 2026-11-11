@@ -1,6 +1,6 @@
 ---
 name: roblox-dev
-description: 'Roblox game development: Luau, networking, data, physics and NPCs; Rojo; UI, HUD and icons; VFX; 3D models, weapons, maps, lighting and terrain; R15/R6 rigs, skins and animation, including R6-like animation on R15 ("R6 like", "fake R6", "fake R15", "R15 R6 animation", default R6 clips on R15); Toolbox, uploads and moderation; onboarding and analytics; game design and economy; Codex handoffs.'
+description: 'Roblox game development: Luau, networking, data, physics and NPCs; Rojo; UI, HUD and icons; VFX; 3D models, weapons, maps, lighting and terrain; R15/R6 rigs, skins and animation (walks, attacks, emotes keyed in Blender or Studio), including R6-like animation on R15 ("R6 like", "fake R6", "fake R15", "R15 R6 animation", default R6 clips on R15); Toolbox, uploads and moderation; onboarding and analytics; game design and economy; Codex handoffs.'
 ---
 
 # Roblox Dev
@@ -46,7 +46,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Cutscenes, cinematic cameras, timelines | `art/cutscenes.md` |
 | Sound effects, music, mixing, Audio API | `art/audio.md` |
 | Watching a video: references, recordings, timing (ffmpeg) | `art/video.md` |
-| 3D models, meshes, textures, maps built with parts, z-fighting, Blender asset creation | `art/modeling.md` |
+| 3D models, meshes, textures, maps built with parts, map expansions, bases and plot structures, buildings, z-fighting, Blender asset creation | `art/modeling.md` |
 | Weapons (always about 18,000 triangles), shields, held or worn gear | `art/modeling.md`, `rigs/gear.md` |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | `art/environment.md` |
 | R15/R6 rigs and character models, accessories, scaling, rigs without a Humanoid | `rigs/rigs.md` |
@@ -57,8 +57,8 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Toolbox, free models, images, sounds, any imported asset, plugin libraries | `safety/assets.md` |
 | Generating or uploading assets; the cloud API key | `safety/no-gore.md`, `safety/uploading.md` |
 | Showing hits, injuries, defeat, monsters, horror | `safety/stylized-violence.md` |
-| Rigging, skinning, Blender animation, clips, import, inspection, publishing | `animation/animation.md` |
-| R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips | `animation/r6-on-r15.md`; FK or IK adds `animation/r6-ik.md` |
+| Rigging, skinning, clips, import, inspection, publishing | `animation/animation.md`; keyed in Blender (the default) adds `animation/blender.md` |
+| R6-like animation on an R15 rig: "R6 like", "fake R6", "fake R15", "R15 R6 animation", "R6 on R15", stiff limbs moving only at the root, neck, shoulders and hips | `animation/r6-on-r15.md`; keyed in Blender adds `animation/blender.md`, FK or IK `animation/r6-ik.md` |
 | Roblox's default R6 clips on R15, under any name | `animation/r6-default-set.md` alone: find them, upload what is missing |
 | Onboarding, tutorials, pointers | `design/onboarding.md` |
 | Funnels, journeys, custom events, analytics plans and reviews | `design/analytics.md` |

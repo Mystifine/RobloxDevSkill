@@ -11,11 +11,9 @@ Two helpers carry this, both speaking R6's language, with the same pivots:
 
 ## Authoring workflow
 
-Check for Blender MCP and test the live connection first. Attempt to author and verify the animation in Blender at **60 FPS** (`scene.render.fps = 60`, `scene.render.fps_base = 1.0`) before falling back to Roblox Studio. Repair routine connection/context errors where possible; if Blender MCP is unavailable or a real authoring blocker remains, explain the reason and continue in **Studio at 60 FPS** with the same restricted-joint policy. Do not stop solely because Blender MCP is missing.
+**Animate R6, then carry it over** *(default)*: the frames an R6 animator would make, on R15. Key the clip on Aeresei's R6 rig in Blender at 60 fps ([blender.md](blender.md)), then `python scripts/clip_import.py rbxanim CLIPS --r15 RIG` reads it onto an R6, retargets it at every frame, plants its feet, checks the policy and audits. A user's R6 clips (a dummy's AnimSaves, ids) go straight to `retarget`. Without Blender, write R6 poses in Studio with `clip` below, at 60 fps (the [Blender-first workflow](animation.md#authoring-workflow-blender-first-studio-fallback) says when).
 
-In Studio, use a 60 FPS Animation Editor timeline or scripted keys at `Keyframe.Time = frame / 60`, then audit with `{ Fps = 60 }`. Follow the shared [Blender-first workflow](animation.md#authoring-workflow-blender-first-studio-fallback) for connection checks and fallback details. Preview GIF frame rate is independent of the 60 FPS authoring timebase.
-
-Retargeting an existing R6 clip starts in Studio whichever path you author in: the source is there, and `retarget` reads it from the engine. `retarget`, `defaults` and `verify` step the engine by hand, which Studio allows only in **Edit**; `map`, `fk`, `reach`, `plant`, `settle` and `world` are plain math and work anywhere.
+`retarget`, `defaults` and `verify` step the engine by hand, which Studio allows only in **Edit**; `map`, `fk`, `reach`, `plant`, `plantFeet`, `settle` and `world` are plain math and work anywhere.
 
 ## Joint policy
 
@@ -79,6 +77,7 @@ Inspect supplied frames/video ([video.md](../art/video.md)) and the existing ani
 - **Walk/run:** use hip-driven leg pendulums and opposed shoulder swings, with smaller torso/head counter-motion. Reduce vertical amplitude and abrupt acceleration when asked for smoother motion. A forward run posture comes from the root/whole torso, with a partial head counter-tilt to keep looking ahead; keep the waist locked.
 - **Jump:** use a compact forward-and-outward shoulder arc when that is what the reference shows. Do not turn a small circular sweep into an overhead 360-degree windmill. Review hand paths and total span from the front and side.
 - **Fall:** follow the reference's held or alternating shoulder motion rather than automatically spreading both arms into a T. Keep it distinct from a new jump or body spin.
+- **Weapon swings** (a user's R6 slashes that read well, measured): a key every 1 to 3 frames (25 to 40 keys in 0.7 to 1.0 s, all Linear); the torso twisting 50 to 78 degrees each way with the head counter-turning 60 to 80 to hold the target; the arms through near-full arcs with 1 to 3 studs of slide for reach; the weapon's own Motor6D keyed for 30 to 60 degrees of wrist-like flick ([gear.md](../rigs/gear.md)); legs and root left to the clip beneath. Clips of 6 to 13 eased keys with a modest torso and a welded weapon read stiff even with their amplitudes doubled.
 - **Held poses** (a card pose, a victory stance): plant every key's feet where the final pose puts them (`plant`), anticipation keys included, and breathe with the head only. Settling each key on its own slid the feet 0.5 to 1.4 studs, and a torso breath lifted a planted foot; planted, slides fell to 0.11 studs or less.
 
 New motion uses sparse, deliberately eased Bezier authoring curves with controlled overlap. Loops need matching endpoint poses **and tangents**. Retain a duplicate closing key for checking/export when needed, but omit it from rendered loop playback.
@@ -87,13 +86,15 @@ New motion uses sparse, deliberately eased Bezier authoring curves with controll
 
 Calibrate studs against the actual imported rig. Work through its joint frames: child world pose = parent world pose × C0 × animated transform × inverse(C1). Do not copy Euler angles or part-center offsets between R6 and R15 without accounting for their different pivots and limb proportions: `toR15` does this.
 
+**A clip from the R6 rig carries its feet by its IK targets** (`plantFeet`), not by its baked soles: the rigid legs sink 0.2 to 0.5 studs in a crouch, and a floor fix switched on and off by contact spans popped legs 34 to 51 degrees at every step and landing. Edit a retarget only with `Thin = false`: thinning judges the R6 source alone and dropped a quick step's lifted frame, which planting turned into a 0.65-stud slide.
+
 When changing torso lean or bounce on an approved gait, preserve the feet's world paths by solving the hips in the new torso (`reach` or `plant` with `Torso`). Lock the lower-leg/foot joints throughout. A shared root-height solve seats only the lowest foot; a slow idle may need small independent hip corrections to seat both soles without sliding.
 
 Judge in-place locomotion against backward stance travel and its measured ground speed, not stationary-foot rules. Match animation speed to character speed during integration. Check every planted sole, toe and heel for hover/penetration, and inspect shoulder/hip gaps as well as hand/head and arm/torso intersections.
 
 ## Verify and deliver
 
-For authoring in Blender, `animate-roblox-characters` when installed supplies the authentic rig transfer and the rig-appropriate export; load it only for that ([animation.md](animation.md)). [animation.md](animation.md) supplies export and Studio inspection guidance, and this file the restricted-joint policy; generic R15 workflows must not introduce knee, elbow or waist motion.
+[blender.md](blender.md) covers keying in Blender and the way into Studio, [animation.md](animation.md) the Studio inspection, and this file the restricted-joint policy; generic R15 workflows must not introduce knee, elbow or waist motion.
 
 Before delivery:
 

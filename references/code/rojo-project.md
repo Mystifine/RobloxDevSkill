@@ -74,3 +74,11 @@ This is a rewrite into systems, not a copy of the scripts:
    - **Client cost** beside the original on the same screen: Lua allocation and heap ([coding.md](coding.md) Performance). The port costs no more without a reason.
 4. **Data:** a legacy-format save loads with the same values: offline through the real save library over a fake DataStoreService (Lune), or in a private published test place on scratch stores. Never production stores or the owner's saves.
 5. **Record** the results in `docs/migration.md` and `artifacts/verification/`, and report what you could not verify.
+
+## 7. The owner's real place
+
+When the owner connects Rojo to the published place itself, it holds the Studio-era scripts beside Rojo's code, and both games would start in Play:
+1. Confirm the place by its `PlaceId` and creator before changing anything.
+2. Hash every legacy script in Studio (its length and an FNV-1a of its `Source`) against the export in `migration/legacy/`, and delete only those that match; then check the leftovers and the content counts.
+3. Before every Play, point the game at scratch stores (the project's own switch, such as a ServerStorage attribute), remove the keys the test wrote from the Play server ([studio-testing.md](studio-testing.md#studio-mcp-calls)), and clear the switch after.
+4. Never publish: that is the owner's step.
