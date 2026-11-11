@@ -14,6 +14,9 @@
     --strip TEXT     a prefix to drop from the file names (EmberfangWalk -> Walk with --strip Emberfang)
     --priority P     Action, Core, Idle or Movement (default: Core for a loop, Action for a one-shot)
     --locomotion A,B clips the audit treats as in-place locomotion (default: the audit infers it)
+    --held PART      fake R6: key the held item's joint (PART on a Motor6D from the hand) with the clip's Flick channel
+                     (R6OnR15.keyHeld); the rig must hold the item
+    --tip NAME       the attachment, part or bone whose fastest moment the first marker is checked against (a blade's tip)
     --feet A,B       the parts or bones that plant; --soles measures each one's sole as the floor point straight below it at
                      rest (the lowest visible part's bottom), for joints above the soles such as a creature's ankles
     --keep           leave the sequences in ServerStorage.__ClipImport for AnimationInspector.sheet; run `clean` later
@@ -74,7 +77,7 @@ local report: { [string]: any } = { Policy = 0, Missing = {} }
 local sequence: KeyframeSequence, rig: Model
 if job.mode == "rbxanim" then
 	if job.r15 then
-		local seq, missing = ClipImport.rbxanim(find(nil, Enum.HumanoidRigType.R6), data, { Name = job.name, Loop = loop, Priority = priority })
+		local seq, missing = ClipImport.rbxanim(find(nil, Enum.HumanoidRigType.R6), data, { Name = job.name, Loop = loop, Priority = priority, Parts = info.Parts })
 		rig = find(job.r15, Enum.HumanoidRigType.R15)
 		local map = R6OnR15.map(rig)
 		sequence = R6OnR15.retarget(map, seq, { Name = job.name, Thin = false })
@@ -83,11 +86,14 @@ if job.mode == "rbxanim" then
 		if info.Feet then
 			report.FeetShort = R6OnR15.plantFeet(map, sequence, info)
 		end
+		if job.held and info.Channels and info.Channels.Flick then
+			report.Held = R6OnR15.keyHeld(map, sequence, { Part = job.held, Flick = info.Channels.Flick, Fps = info.Fps })
+		end
 		local findings, text = R6OnR15.check(map, sequence)
 		report.Policy, report.PolicyText, report.Missing = #findings, text, missing
 	else
 		rig = find(job.rig, Enum.HumanoidRigType.R6)
-		sequence, report.Missing = ClipImport.rbxanim(rig, data, { Name = job.name, Loop = loop, Priority = priority })
+		sequence, report.Missing = ClipImport.rbxanim(rig, data, { Name = job.name, Loop = loop, Priority = priority, Parts = info.Parts })
 	end
 else
 	rig = find(job.rig, Enum.HumanoidRigType.R15)
@@ -124,6 +130,9 @@ if job.feet then
 end
 if job.ignore then
 	options.Ignore = job.ignore
+end
+if job.tip then
+	options.Tip = job.tip
 end
 if job.locomotion then
 	options.Locomotion = true
@@ -170,7 +179,7 @@ def build(s, studio, mode, path, a):
     data = rbxanim_data(path) if mode == 'rbxanim' else json.loads(Path(path).read_text(encoding='utf-8'))
     info = sidecar(path)
     job = {'mode': mode, 'name': name, 'rig': a.rig, 'r15': a.r15, 'priority': a.priority,
-           'feet': a.feet.split(',') if a.feet else None, 'soles': a.soles, 'ignore': a.ignore.split(',') if a.ignore else None,
+           'feet': a.feet.split(',') if a.feet else None, 'soles': a.soles, 'held': a.held, 'tip': a.tip, 'ignore': a.ignore.split(',') if a.ignore else None,
            'locomotion': name in (a.locomotion or '').split(',')}
     code = (BUILD.replace('__FOLDER__', FOLDER).replace('__DATA__', long_string(json.dumps(data, separators=(',', ':'))))
             .replace('__INFO__', long_string(json.dumps(info))).replace('__JOB__', long_string(json.dumps(job))))
@@ -189,6 +198,8 @@ def build(s, studio, mode, path, a):
         extra += f'; fit {report["Fit"]:.4f} studs'
         if report['Fit'] > 0.05:
             errors.append(f'the bones sit {report["Fit"]:.3f} studs from the clip\'s rig: not the rig it was made on')
+    if report.get('Held'):
+        extra += f'; {job["held"]} keyed on {report["Held"]} keys'
     if report.get('FeetShort'):
         extra += f'; feet short of their targets by up to {report["FeetShort"]:.3f} studs'
     if report.get('Policy'):
@@ -213,6 +224,8 @@ def main(argv=None):
     ap.add_argument('--locomotion')
     ap.add_argument('--feet')
     ap.add_argument('--soles', action='store_true')
+    ap.add_argument('--held')
+    ap.add_argument('--tip')
     ap.add_argument('--ignore')
     ap.add_argument('--keep', action='store_true')
     ap.add_argument('--studio', default=os.environ.get('STUDIO_ID'))

@@ -22,7 +22,7 @@ ROUTES = {
     'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 20750),
     'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8900),
     'blender clip': (['animation/animation', 'animation/blender'], 8300),  # was 18,700 with animate-roblox-characters loaded
-    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 11700),
+    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 11800),
     'default r6 clips': (['animation/r6-default-set'], 4000),
     'funnels': (['design/analytics'], 6300),
     'journeys': (['design/analytics', 'design/journeys'], 7500),

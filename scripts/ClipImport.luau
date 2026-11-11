@@ -5,7 +5,9 @@
 --   rbxanim(rig, data, options) -> (KeyframeSequence, { string })
 --       a .rbxanim (Cautioned's exporter, r6_rig.export): each part's 12 numbers are its joint's Transform (a Pose's CFrame),
 --       nested by the rig's own joint tree (Motor6D or AnimationConstraint). Returns the names the rig lacks (their motion is
---       dropped). The root part's entry is its fixed axis change and is left out: its Pose only carries the tree.
+--       dropped). The root part's entry is its fixed axis change and is left out: its Pose only carries the tree. A part with no
+--       data, or left out of options.Parts, gets no pose (Weight 0 only to carry the tree to one below it), so what plays beneath
+--       keeps moving it: an upper-body layer lists { "Torso", "Head", "Left Arm", "Right Arm" } and the legs walk on.
 --   deltas(rig, data, options) -> (KeyframeSequence, number)
 --       a bone rig's clip (blender_anim.deltas: each deform bone's world delta, posed x rest^-1 in Blender space, a sample).
 --       The Blender-to-Roblox map is the signed axis permutation that lays the Blender rest heads on the imported bones; the
@@ -18,7 +20,7 @@
 
 local ClipImport = {}
 
-export type Options = { Name: string?, Loop: boolean?, Priority: Enum.AnimationPriority?, Parent: Instance? }
+export type Options = { Name: string?, Loop: boolean?, Priority: Enum.AnimationPriority?, Parent: Instance?, Parts: { string }? }
 
 local function newSequence(options: Options?, name: string?, loop: boolean?): KeyframeSequence
 	local settings: Options = options or {}
@@ -78,6 +80,14 @@ function ClipImport.rbxanim(rig: Model, data: any, options: Options?): (Keyframe
 		end
 	end
 	local missing: { [string]: boolean } = {}
+	local only: { [string]: boolean }? = nil
+	if options and options.Parts then
+		local set: { [string]: boolean } = {}
+		for _, name in options.Parts do
+			set[name] = true
+		end
+		only = set
+	end
 	local sequence = newSequence(options, data.Name, data.Loop)
 	for _, frame in data.kfs do
 		local key = Instance.new("Keyframe")
@@ -87,10 +97,27 @@ function ClipImport.rbxanim(rig: Model, data: any, options: Options?): (Keyframe
 				missing[name] = true
 			end
 		end
+		local function valueOf(part: BasePart): any
+			return if only and not only[part.Name] then nil else frame.kf[part.Name]
+		end
+		local function wanted(part: BasePart): boolean
+			if part ~= root and valueOf(part) then
+				return true
+			end
+			for _, child in children[part] or {} do
+				if wanted(child) then
+					return true
+				end
+			end
+			return false
+		end
 		local function pose(part: BasePart, parent: Instance)
+			if part ~= root and not wanted(part) then
+				return
+			end
 			local p = Instance.new("Pose")
 			p.Name = part.Name
-			local value = frame.kf[part.Name]
+			local value = valueOf(part)
 			if value and part ~= root then
 				local n, style, direction = numbers(value)
 				p.CFrame = CFrame.new(table.unpack(n, 1, 12))

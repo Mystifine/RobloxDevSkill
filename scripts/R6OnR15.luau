@@ -14,6 +14,7 @@
 --   clip(map, keys, options)    keys of poses -> a KeyframeSequence on the 60 fps grid
 --   retarget(map, source)       an R6 clip -> its R15 KeyframeSequence, sampled from the engine
 --   plantFeet(map, sequence, track)   every key's legs reach for where a Blender clip's foot IK targets were (r6_rig.feet)
+--   keyHeld(map, sequence, held)      a held item's own joint (a weapon on a Motor6D from the hand) keyed with its flick
 --   defaults(map, parent)       Roblox's whole default R6 set (DEFAULTS), retargeted
 --   verify(map, rig, source, sequence)   plays both through the engine and measures how far R15 strays from the R6 source
 --   check(map, sequence)        the joint policy: six joints move, the nine locked ones stay at identity
@@ -68,6 +69,10 @@ export type RetargetOptions = {
 	Thin: boolean?, -- false keeps a key every frame: needed before editing keys afterwards (plantFeet), since thinning judges
 	-- the R6 source alone and dropped a quick step's lifted frame, which planting then turned into a 0.65-stud slide
 }
+-- A held item's flick a frame from 0 (degrees; r6_rig.export's channels): the item turning about its grip in the plane of the
+-- item and the arm, positive tipping its far end up the arm. Part names the item's part on its joint; the joint frame's +Y runs
+-- along the item (its C0); Axis overrides the turn's axis in that frame.
+export type Held = { Part: string, Flick: { number }, Fps: number?, Axis: Vector3? }
 -- A Blender clip's feet (r6_rig.feet): each leg's IK target a frame from 0, { x, z, lift } in studs right and back of the
 -- root and above the floor; Rest the targets' { x, z } at rest; Fps the frames' rate (default 60).
 export type FootTrack = { Feet: { [string]: { { number } } }, Rest: { [string]: { number } }, Fps: number? }
@@ -175,9 +180,11 @@ function R6OnR15.map(rig: Model): Map
 		rest[name] = value
 		return value
 	end
-	for name in joints do
+	for name, joint in joints do
 		restOf(name)
-		local part = rig:FindFirstChild(name)
+		-- (a held weapon's part sits inside its own model, so take each part from its joint)
+		local item = joint.Item
+		local part = if item:IsA("Motor6D") then item.Part1 else item.Attachment1 and item.Attachment1.Parent
 		assert(part and part:IsA("BasePart"), "no part named " .. name)
 		sizes[name] = (part :: BasePart).Size
 	end
@@ -666,6 +673,66 @@ function R6OnR15.plantFeet(map: Map, sequence: KeyframeSequence, track: FootTrac
 	return worst
 end
 
+-- A held item's own joint, keyed at every key of a clip that already keys the arm (after retarget, Thin = false): its pose goes
+-- under the hand's, poses of Weight 0 carrying the tree down to it where a key has none. The flick turns the item about its grip
+-- in the plane of the item and the arm, so a slash whips the blade while the rigid R6 arm stays one block: a user's R6 slashes
+-- that read well flicked their weapon joint 30 to 60 degrees, and the same swings on a welded weapon read stiff.
+-- Returns the number of keys keyed.
+function R6OnR15.keyHeld(map: Map, sequence: KeyframeSequence, held: Held): number
+	local joint = map.Joints[held.Part]
+	assert(joint, "no joint holds " .. held.Part .. " on this rig")
+	local chain = {}
+	local name: string? = joint.Parent
+	while name and map.Joints[name] do
+		table.insert(chain, 1, name)
+		name = map.Joints[name].Parent
+	end
+	local rootName = name :: string
+	local axis = held.Axis
+	if not axis then
+		local up = joint.C0:VectorToObjectSpace(Vector3.yAxis) -- up the hand, in the joint's frame
+		local turn = Vector3.new(0, 1, 0):Cross(up)
+		assert(turn.Magnitude > 0.1, held.Part .. "'s joint frame runs along the arm: build it with +Y along the item, or pass Axis")
+		axis = turn.Unit
+	end
+	local fps = held.Fps or FPS
+	local count = 0
+	for _, key in sequence:GetKeyframes() do
+		local at = math.clamp((key :: Keyframe).Time * fps, 0, #held.Flick - 1)
+		local i = math.floor(at)
+		local a, b = held.Flick[i + 1], held.Flick[math.min(i + 1, #held.Flick - 1) + 1]
+		local flick = a + (b - a) * (at - i)
+		local parent: Instance? = key:FindFirstChild(rootName)
+		if not parent then
+			local top = Instance.new("Pose")
+			top.Name, top.Weight = rootName, 0
+			top.Parent = key
+			parent = top
+		end
+		for _, link in chain do
+			local pose = (parent :: Instance):FindFirstChild(link)
+			if not pose then
+				local carrier = Instance.new("Pose")
+				carrier.Name, carrier.Weight = link, 0
+				carrier.Parent = parent
+				pose = carrier
+			end
+			parent = pose
+		end
+		local old = (parent :: Instance):FindFirstChild(held.Part)
+		if old then
+			old:Destroy()
+		end
+		local pose = Instance.new("Pose")
+		pose.Name = held.Part
+		pose.CFrame = CFrame.fromAxisAngle(axis :: Vector3, math.rad(flick))
+		pose.EasingStyle = Enum.PoseEasingStyle.Linear
+		pose.Parent = parent
+		count += 1
+	end
+	return count
+end
+
 -- Roblox's whole default R6 set, retargeted: { [DEFAULTS name] = KeyframeSequence }, each named after its slot.
 function R6OnR15.defaults(map: Map, parent: Instance?): { [string]: KeyframeSequence }
 	local rig = r6Rig()
@@ -730,8 +797,12 @@ end
 -- lacks. Returns the findings and a line of text.
 function R6OnR15.check(map: Map, sequence: KeyframeSequence): ({ Finding }, string)
 	local allowed: { [string]: boolean } = {}
+	local locks: { [string]: boolean } = {}
 	for _, role in map.Roles do
 		allowed[role.Joint] = true
+		for _, name in role.Locked do
+			locks[name] = true
+		end
 	end
 	local locked: { [string]: boolean } = {}
 	local unknown: { [string]: boolean } = {}
@@ -744,7 +815,7 @@ function R6OnR15.check(map: Map, sequence: KeyframeSequence): ({ Finding }, stri
 					unknown[name] = true
 				elseif allowed[name] then
 					moved[name] = moved[name] or cf ~= CFrame.identity
-				elseif map.Joints[name] and (cf.Position.Magnitude > 1e-3 or angleBetween(cf, CFrame.identity) > math.rad(0.01)) then
+				elseif locks[name] and (cf.Position.Magnitude > 1e-3 or angleBetween(cf, CFrame.identity) > math.rad(0.01)) then
 					locked[name] = true
 				end
 			end

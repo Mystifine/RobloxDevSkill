@@ -55,6 +55,24 @@ class Rig(unittest.TestCase):
             text.clear()
             text.write(original)
 
+    def test_an_export_carries_a_flick_channel_and_a_layers_parts(self):
+        self.assertTrue(r6.addon()['ok'])
+        shoulder = self.arm.pose.bones['RightShoulder']
+        for frame, (degrees, flick) in ((0, (0, 0)), (6, (60, 40)), (12, (0, -45))):
+            ba.key(self.arm, frame, {'RightShoulder': {'rotation_quaternion': list(Quaternion((1, 0, 0), math.radians(degrees)))}},
+                   'BEZIER', action='Flick' if frame == 0 else None)
+            shoulder['flick'] = float(flick)
+            shoulder.keyframe_insert('["flick"]', frame=frame, group='RightShoulder')
+        self.assertTrue(ba.audit(self.arm, 'Flick', loop=False, contacts=False)['ok'])
+        out = r6.export(self.arm, Path(self.tmp.name) / 'Flick', 'Flick', channels={'Flick': ('RightShoulder', 'flick')},
+                        parts=('Torso', 'Head', 'Left Arm', 'Right Arm'))
+        self.assertTrue(out['ok'], out['errors'])
+        info = json.loads(Path(out['json']).read_text(encoding='utf-8'))
+        flick = info['Channels']['Flick']
+        self.assertEqual(len(flick), 13)
+        self.assertEqual((flick[0], flick[6], flick[12]), (0.0, 40.0, -45.0))
+        self.assertEqual(info['Parts'], ['Torso', 'Head', 'Left Arm', 'Right Arm'])
+
     def test_aiming_points_the_arm_and_the_held_item(self):
         visible = next(o for o in bpy.data.objects if o.type == 'MESH' and o.visible_get() and o.name.startswith('Right Arm'))
 

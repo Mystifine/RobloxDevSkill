@@ -61,9 +61,12 @@ local ok, failure = pcall(function()
 	check(#sequence:GetKeyframes() == 3 and sequence.Loop and sequence.Name == "Raise", "rbxanim: one key a frame, the options")
 	local poses = posesOf(sequence, 2)
 	check(poses.HumanoidRootPart.Weight == 0 and poses.HumanoidRootPart.CFrame == CFrame.identity, "rbxanim: the root's entry only carries the tree")
-	check(poses.Torso.Parent == poses.HumanoidRootPart and poses["Right Arm"].Parent == poses.Torso and poses.Head.Parent == poses.Torso, "rbxanim: nested by the rig's joints")
+	check(poses.Torso.Parent == poses.HumanoidRootPart and poses["Right Arm"].Parent == poses.Torso, "rbxanim: nested by the rig's joints")
 	check(angle(poses["Right Arm"].CFrame, raise) < 1e-3 and poses["Right Arm"].EasingStyle == Enum.PoseEasingStyle.Constant, "rbxanim: numbers and easing kept")
-	check(poses.Head.Weight == 0, "rbxanim: a part the clip leaves out overrides nothing")
+	check(poses.Head == nil and poses["Left Leg"] == nil, "rbxanim: a part the clip leaves out gets no pose")
+	local layer = own(Import.rbxanim(r6, data, { Name = "Layer", Parts = { "Right Arm" } }))
+	local layered = posesOf(layer, 2)
+	check(layered.Torso.Weight == 0 and layered["Right Arm"] and layered.Torso.CFrame == CFrame.identity, "rbxanim: Parts keeps a layer, carrying the tree to it")
 	check(#missing == 1 and missing[1] == "Tail", "rbxanim: a name the rig lacks is reported")
 
 	-- retarget: Thin = false keeps a key every frame; plantFeet puts each sole where its track says
@@ -107,6 +110,46 @@ local ok, failure = pcall(function()
 	check(math.abs((endAt.Z - rest.RightFoot.Position.Z) + 0.4) < 0.05, "plantFeet: the step lands 0.4 studs forward")
 	local findings = Fake.check(map, dense)
 	check(#findings == 0, "plantFeet: the joint policy holds")
+
+	-- a weapon held on a Motor6D from the hand, its grip part inside its own model: map reads it, check ignores it, keyHeld flicks it
+	local weapon = Instance.new("Model")
+	weapon.Name = "Weapon"
+	local grip = Instance.new("Part")
+	grip.Name, grip.Size, grip.Massless = "WeaponGrip", Vector3.new(0.2, 0.2, 0.2), true
+	grip.Parent = weapon
+	local hand = r15.RightHand
+	local gripAttachment = hand:FindFirstChild("RightGripAttachment")
+	local holder = Instance.new("Motor6D")
+	holder.Part0, holder.Part1 = hand, grip
+	-- (the joint frame's +Y runs along the item: forward from the fist, at right angles to the hanging arm, as R6 holds a sword)
+	local gripAt = if gripAttachment then gripAttachment.Position else Vector3.new(0, -hand.Size.Y / 2, 0)
+	holder.C0 = CFrame.fromMatrix(gripAt, Vector3.xAxis, -Vector3.zAxis)
+	holder.Parent = grip
+	weapon.Parent = r15
+	local held = Fake.map(r15)
+	check(held.Joints.WeaponGrip ~= nil and held.Rest.WeaponGrip ~= nil, "map: a weapon inside its own model is read through its joint")
+	local flicks = {}
+	for f = 0, 12 do
+		flicks[f + 1] = 5 * f -- 0 to 60 degrees
+	end
+	local keyed = Fake.keyHeld(held, dense, { Part = "WeaponGrip", Flick = flicks })
+	check(keyed == 13, "keyHeld: every key of the dense clip")
+	local last = posesOf(dense, 13)
+	local middle = posesOf(dense, 7)
+	check(last.WeaponGrip and last.WeaponGrip.Parent == last.RightHand and last.RightHand.Parent == last.RightLowerArm, "keyHeld: the item's pose hangs under the hand's")
+	check(math.abs(angle(CFrame.identity, last.WeaponGrip.CFrame) - 60) < 0.01 and math.abs(angle(CFrame.identity, middle.WeaponGrip.CFrame) - 30) < 0.01, "keyHeld: the flick as tracked")
+	local tipped = holder.C0.Rotation * last.WeaponGrip.CFrame.Rotation * Vector3.yAxis
+	check(tipped:Dot(Vector3.yAxis) > 0.8, "keyHeld: a positive flick tips the item up the arm")
+	local carriers = posesOf(dense, 6)
+	check(carriers.RightLowerArm.Weight == 0 and carriers.RightHand.Weight == 0, "keyHeld: carrier poses override nothing")
+	local after = Fake.check(held, dense)
+	check(#after == 0, "check: the held item's flick is no broken lock")
+	weapon.Parent = nil
+	own(weapon)
+	local bad = own(dense:Clone())
+	posesOf(bad, 5).RightLowerArm.CFrame = CFrame.Angles(0.5, 0, 0)
+	posesOf(bad, 5).RightLowerArm.Weight = 1
+	check(#Fake.check(held, bad) == 1, "check: a bent elbow is still caught")
 
 	-- deltas: a bone rig (a hip and knee under a part) plus a Motor6D part, from Blender-space world deltas
 	local model = own(Instance.new("Model"))

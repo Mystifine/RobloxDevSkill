@@ -21,8 +21,10 @@ Inside Blender (open the working copy with Python auto-run off; `import r6_rig a
     r6.ground(arm)            raises or lowers LowerTorso-FK so the lower visible sole touches the floor; on the pose as set,
                               before keying it, with no action assigned (an action re-poses the rig when it is evaluated)
     r6.feet(arm, start, end)  where the IK targets put each foot each frame: R6OnR15.plantFeet's input
-    r6.export(arm, path, action=None, markers=None, loop=False)   .rbxanim through the add-on, plus a .json beside it
-                              (Markers in seconds, Loop, Fps, Feet, Rest) for clip_import.py
+    r6.export(arm, path, action=None, markers=None, loop=False, channels=None, parts=None)   .rbxanim through the add-on, plus
+                              a .json beside it (Markers in seconds, Loop, Fps, Feet, Rest, Channels, Parts) for clip_import.py; channels
+                              {name: (bone, property)} samples a keyed custom property a frame, such as a held weapon's flick
+                              ({'Flick': ('RightShoulder', 'flick')}: R6OnR15.keyHeld's degrees)
 
 Directions (aim, swing, arc) are in the torso's frame: +X right, +Y forward, +Z up; the rig faces +Y, the floor is z = 0,
 1 Blender unit = 1 stud. At rest an arm hangs (-Z) and a held item points forward (+Y), as R6's grip holds a sword.
@@ -342,10 +344,20 @@ def feet(arm, start, end):
     return {'Feet': track, 'Rest': rest}
 
 
-def export(arm, path, action=None, markers=None, loop=False, start=None, end=None):
+def channel(action, bone, prop, start, end):
+    """A keyed custom property of a pose bone, a value a frame from its curve (0 where it has none)."""
+    path = f'pose.bones["{bone}"]["{prop}"]'
+    import blender_anim
+    curve = next((c for c in blender_anim.curves(action) if c.data_path == path), None)
+    return [round(curve.evaluate(f), 4) if curve else 0.0 for f in range(int(start), int(end) + 1)]
+
+
+def export(arm, path, action=None, markers=None, loop=False, start=None, end=None, channels=None, parts=None):
     """Bakes the action on the controls from InternalArmature (the Motor6D rig) to `path`.rbxanim through the add-on, and writes
-    `path`.json beside it: Markers {name: seconds} (from {name: frame}), Loop, Fps, Feet and Rest (feet()). The scene's
-    action, frame range and selection are restored."""
+    `path`.json beside it: Markers {name: seconds} (from {name: frame}), Loop, Fps, Feet and Rest (feet()), and Channels
+    {name: [value a frame]} for `channels` {name: (bone, property)}, and Parts for a layer that keys only some R6 parts (the
+    exporter bakes every part; ClipImport keeps these): ('Torso', 'Head', 'Left Arm', 'Right Arm') leaves the legs to the clip
+    beneath. The scene's action, frame range and selection are restored."""
     bpy = _bpy()
     ready = addon()
     if not ready['ok']:
@@ -378,6 +390,10 @@ def export(arm, path, action=None, markers=None, loop=False, start=None, end=Non
             fps = sc.render.fps / sc.render.fps_base
             info = {'Markers': {k: round((v - s) / fps, 4) for k, v in (markers or {}).items()}, 'Loop': bool(loop), 'Fps': fps}
             info.update(feet(arm, s, e))
+            if parts:
+                info['Parts'] = list(parts)
+            if channels:
+                info['Channels'] = {name: channel(act, bone, prop, s, e) for name, (bone, prop) in channels.items()}
             path.with_suffix('.json').write_text(json.dumps(info), encoding='utf-8')
     except Exception as exc:
         errors.append(f'export failed: {exc}')
