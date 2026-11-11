@@ -38,7 +38,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Task | Load, under `references/` |
 |---|---|
 | Luau, modules, services, networking, security, data, optimization, tests | `code/coding.md` |
-| Physics, constraints, network ownership, NPC movement and pathfinding, playing animations in game | `code/gameplay.md` |
+| Physics, constraints, network ownership, NPC movement and pathfinding, bot opponents, playing animations in game | `code/gameplay.md` |
 | New Rojo / VS Code project, or converting a Studio game into one | `code/rojo-project.md` |
 | GUI, HUD, menus, UI tweens | `ui/ui.md`, which says when to add topbar, icons, surface or runtime |
 | Icons, image generation | `ui/icons.md` |

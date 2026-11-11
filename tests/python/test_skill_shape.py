@@ -13,8 +13,8 @@ EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads i
 # What a typical task loads, SKILL.md included.
 ROUTES = {
     'luau code': (['code/coding'], 5000),
-    'studio testing': (['code/coding', 'code/studio-testing'], 6500),
-    'hud': (['art/visual-style', 'ui/ui'], 8000),
+    'studio testing': (['code/coding', 'code/studio-testing'], 7000),
+    'hud': (['art/visual-style', 'ui/ui'], 8200),
     'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 9000),
     'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9800),
     'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8000),

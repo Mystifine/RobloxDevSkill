@@ -157,7 +157,9 @@ function Guide.arrow(target: Instance, text: string?, color: Color3?): () -> ()
 end
 
 -- A beam from the character to `goal` (a point), both ends FLOOR_LIFT above the floor so it never digs in; fades at both
--- ends. Pass a chevron `texture` to animate flow. `ignore` lists what the floor ray must skip besides the character (the
+-- ends. Pass a chevron `texture` to animate flow, its arrows drawn pointing down the image: a beam runs the image's height
+-- from Attachment0 (the character) to Attachment1 (the goal), and a positive TextureSpeed flows the same way; arrows drawn
+-- along the image's width lie across the beam. `ignore` lists what the floor ray must skip besides the character (the
 -- target model). Returns the stop function.
 function Guide.beam(goal: Vector3, color: Color3?, texture: string?, ignore: { Instance }?): () -> ()
 	local player = Players.LocalPlayer
