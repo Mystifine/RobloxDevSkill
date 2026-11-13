@@ -5,6 +5,7 @@
 
 Prints one JSON line a file: assetId, assetType, displayName, moderation (Approved, Rejected, ...) and the operation id.
 Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending after --timeout.
+A refused request (HTTP 403) is retried once a minute later before it fails the batch.
 
 - An asset whose operation finishes as Reviewing is polled (GET assets/v1/assets/{id}, every 20 s) until it settles or --timeout runs out; it
   took about two minutes for one audio file. Still under review, it goes in the manifest as that, and a rerun asks again instead of resending.
@@ -33,6 +34,7 @@ import uuid
 API = 'https://apis.roblox.com/assets/v1'
 REVIEWING = ('Reviewing', 'MODERATION_STATE_REVIEWING')
 SETTLE_POLL = 20  # seconds between reads of an asset still under review
+FORBIDDEN_WAIT = 60  # seconds before the one retry of a refused (403) request
 TYPES = {'.png': ('Decal', 'image/png'), '.jpg': ('Decal', 'image/jpeg'), '.jpeg': ('Decal', 'image/jpeg'),
          '.bmp': ('Decal', 'image/bmp'), '.tga': ('Decal', 'image/tga'), '.fbx': ('Model', 'model/fbx'),
          '.obj': ('Model', 'model/obj'), '.gltf': ('Model', 'model/gltf+json'), '.glb': ('Model', 'model/gltf-binary'),
@@ -51,20 +53,32 @@ def read_key(var, env_file):
     sys.exit(f'no API key: set {var} or pass --env-file with a {var}= line')
 
 
-def call(key, method, url, body=None, headers=None):
+def call(key, method, url, body=None, headers=None, forbidden_wait=None):
     # Polling is safe to repeat, so a dropped connection is retried there: one reset ended a long batch. A POST
-    # is not, since it may have gone through: it fails, and a rerun of the batch decides.
-    for attempt in range(5 if method == 'GET' else 1):
+    # is not, since it may have gone through: it fails, and a rerun of the batch decides. A 403 is a refusal, so
+    # nothing went through: it is retried once after FORBIDDEN_WAIT (a group's uploads were refused mid-batch and
+    # the same key took them a minute later); a second 403 fails.
+    tries, attempt, refused = (5 if method == 'GET' else 1), 0, False
+    while attempt < tries:
         req = urllib.request.Request(url, data=body, method=method, headers={'x-api-key': key, **(headers or {})})
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
                 return json.loads(r.read() or b'{}')
         except urllib.error.HTTPError as e:
-            print(f'HTTP {e.code} {method} {url}: {e.read().decode(errors="replace")[:800]}', file=sys.stderr)
+            text = e.read().decode(errors="replace")[:800]
+            if e.code == 403 and not refused:
+                refused = True
+                wait = FORBIDDEN_WAIT if forbidden_wait is None else forbidden_wait
+                print(f'HTTP 403 {method} {url}: refused, retrying once in {wait} s: {text}', file=sys.stderr)
+                time.sleep(wait)
+                continue
+            print(f'HTTP {e.code} {method} {url}: {text}', file=sys.stderr)
             sys.exit(1)
         except urllib.error.URLError as e:
             print(f'{method} {url}: {e.reason}', file=sys.stderr)
-            time.sleep(3 * (attempt + 1))
+            attempt += 1
+            if attempt < tries:
+                time.sleep(3 * attempt)
     sys.exit(1)
 
 

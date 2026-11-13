@@ -5,7 +5,7 @@
 --
 --   audit(rig, clip, options)  text, instant: length, keys, markers, a motion sparkline and findings (unmatched poses,
 --                              pops, loop seam, feet, floor, end offset, knee/elbow hyperextension, key grid, easing,
---                              missing markers, a marker away from the tip's fastest moment)
+--                              missing markers, a marker away from the tip's fastest moment, the tip under the floor)
 --   sheet(rig, clip, options)  one picture: the key poses side by side in rows (side and front) with motion trails;
 --                              returns the legend and the camera position to pass to screen_capture
 --   closeLoop / snapKeys / setMarker   repairs on an editable KeyframeSequence; audit again afterwards
@@ -51,7 +51,7 @@ export type Report = {
 	Markers: { { Name: string, Time: number } },
 	Peak: number, -- seconds of the most motion
 	GroundSpeed: number?, -- studs/s the planted feet travel back in an in-place locomotion clip
-	Tip: { Name: string, From: number, To: number, Fastest: number }?,
+	Tip: { Name: string, From: number, To: number, Fastest: number, Low: number }?,
 }
 
 local RATE = 60 -- samples per second
@@ -367,6 +367,27 @@ local function pose(clip: Clip, t: number): Frame
 	return { T = t, World = world, Bone = boneWorld, BoneT = boneT }
 end
 
+-- The rig at rest, every joint and bone at identity: where its own stance puts each part.
+local function restFrame(rig: Rig): Frame
+	local world: { [BasePart]: CFrame } = { [rig.Root] = rig.Rest }
+	for _, link in rig.Links do
+		local base = world[link.Parent]
+		world[link.Part] = if link.Reversed then base * link.C1 * link.C0:Inverse() else base * link.C0 * link.C1:Inverse()
+	end
+	for part, offset in rig.Loose do
+		world[part] = rig.Rest * offset
+	end
+	local boneWorld: { [Bone]: CFrame } = {}
+	for _, bone in rig.Bones do
+		local parent = bone.Parent
+		local base = if parent and parent:IsA("Bone") then boneWorld[parent] elseif parent and parent:IsA("BasePart") then world[parent] else nil
+		if base then
+			boneWorld[bone] = base * bone.CFrame
+		end
+	end
+	return { T = 0, World = world, Bone = boneWorld, BoneT = {} }
+end
+
 local function sample(clip: Clip)
 	local count = math.max(2, math.ceil(clip.Length * RATE))
 	for index = 0, count do
@@ -614,6 +635,15 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			table.insert(lines, "Tip " .. tipName .. ": does not move")
 		end
 	end
+	-- (and how low it goes: a carried blade's point can run under the floor while every joint passes)
+	local tipLow = math.huge
+	for _, position in positions do
+		tipLow = math.min(tipLow, position.Y - rig.Ground)
+	end
+	if tipName and tip and tipLow < 0 then
+		add("warn", clip.Name, "tip-floor", string.format("%s dips %.2f studs under the floor: lift it (a carry's flick: scan a few values) or shorten the reach",
+			tipName, -tipLow))
+	end
 	if tipName and tip and fastest > 0 then
 		local from, to = at, at
 		while from > 2 and speeds[from - 1] >= fastest / 2 do
@@ -627,8 +657,9 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 			arc += (positions[index] - positions[index - 1]).Magnitude
 		end
 		local when = (frames[at].T + frames[at - 1].T) / 2
-		tipReport = { Name = tipName, From = frames[from - 1].T, To = frames[to].T, Fastest = when }
-		table.insert(lines, string.format("Tip %s: swing %.2f-%.2f s, fastest %s (%.0f studs/s), arc %.1f studs", tipName, tipReport.From, tipReport.To, seconds(when), fastest, arc))
+		tipReport = { Name = tipName, From = frames[from - 1].T, To = frames[to].T, Fastest = when, Low = tipLow }
+		table.insert(lines, string.format("Tip %s: swing %.2f-%.2f s, fastest %s (%.0f studs/s), arc %.1f studs, lowest %.2f over the floor", tipName,
+			tipReport.From, tipReport.To, seconds(when), fastest, arc, tipLow))
 		local sync = settings.Markers and settings.Markers[1]
 		if sync then
 			for _, marker in markers do
@@ -677,6 +708,9 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	end
 	local planted: { [string]: { boolean } } = {}
 	local stanceSpeeds, drifts: { Drift }, levels: { Level }, rests = {}, {}, {}, {}
+	-- each foot's height in the rig's own rest stance: a rig standing a little off its floor floats the same in every clip,
+	-- whether a foot plants on frame 0 or mid-clip (an R15 carrying a fake-R6 clip stood 0.11-0.12 up), so it is judged alike
+	local restPose, restLevels = restFrame(rig), {} :: { [string]: number }
 	local lowest, lowestName, lowestTime, everPlanted, measured, mostStill = math.huge, "", 0, false, 0, 0
 	for _, name in feet do
 		local find = locator(rig, name)
@@ -703,6 +737,21 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 						break
 					end
 				end
+			end
+			local function lowestOf(cf: CFrame): number
+				local low = math.huge
+				if soles then
+					for _, offset in soles do
+						low = math.min(low, (cf * offset).Position.Y)
+					end
+				else
+					low = if item:IsA("BasePart") then bottom(cf, item.Size) else cf.Position.Y
+				end
+				return low
+			end
+			local restAt = find(restPose)
+			if restAt then
+				restLevels[name] = lowestOf(restAt) - rig.Ground
 			end
 			local flags, heights, flat, centre = {}, {}, {}, {}
 			for index, frame in frames do
@@ -847,8 +896,10 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 		end
 		-- a foot meant to meet the floor sits on it: within 0.05 studs while planted, never through it
 		if high and high.Level > 0.05 then
-			add(if high.Level > 0.12 then "error" else "warn", high.Name, "float", string.format("planted from %s but hovers %.2f studs above the floor: lower it onto the floor (root height or leg)",
-				seconds(high.Time), high.Level))
+			local stance = restLevels[high.Name]
+			local own = stance ~= nil and stance > 0.05 and math.abs(high.Level - stance) <= 0.03
+			add(if high.Level > 0.12 and not own then "error" else "warn", high.Name, "float", string.format("planted from %s but hovers %.2f studs above the floor%s: lower it onto the floor (root height or leg)",
+				seconds(high.Time), high.Level, if own then string.format(" (the rig itself stands %.2f up at rest, so it floats alike from any frame)", stance :: number) else ""))
 		end
 		if low and low.Level < -0.05 then
 			add(if low.Level < -sinkError then "error" else "warn", low.Name, "clip", string.format("planted from %s but sunk %.2f studs into the floor: raise it onto the floor",

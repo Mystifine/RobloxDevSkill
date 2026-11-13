@@ -68,6 +68,7 @@ Rules:
 
 ## Structures and maps
 
+- **Choose a build's colours under the game's runtime lighting** ([environment.md](environment.md), Lighting): a raised exposure washes Plastic mid tones and shifts Neon hues.
 - **Check each structure from where players approach, in Play,** since Edit captures can skip SurfaceGuis: its sign, its centerpiece and any floating feature stay clear of the posts, beams, lanterns and gates in front of them, and bright materials and Neon trims are toned for the scene's bloom. A hanging sign hid its building's centerpiece and a lantern hung in front of the sign, two inner posts hid a stall sign's first and last letters, a gate beam hid an altar's floating card, and white marble with Neon trims bloomed to white at dusk; the ZFight audit and Edit captures showed none of it.
 - **Props on a generated map live in their own re-runnable scripts,** run after its builder and named in the builder's header: a builder that rebuilds its folder erases whatever was placed by hand.
 - **A label over a prop** is a BillboardGui with `StudsOffsetWorldSpace` on an upright anchor part: [runtime.md](../ui/runtime.md).

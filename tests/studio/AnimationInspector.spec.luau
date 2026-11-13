@@ -82,6 +82,29 @@ local ok, failure = pcall(function()
 		end
 	end
 	check(sinkError, "sunk feet are still an error on R6")
+	-- a rig standing a little off its floor (HipHeight raised) floats alike in every clip: a warning, not an error
+	local hip = r15.Humanoid.HipHeight
+	r15.Humanoid.HipHeight = hip + 0.14
+	local raised = Inspector.audit(r15, 507766666)
+	r15.Humanoid.HipHeight = hip
+	local floatError, floatWarn = false, false
+	for _, finding in raised.Findings do
+		if finding.Rule == "float" then
+			floatError = floatError or finding.Severity == "error"
+			floatWarn = floatWarn or finding.Severity == "warn"
+		end
+	end
+	check(floatWarn and not floatError, "the rig's own rest float is a warning wherever a foot plants")
+	-- the tip under the floor: an attachment hung below the swinging arm, against the hand's own grip
+	local low = own(Instance.new("Attachment"))
+	low.Name = "InspectorLowTip"
+	low.Position = Vector3.new(0, -6, 0)
+	low.Parent = r6["Right Arm"]
+	local dipped = Inspector.audit(r6, 180426354, { Tip = "InspectorLowTip" })
+	check(has(dipped, "tip-floor") and dipped.Tip ~= nil and dipped.Tip.Low < 0, "a tip under the floor is reported")
+	low.Parent = nil
+	local grip = Inspector.audit(r6, 180426354, { Tip = "RightGripAttachment" })
+	check(not has(grip, "tip-floor") and grip.Tip ~= nil and grip.Tip.Low > 0, "a hand's grip stays over the floor")
 	local sheetCount = 0
 	for _, pair in { { r6, 180426354 }, { r15, 507777826 } } do
 		local started = os.clock()

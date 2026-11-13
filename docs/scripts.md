@@ -2,7 +2,7 @@
 
 ## Loading into Studio
 
-`python scripts/studio_mcp.py luau FILE` runs a file through Studio's own MCP server, with or without a Studio MCP tool; a first line `--@use RigSkin, RigAudit` inlines those scripts, keeping their source out of the conversation. Otherwise serve this folder (`python -m http.server 8394 --bind 127.0.0.1 --directory <skill>/scripts`; `python3` on macOS/Linux), then `loadstring(game:GetService("HttpService"):GetAsync(url, true))()`. A game's HTTP setting ships with it, so if it is off leave it off: pass the source to `loadstring`, or use a temporary ModuleScript (the only way on the client; one the Play server puts in ReplicatedStorage reaches the client; in Edit, one in CoreGui is never saved with the place). Delete what you add.
+`python scripts/studio_mcp.py luau FILE` runs a file through Studio's own MCP server, with or without a Studio MCP tool; a first line `--@use RigSkin, RigAudit` inlines those scripts, keeping their source out of the conversation. Otherwise serve this folder (`python -m http.server 8394 --bind 127.0.0.1 --directory <skill>/scripts`; `python3` on macOS/Linux), then `loadstring(game:GetService("HttpService"):GetAsync(url, true))()`. A game's HTTP setting ships with it, so if it is off leave it off: pass the source to `loadstring`, or use a temporary ModuleScript (the only way on the client; one the Play server puts in ReplicatedStorage reaches the client; in Edit, one in CoreGui is never saved with the place). Delete what you add. Write a long script to a file and run the file: a 130-line Git Bash heredoc failed to parse though it was quoted.
 
 ## Which script for what
 

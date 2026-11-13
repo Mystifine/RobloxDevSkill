@@ -11,6 +11,10 @@ The mood of a place: maps built per [modeling.md](modeling.md) get their look he
 - **A roofed set:** with the sun blocked and Bloom on, `PointLight`s at brightness 2.2 to 5 blew pale bodies to white, and 0.5 to 1 read correctly. Scaled up, `Wood`'s grain became stripes across a mesh, where `SmoothPlastic` read as a clean dark silhouette.
 - **A glint across flat SmoothPlastic under a low sun** (about 17° up): a `SurfaceAppearance` with a white `RoughnessMap` (fully rough) removed it, where `EnvironmentSpecularScale` 0, SunRays off and a SurfaceAppearance with no roughness map left it.
 
+- **Judge every colour under the lighting the running game applies,** not Edit's: read any script that changes Lighting at start (an exposure lift, a saturation grade, a bloom threshold) first. Under +0.8 exposure, sunlit Plastic showed about 1.8 times its colour (wood 120,80,50 read salmon, a violet roof lilac) and Neon about four times, so its channels clipped and hues moved (orange 255,120,30 showed yellow until its green fell near 70; violet 150,60,240 showed pink until its red was under 100).
+- **Preview that runtime look in Edit to iterate:** apply the game's start-up deltas, capture, then restore them, never saving the place while they are on; it matched Play but for a stronger bloom on Neon, so confirm once in Play.
+- **Keep a building's PointLights small under a lift:** a portal light of range 16 and brightness 1.4 with a sign light of range 18 turned a slate front lilac and bleached its banners; range 10 at 0.8, the sign light gone, kept the wall's colour.
+
 ## Atmosphere and sky
 
 - `Atmosphere` in Lighting: `Density` (how much haze), `Offset` (horizon against near), `Color` and `Decay` (near and far tint), `Glare`, `Haze`. A little density gives depth for almost nothing.

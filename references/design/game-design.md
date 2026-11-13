@@ -44,6 +44,7 @@ A design is ready when all six hold (the review at the end checks each):
 - **Every layer keeps the promise:** title, icon and thumbnail, then the first 30 seconds, the core verb, rewards, status, offers.
 - **Thumbnail test.** The most exciting moment fits one image and a few words. If no moment deserves the thumbnail, design one. Home recommendations need a custom thumbnail that truthfully shows the game.
 - **Own the hook.** Borrowed or look-alike IP brings players in but is not a brand and carries takedown risk. Give the game something it owns: a mascot, a mechanic, a world.
+  - **Recognizable anime characters and weapons** are commonly shown on Roblox under names with one letter changed (`Tessaiga` as `Tessaika`); when the user wants it, keep the source names as internal keys and map every display name in one table. A changed letter does not protect a recognizable design from a takedown: say so once.
 - **Kinds of fun:** pick 2-3 primary ones (sensation, fantasy, narrative, challenge, fellowship, discovery, expression, submission) and derive mechanics from them, not the reverse.
 
 ## Direction

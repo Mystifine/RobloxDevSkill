@@ -88,3 +88,37 @@ class Reviewing(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Refused(unittest.TestCase):
+    """call(): a 403 is retried once after a pause (nothing went through); a second 403 fails."""
+
+    def responses(self, codes):
+        replies = list(codes)
+
+        def opener(req, timeout=None):
+            code = replies.pop(0)
+            if code == 200:
+                return contextlib.nullcontext(io.BytesIO(b'{"ok": true}'))
+            raise ua.urllib.error.HTTPError(req.full_url, code, 'refused', {}, io.BytesIO(b'{"code":"PERMISSION_DENIED"}'))
+        return opener
+
+    def call(self, codes):
+        waits = []
+        with mock.patch.object(ua.urllib.request, 'urlopen', self.responses(codes)), \
+                mock.patch.object(ua.time, 'sleep', waits.append), contextlib.redirect_stderr(io.StringIO()):
+            result = ua.call('key', 'POST', 'https://example.invalid/assets', b'{}')
+        return result, waits
+
+    def test_a_refusal_is_retried_once_after_a_pause(self):
+        result, waits = self.call([403, 200])
+        self.assertEqual(result, {'ok': True})
+        self.assertEqual(waits, [ua.FORBIDDEN_WAIT])
+
+    def test_a_second_refusal_fails(self):
+        with self.assertRaises(SystemExit):
+            self.call([403, 403])
+
+    def test_other_errors_are_not_retried(self):
+        with self.assertRaises(SystemExit):
+            self.call([500, 200])

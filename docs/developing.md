@@ -21,11 +21,13 @@ The skill grew from 880 tokens in `SKILL.md` and 4,000 in references to 3,600 an
    - One reference per task family. Split a file when its routes mostly need only a part of it, giving each part its own route row. Merge two files that always load together.
    - Within a file, what every task needs comes first; rare cases, edge cases and background come last.
    - Point to another reference only for the case that needs it ("when X, read Y"), never a general "see also".
+   - Re-shape while you change: any edit, a quality update above all, is the time to split a category that has outgrown one file into new route rows.
 4. **Cut words, not facts.** Drop restatements, hedges, filler and examples that only repeat the rule; prefer short list items to paragraphs. Keep every number, name, API, step order, failure signature and fix.
-5. **Evidence in one sentence, with no date.** An observation that justifies a rule stays in the reference as a plain statement. The story of how it was found goes in the commit or here, undated too. `tests/python/test_no_dates.py` fails on a date in a note.
-6. **Scripts carry their own detail.** When a script enforces a rule, the reference says what to run and what its findings mean. The script's header documents its options and checks.
-7. **Nothing that loads by itself.** Keep `CLAUDE.md`, `AGENTS.md` and similar files out of the skill folder: an agent may load them whenever it reads a file there, and every use would pay.
-8. **Check that nothing was lost.** `python tests/facts_check.py <commit before the rewrite>` lists every number, backticked name and URL that vanished from the docs. Read the diff line by line too: every removed fact must still exist in its home, or be a true duplicate. Then run the checks and one real task with the skill loaded.
+5. **General rules, not one project's.** A rule names the class it covers (a held weapon, a card grid), never a project's item, and leaves a project's own requirements to its docs; the skill keeps what holds across games within the usual range.
+6. **Evidence in one sentence, with no date.** An observation that justifies a rule stays in the reference as a plain statement. The story of how it was found goes in the commit or here, undated too. `tests/python/test_no_dates.py` fails on a date in a note.
+7. **Scripts carry their own detail.** When a script enforces a rule, the reference says what to run and what its findings mean. The script's header documents its options and checks.
+8. **Nothing that loads by itself.** Keep `CLAUDE.md`, `AGENTS.md` and similar files out of the skill folder: an agent may load them whenever it reads a file there, and every use would pay.
+9. **Check that nothing was lost.** `python tests/facts_check.py <commit before the rewrite>` lists every number, backticked name and URL that vanished from the docs. Read the diff line by line too: every removed fact must still exist in its home, or be a true duplicate. Then run the checks and one real task with the skill loaded.
 
 ## Quality updates
 

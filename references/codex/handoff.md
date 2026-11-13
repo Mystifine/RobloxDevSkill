@@ -77,6 +77,7 @@ Orient only enough to decide, then write the brief to a unique file in your scra
 - **Parallel:** one run per checkout, whatever room says: room counts usage, not checkouts, so a second run on the same `--cd` returned at once as busy (exit 75, "shared apps/threads must run sequentially"). `--worktree` gives each run a detached worktree from a clean HEAD (without uncommitted or ignored files such as `Packages/`); or pass prepared worktrees with `--cd`.
 - **Apps:** `--mcp <server>` enables only that server and locks it across handoffs; callers sharing one app also pass the same `--resource <name>`.
 - **Sandbox:** the default `danger-full-access` is unsandboxed (the Windows sandbox failed under concurrent runs). Honor `CODEX_HANDOFF_SANDBOX` or `--sandbox`; never widen it.
+- **A dirty checkout another run holds:** `--worktree` refuses one ("requires a clean source checkout"); copy the run's inputs into a fresh scratch git folder, pass it as `--cd`, and deliver through `--add-dir`.
 - **Shared output folders:** `--add-dir DIR` adds a writable root but locks nothing, so runs delivering to one folder (Downloads, a project's `assets/`) start together; give each run its own file names in it. Only `--cd` is exclusive.
 - **Other:** `--image FILE` (repeatable), `--timeout-min N` (180), `--name SLUG`; `--model` and `--effort` only when the user asks; `--cancel "<run dir>"` stops a run's process tree.
 

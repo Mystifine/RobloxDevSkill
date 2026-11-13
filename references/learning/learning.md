@@ -16,7 +16,7 @@ One note at the end of a task, holding all its lessons, and only if a lesson is 
 | `platform-fact` | Testing showed how Roblox, Blender or a tool really behaves |
 | `technique` | An approach worked after the obvious one failed, and would work elsewhere |
 
-Write nothing for a routine success, a fact true of this project alone (it goes in the project's docs), or a guess. A Codex handoff run records nothing; the agent reviewing it does.
+Write nothing for a routine success, a fact true of this project alone (it goes in the project's docs), or a guess. Word each lesson as the general rule for the class of thing (a held weapon, a spinning cut, a card grid), never for the project's named item; give the project's own values only as evidence. A Codex handoff run records nothing; the agent reviewing it does.
 
 ## The note
 

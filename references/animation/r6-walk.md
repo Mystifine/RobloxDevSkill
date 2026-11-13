@@ -22,6 +22,7 @@ The body moves, not only the limbs. Roblox's own R6 walk moves only its limbs: a
 - **Rigid R6 legs skate.** The planted feet travel back 4 to 10 studs a second at 1x (Roblox's 13.3), 30 to 70 percent of the ground at WalkSpeed 16. Widening or quickening the swing to lock them is the stiff default's look.
 - **Judge the tempo at the game's playback rate.** Animate plays an R6 walk at WalkSpeed / 14.5 (2.2x at 32). Pick the cycle for that cadence and say the skate it leaves.
 - **Smooth a grounded rigid-leg body height** to harmonics 0 and 2 of the loop, not each frame's ground pass, which corners at every footfall.
+- **Ground the body on the leg blocks' lowest corners,** not the foot points: a tilted 1-stud-deep block reaches 0.5 sin(angle) lower (heel at landing, toe at push-off). Smoothed as above, the body dipped 0.084 studs at each landing, inside good walks' 0.085 to 0.13 at contact; on the ankle targets it bobbed 0.27, lowest mid-step.
 - **Plant each foot at the ground's speed** (run-cycle key poses, the feet's targets exported for `plantFeet`) only when the user asks for real steps on a fast run over R15 legs.
 
 ## A reference to match

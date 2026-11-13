@@ -5,6 +5,7 @@ A skin dresses a standard R6 or R15 rig and never replaces it. The rig keeps its
 Use a custom skeleton when the anatomy or deformation cannot fit the standard rig: extra limbs, an independently animated tail, or incompatible joint placement. Size alone may only need scaling. Follow [custom-creatures.md](custom-creatures.md) instead of this workflow in those cases.
 
 **Build around the body** *(default)*. The rig's body parts stay visible and are part of the look; the skin adds what the body lacks.
+- **A recognizable character's display name:** [game-design.md](../design/game-design.md), Own the hook.
 - **Color the body parts to fit** the design (`colors`), so where the body shows it reads as the character: a yellow Stand gets yellow limbs, a knight gets dark undercloth.
   - Take the color from the skin's color map: the median of its main color on the sides of its forms, with ink and hatching left out (a plain average counts the ink and comes out far too dark).
   - On a hand-painted map, don't use the palette's base color: baked shading darkens it in the texture, so a body in the base color looks pale beside the skin.
