@@ -37,6 +37,14 @@ local ok, failure = pcall(function()
 	check(not has(walk, "slide"), "stock R6 walk does not report stationary sliding")
 	local explicit = Inspector.audit(r6, 180426354, { Locomotion = true })
 	check(explicit.GroundSpeed ~= nil and not has(explicit, "slide"), "explicit locomotion measures backward stances")
+	-- rigid R6 legs skate and dip a little by nature: Roblox's own walk is no stride or sink defect on R6
+	local strideOrSinkError = false
+	for _, finding in explicit.Findings do
+		if finding.Rule == "stride" or (finding.Rule == "clip" and finding.Severity == "error") then
+			strideOrSinkError = true
+		end
+	end
+	check(not strideOrSinkError, "stock R6 walk has no stride warning or sink error on R6")
 	local stationary = Inspector.audit(r6, 180426354, { Locomotion = false })
 	check(stationary.GroundSpeed == nil and has(stationary, "slide"), "stationary override retains slide checks")
 	local r15Walk = Inspector.audit(r15, 507777826)
@@ -67,7 +75,13 @@ local ok, failure = pcall(function()
 	local sliding = Inspector.audit(r6, defect(0))
 	check(sliding.GroundSpeed == nil and has(sliding, "slide"), "sideways planted sliding is still caught")
 	local sinking = Inspector.audit(r6, defect(-.4))
-	check(has(sinking, "clip"), "sunk feet are still caught")
+	local sinkError = false
+	for _, finding in sinking.Findings do
+		if finding.Rule == "clip" and finding.Severity == "error" then
+			sinkError = true
+		end
+	end
+	check(sinkError, "sunk feet are still an error on R6")
 	local sheetCount = 0
 	for _, pair in { { r6, 180426354 }, { r15, 507777826 } } do
 		local started = os.clock()

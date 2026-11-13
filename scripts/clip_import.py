@@ -14,8 +14,8 @@
     --strip TEXT     a prefix to drop from the file names (EmberfangWalk -> Walk with --strip Emberfang)
     --priority P     Action, Core, Idle or Movement (default: Core for a loop, Action for a one-shot)
     --locomotion A,B clips the audit treats as in-place locomotion (default: the audit infers it)
-    --held PART      fake R6: key the held item's joint (PART on a Motor6D from the hand) with the clip's Flick channel
-                     (R6OnR15.keyHeld); the rig must hold the item
+    --held PART      fake R6: key the held item's joint (PART on a Motor6D from the hand) with the clip's Flick and Twist
+                     channels (R6OnR15.keyHeld); the rig must hold the item
     --tip NAME       the attachment, part or bone whose fastest moment the first marker is checked against (a blade's tip)
     --feet A,B       the parts or bones that plant; --soles measures each one's sole as the floor point straight below it at
                      rest (the lowest visible part's bottom), for joints above the soles such as a creature's ankles
@@ -86,8 +86,9 @@ if job.mode == "rbxanim" then
 		if info.Feet then
 			report.FeetShort = R6OnR15.plantFeet(map, sequence, info)
 		end
-		if job.held and info.Channels and info.Channels.Flick then
-			report.Held = R6OnR15.keyHeld(map, sequence, { Part = job.held, Flick = info.Channels.Flick, Fps = info.Fps })
+		if job.held and info.Channels and (info.Channels.Flick or info.Channels.Twist) then
+			report.Held = R6OnR15.keyHeld(map, sequence, { Part = job.held, Flick = info.Channels.Flick or {}, Twist = info.Channels.Twist,
+				Fps = info.Fps })
 		end
 		local findings, text = R6OnR15.check(map, sequence)
 		report.Policy, report.PolicyText, report.Missing = #findings, text, missing

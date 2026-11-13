@@ -71,8 +71,9 @@ export type RetargetOptions = {
 }
 -- A held item's flick a frame from 0 (degrees; r6_rig.export's channels): the item turning about its grip in the plane of the
 -- item and the arm, positive tipping its far end up the arm. Part names the item's part on its joint; the joint frame's +Y runs
--- along the item (its C0); Axis overrides the turn's axis in that frame.
-export type Held = { Part: string, Flick: { number }, Fps: number?, Axis: Vector3? }
+-- along the item (its C0); Axis overrides the turn's axis in that frame. Twist (degrees a frame, optional) then turns the item
+-- about the arm's own axis, so flick and twist together point it anywhere from the fist.
+export type Held = { Part: string, Flick: { number }, Twist: { number }?, Fps: number?, Axis: Vector3? }
 -- A Blender clip's feet (r6_rig.feet): each leg's IK target a frame from 0, { x, z, lift } in studs right and back of the
 -- root and above the floor; Rest the targets' { x, z } at rest; Fps the frames' rate (default 60).
 export type FootTrack = { Feet: { [string]: { { number } } }, Rest: { [string]: { number } }, Fps: number? }
@@ -676,7 +677,9 @@ end
 -- A held item's own joint, keyed at every key of a clip that already keys the arm (after retarget, Thin = false): its pose goes
 -- under the hand's, poses of Weight 0 carrying the tree down to it where a key has none. The flick turns the item about its grip
 -- in the plane of the item and the arm, so a slash whips the blade while the rigid R6 arm stays one block: a user's R6 slashes
--- that read well flicked their weapon joint 30 to 60 degrees, and the same swings on a welded weapon read stiff.
+-- that read well flicked their weapon joint 30 to 60 degrees, and the same swings on a welded weapon read stiff. `Twist` turns it
+-- about the arm's own axis after the flick (+ is a right-handed turn about the hand's up), so the weapon's joint, not the whole
+-- arm, can carry the blade's arc, as an animator keys a sword on its own Motor6D: a cut needs less of the rigid arm's swing.
 -- Returns the number of keys keyed.
 function R6OnR15.keyHeld(map: Map, sequence: KeyframeSequence, held: Held): number
 	local joint = map.Joints[held.Part]
@@ -688,20 +691,27 @@ function R6OnR15.keyHeld(map: Map, sequence: KeyframeSequence, held: Held): numb
 		name = map.Joints[name].Parent
 	end
 	local rootName = name :: string
+	local up = joint.C0:VectorToObjectSpace(Vector3.yAxis) -- up the hand, in the joint's frame
 	local axis = held.Axis
 	if not axis then
-		local up = joint.C0:VectorToObjectSpace(Vector3.yAxis) -- up the hand, in the joint's frame
 		local turn = Vector3.new(0, 1, 0):Cross(up)
 		assert(turn.Magnitude > 0.1, held.Part .. "'s joint frame runs along the arm: build it with +Y along the item, or pass Axis")
 		axis = turn.Unit
 	end
 	local fps = held.Fps or FPS
+	local function channelAt(values: { number }?, t: number): number
+		if not values or #values == 0 then
+			return 0
+		end
+		local at = math.clamp(t * fps, 0, #values - 1)
+		local i = math.floor(at)
+		local a, b = values[i + 1], values[math.min(i + 1, #values - 1) + 1]
+		return a + (b - a) * (at - i)
+	end
 	local count = 0
 	for _, key in sequence:GetKeyframes() do
-		local at = math.clamp((key :: Keyframe).Time * fps, 0, #held.Flick - 1)
-		local i = math.floor(at)
-		local a, b = held.Flick[i + 1], held.Flick[math.min(i + 1, #held.Flick - 1) + 1]
-		local flick = a + (b - a) * (at - i)
+		local flick = channelAt(held.Flick, (key :: Keyframe).Time)
+		local twist = channelAt(held.Twist, (key :: Keyframe).Time)
 		local parent: Instance? = key:FindFirstChild(rootName)
 		if not parent then
 			local top = Instance.new("Pose")
@@ -725,7 +735,8 @@ function R6OnR15.keyHeld(map: Map, sequence: KeyframeSequence, held: Held): numb
 		end
 		local pose = Instance.new("Pose")
 		pose.Name = held.Part
-		pose.CFrame = CFrame.fromAxisAngle(axis :: Vector3, math.rad(flick))
+		-- (the flick first, then the twist about the arm: the Blender review grip's Euler XYZ, Rz * Rx)
+		pose.CFrame = CFrame.fromAxisAngle(up.Unit, math.rad(twist)) * CFrame.fromAxisAngle(axis :: Vector3, math.rad(flick))
 		pose.EasingStyle = Enum.PoseEasingStyle.Linear
 		pose.Parent = parent
 		count += 1

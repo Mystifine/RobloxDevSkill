@@ -18,11 +18,11 @@ ROUTES = {
     'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 9100),
     'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 9800),
     'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8000),
-    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10700),
+    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 10900),  # the weapon's own joint
     'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 20750),
-    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8900),
+    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 9300),  # the weapon's own joint; R6 walks in their own file
     'blender clip': (['animation/animation', 'animation/blender'], 8300),  # was 18,700 with animate-roblox-characters loaded
-    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 11800),
+    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 12300),
     'default r6 clips': (['animation/r6-default-set'], 4000),
     'funnels': (['design/analytics'], 6300),
     'journeys': (['design/analytics', 'design/journeys'], 7500),

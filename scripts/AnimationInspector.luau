@@ -643,6 +643,12 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	-- feet: a planted foot sits on the floor (no float, no clip); planted drift (in place) or travel speed (locomotion)
 	local feet = feetOf(rig, settings)
 	local locomotion = settings.Locomotion
+	-- Rigid R6 legs cannot plant evenly: a leg pivoting at the hip moves its sole back unevenly and dips a corner as it tilts.
+	-- Five R6 walks measured (Roblox's own and four that read well) varied 26-44% in planted speed and sank 0.06-0.19 studs,
+	-- so on R6 those are warnings up to 50% and 0.25 studs; a 0.4-stud sink is still an error.
+	local isR6 = rig.Kind == "R6"
+	local strideLimit = if isR6 then 0.5 else 0.25
+	local sinkError = if isR6 then 0.25 else 0.12
 	-- Classic R6 walks can keep both rigid leg soles near/below the contact threshold
 	-- through the swing. Their whole-loop contact interval has zero net travel, so
 	-- infer the alternating gait before splitting contacts into backward stances.
@@ -816,15 +822,16 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 					for _, v in pace do
 						spread += (v - mean) ^ 2 / #pace
 					end
-					if mean > 0 and math.sqrt(spread) / mean > 0.25 then
+					if mean > 0 and math.sqrt(spread) / mean > strideLimit then
 						add("warn", stance.Name, "stride", string.format("planted speed varies %.0f%% around %.1f studs/s from %s: the foot skates; keep a planted foot moving back evenly",
 							math.sqrt(spread) / mean * 100, mean, seconds(frames[stance.From].T)))
 					end
 				end
 			end
 			groundSpeed = sum / total
-			table.insert(lines, string.format("Feet: in-place locomotion, planted feet travel back %.1f studs/s (play at WalkSpeed / %.1f to stop sliding)%s",
-				groundSpeed, groundSpeed, levelText))
+			table.insert(lines, string.format("Feet: in-place locomotion, planted feet travel back %.1f studs/s (no slide at WalkSpeed / %.1f%s)%s",
+				groundSpeed, groundSpeed, if isR6 then "; R6's Animate plays walks at WalkSpeed / 14.5, and rigid R6 legs at a natural cadence skate" else "",
+				levelText))
 		else
 			local worst, worstName, worstTime = 0, "", 0
 			for _, drift in drifts do
@@ -844,7 +851,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 				seconds(high.Time), high.Level))
 		end
 		if low and low.Level < -0.05 then
-			add(if low.Level < -0.12 then "error" else "warn", low.Name, "clip", string.format("planted from %s but sunk %.2f studs into the floor: raise it onto the floor",
+			add(if low.Level < -sinkError then "error" else "warn", low.Name, "clip", string.format("planted from %s but sunk %.2f studs into the floor: raise it onto the floor",
 				seconds(low.Time), -low.Level))
 		end
 		if lowest < -0.1 and (not low or lowest < low.Level - 0.05) then
