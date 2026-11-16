@@ -1,0 +1,11 @@
+# UI: lists, grids and tabs
+
+Scrolling lists, grids, tab strips, drop-downs and cards whose rows wrap, on top of [ui.md](ui.md).
+
+- **Scale-only grids:** size `UIGridLayout` cells by width (`CellSize = fromScale(1 / columns, 0)`) with a `UIAspectRatioConstraint` under the grid set to `AspectType = ScaleWithParentSize` and `DominantAxis = Width`; the default `FitWithinMaxSize` on a zero-height cell gave 1 x 1 cells. The same for scrolling rows sized `fromScale(1, 1)`. Children of a `UIGridLayout` ignore `Rotation`: rotate a frame inside each cell.
+- **`ScrollingFrame.CanvasSize` scale is measured against the frame's parent,** not the frame (`fromScale(1, 1)` on a 1165 x 308 frame gave a 1240 x 880 canvas, the parent's), so scaled children sit too low and clip: compute the scale against the parent or use `AutomaticCanvasSize`. A child's scale is a share of the canvas, not of the window, so a body filling the canvas is scale 1 (multiplied again by canvas over window, 800 / 188, it came out 3,402.8 px tall). UIBounds skips scrolling content, so only a capture shows it.
+- **A list in an `AutomaticCanvasSize` scroller aligns to the top:** a centred `UIListLayout` centres on the window, not the grown canvas, so half the overflow sits above the top, out of reach (three 150 px rows in a 400 px window started 25 px above it, six rows 250 px), with offset-sized rows too. Under a set `CanvasSize` a centred list centres in the canvas.
+- **A scrolling sheet keeps its actions outside the scroll** *(default)*: Done, Apply and Clear sit in a fixed header or footer. A Clear button at the bottom of a 640 px filter canvas was clipped on a short window and could not be pressed.
+- **A drop-down grows with its rows** *(default)* up to the room below it, and scrolls past that.
+- **A tab strip on a phone held upright:** seven tabs across a 390 px window were about 45 px each, with labels a few pixels tall. When a tab would fall under about 70 px, wrap the strip to two rows (four, then three).
+- **A card whose grid wraps differently by orientation takes its height from its rows** (grid end, gap, button, margin), set as a share of its parent: a fixed height fits one column count only, and in landscape a second row of chips ran under the card's button.

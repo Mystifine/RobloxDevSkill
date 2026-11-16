@@ -11,7 +11,7 @@ references/              read only when the route names them; each file serves o
   ui/                    ui (the workflow), topbar, icons, surface (fades and shine), runtime (state, world-space GUIs)
   art/                   visual-style, modeling, environment, vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
                          styles/ (stud, anime-ink, hand-painted, realistic, low-poly, simulator-cartoon)
-  rigs/                  rigs (R15, R6, no Humanoid, audits), custom-creatures, skins, hair, gear
+  rigs/                  rigs (R15, R6, with a Humanoid or without, audits), catalog (a look from Marketplace items), skins (a modeled look), custom-creatures, hair, gear
   animation/             animation (clips, export, inspection), r6-on-r15, r6-ik, r6-default-set
   safety/                characters (all-ages), no-gore (uploads), stylized-violence (what players see), assets (Toolbox intake), uploading
   design/                game-design, game-economy, onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys

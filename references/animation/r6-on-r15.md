@@ -13,6 +13,10 @@ Two helpers carry this, both speaking R6's language, with the same pivots:
 
 **Animate R6, then carry it over** *(default)*: the frames an R6 animator would make, on R15. Key the clip on Aeresei's R6 rig in Blender at 60 fps ([blender.md](blender.md)), then `python scripts/clip_import.py rbxanim CLIPS --r15 RIG` reads it onto an R6, retargets it at every frame, plants its feet, checks the policy and audits. A user's R6 clips (a dummy's AnimSaves, ids) go straight to `retarget`. Without Blender, write R6 poses in Studio with `clip` below, at 60 fps (the [Blender-first workflow](animation.md#authoring-workflow-blender-first-studio-fallback) says when).
 
+**Why this route, measured** (26 clips, 14 keyed in Blender with foot IK and 12 of Roblox's, on three R15 bodies): every mapping that keeps R6's turns gives the same rotations and differs only in where each block goes. Turning each block about R15's own joint slid planted feet up to 1.9 studs (median 0.2, against 0.08 about R6's pivots); copying each part's centre or tip CFrame did no better (medians 0.13 and 0.08). Every such copy inherits the R6 rig's rigid-leg sink (to 0.46 studs in a crouch); planting the legs on the clip's IK targets gave contact within 0.001 studs and slides of 0.012 or less on all three bodies. The conversion costs nothing worth saving (5 microseconds a frame, 42 with planting; two clips imported, audited and saved in 1.9 s): the effort belongs in the R6 animation and its review.
+
+**Review the motion once, on R6; check the R15 by numbers** *(default)*. Turns, timing and arm-into-body contacts carry over (the R15's arm-in-torso depth stayed within 0.08 studs of R6's on every clip and body), so run `check`, `verify` and the audit on the R15 rather than a second visual pass. Feet do not carry over: judge them by the IK targets and the R15's audit, not by the R6 rig's soles, which sink where the R15's plant. Plant only clips authored with foot targets: planting Roblox's climb from its own R6 soles turned the legs up to 73 degrees from the source.
+
 `retarget`, `defaults` and `verify` step the engine by hand, which Studio allows only in **Edit**; `map`, `fk`, `reach`, `plant`, `plantFeet`, `settle` and `world` are plain math and work anywhere.
 
 ## Joint policy
@@ -67,7 +71,7 @@ local raise = R6OnR15.clip(map, {
 
 **Fingers and hand signs:** an R15 hand is one block. Add fingers as parts welded to the hand and pose each by its weld's `C0` every frame; anchored parts placed from `hand.CFrame` in `RenderStepped` trail the animated hand by a frame. Roll the finger rig about the hand's long axis toward world up, so a sign stays upright whatever the rigid arm's roll, and give an aimed arm `reach`'s `Twist` so the hand block faces the way the sign needs.
 
-Rotation normally supplies the motion. A translation slides the whole rigid block, which is how R6 clips imitate a bend: R6's climb slides its legs 1.5 studs. Sparse keys interpolate the R15 joint, so a limb turning far between two keys strays from R6's arc by up to about 0.1 studs; add a key where that shows. `retarget` does so by itself.
+Rotation normally supplies the motion. A translation slides the whole rigid block, which is how R6 clips imitate a bend: R6's climb slides its legs 1.5 studs. Sparse keys interpolate the R15 joint, so a limb turning far between two keys strays from R6's arc by up to about 0.1 studs (0.096 at a hand on a four-key slash); add a key where that shows. `retarget` does so by itself.
 
 ## Shape the motion
 
@@ -88,6 +92,8 @@ Calibrate studs against the actual imported rig. Work through its joint frames: 
 
 **A clip from the R6 rig carries its feet by its IK targets** (`plantFeet`), not by its baked soles: the rigid legs sink 0.2 to 0.5 studs in a crouch, and a floor fix switched on and off by contact spans popped legs 34 to 51 degrees at every step and landing. Edit a retarget only with `Thin = false`: thinning judges the R6 source alone and dropped a quick step's lifted frame, which planting turned into a 0.65-stud slide.
 
+**Bake on the body the game shows.** Slides and the torso's drop are in studs, so a clip baked on one body and played on another left its feet 0.13 (a blocky body) to 0.38 studs (longer Rthro-like legs) off the floor and slid them 0.25 to 0.75 studs, where each body's own bake planted them. Pass the game's rig (`--r15 PATH`); where players keep their own avatars, bake on the commonest body and check the extremes in Play.
+
 When changing torso lean or bounce on an approved gait, preserve the feet's world paths by solving the hips in the new torso (`reach` or `plant` with `Torso`). Lock the lower-leg/foot joints throughout. A shared root-height solve seats only the lowest foot; a slow idle may need small independent hip corrections to seat both soles without sliding.
 
 Judge in-place locomotion against backward stance travel and its measured ground speed, not stationary-foot rules. Match animation speed to character speed during integration. Check every planted sole, toe and heel for hover/penetration, and inspect shoulder/hip gaps as well as hand/head and arm/torso intersections.
@@ -100,7 +106,7 @@ Before delivery:
 
 1. `R6OnR15.check(map, sequence)` must return no findings: only the six joints move, the nine locks stay at identity, and no pose names a part the rig lacks. Test the evaluated result too when controls or constraints drive the rig (`r6.check_locks` in Blender). Confirm no mesh or in-place root object has animation keys.
 2. For a retarget, `R6OnR15.verify(map, rig, source, sequence)` plays both clips through the engine and reads the R15 back as R6 numbers: expect under 0.5 degrees, 0.01 studs and 0 on `Locked`.
-3. Compare front and side poses/in-betweens on the actual visible R15, with `AnimationInspector.sheet`. Show its separate upper/lower limbs, hands, feet and torso segments clearly; solid diagnostic styling can otherwise make an R15 preview look like R6.
+3. Compare front and side poses/in-betweens on the actual visible R15, with `AnimationInspector.sheet(rig, clip, { Recolour = ColourCode.apply })`: the review colours separate left from right and each upper and lower limb, hand, foot and torso segment, where a default body renders near black and its R15 segments read as R6 blocks.
 4. Audit exported KeyframeSequences with this repo's `AnimationInspector`. Set `Locomotion = true` for in-place walk/run. Exclude ground-contact rules only for genuinely airborne, swimming, climbing or seated clips. Fix errors and assess warnings without hiding them; a retarget is judged against its source's audit.
 5. Verify loop seams, locked joints and blending on the exported target, in Play on the real avatar: read the joints' `Transform` through each state and the track speeds. An Edit-mode track loading successfully does not prove the gameplay path: this is how the tempo problem in [r6-default-set.md](r6-default-set.md) was found. Register clips with `RegisterKeyframeSequence` on the client to test before publishing. A height test cannot tell a planted foot from a swinging one, since a rigid leg swings through floor height: use the audit's ground speed for foot slide.
 6. Render and reopen GIF previews, check timing/frame count and preserve a working-file backup. Report which checks ran and whether gameplay transitions were exercised. Check the controller's jump-to-fall timing: it can cut off a good arm arc before completion. Publishing is a separate requested step.

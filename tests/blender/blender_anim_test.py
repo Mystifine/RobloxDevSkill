@@ -1,7 +1,8 @@
 """Run in an isolated headless Blender: blender -b --factory-startup --python-exit-code 1 -P tests/blender/blender_anim_test.py
 blender_anim.py on a replica R15 (r6_on_r15_fixture.json's rig, built by roblox_rig): keys are checked whole, polish gives
 Bezier with sharp keys, the audit passes a clean clip and catches each planted defect, and the review, preview, world-delta
-and FBX outputs are written."""
+and FBX outputs are written; a colour-coded review shows each side's colour and puts the meshes' colours back."""
+import colorsys
 import json
 import math
 from pathlib import Path
@@ -139,6 +140,22 @@ class Outputs(Base):
         self.assertEqual(len(data['Samples'][0]['bones']['RightUpperArm']), 7)
         fbx = ba.export_fbx(self.arm, self.out / 'wave', act)
         self.assertTrue(fbx['ok'] and Path(fbx['path']).stat().st_size > 0, fbx['errors'])
+
+    def test_a_coded_review_shows_left_and_right_and_restores_colours(self):
+        self.assertEqual(ba.code_colour('Left Arm_MBlocky'), ba.code_colour('RIG_LeftUpperArm'))
+        self.assertIsNone(ba.code_colour('LeftHandle'))
+        meshes = [o for o in bpy.data.objects if o.type == 'MESH']
+        before = {o.name: tuple(o.color) for o in meshes}
+        r = ba.review(self.arm, self.out, 'coded', size=160, code=True)
+        self.assertTrue(r['ok'], r['errors'])
+        self.assertEqual({o.name: tuple(o.color) for o in meshes}, before)
+        px = list(bpy.data.images.load(r['images']['front']).pixels)
+        sextants = set()
+        for i in range(0, len(px), 4):
+            h, sat, v = colorsys.rgb_to_hsv(*px[i:i + 3])
+            if sat > 0.5 and v > 0.2:
+                sextants.add(round(h * 6) % 6)
+        self.assertTrue({0, 4} <= sextants, sextants)  # the right arm's red and the left arm's blue
 
     def test_review_asks_which_way_an_unknown_rig_faces(self):
         del self.arm['rig_type']

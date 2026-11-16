@@ -1,8 +1,8 @@
 # Hair
 
 **Found before it is modeled** *(default)*: a catalog hair matching the reference (an accessory in the base rig's HumanoidDescription) or an audited Toolbox hair comes first ([assets.md](../safety/assets.md)).
-- **Search the catalog** yourself (`search_asset` covers the Creator Store only): `catalog.roblox.com/v1/search/items/details?Category=11&Subcategory=19&Keyword=...`, thumbnails from `thumbnails.roblox.com/v1/assets?assetIds=...&size=420x420&format=Png`. Search by the character's name as well as its look: a named character's search came much closer than descriptive keywords.
-- **Enter it with its own asset type,** often Face rather than Hair ([rigs.md](rigs.md), R15); otherwise the generator drops it without a word.
+- **Search the catalog** yourself (`search_asset` covers the Creator Store only), by exact type: `AvatarEditorService:SearchCatalog` with `AssetTypes = { Enum.AvatarAssetType.HairAccessory }` returned hairs only ([catalog.md](catalog.md#find-the-items) has the call, the thumbnails and the web search). The web search's `Category=11&Subcategory=19` is every accessory type, not hair. Search by the character's name as well as its look: a named character's search came much closer than descriptive keywords.
+- **Enter it with its own asset type** ([rigs.md](rigs.md), R15): one found among other accessories is often Face rather than Hair, and the generator drops a mistyped entry without a word.
 - **A hair with a face built in** needs the default face removed by hand ([rigs.md](rigs.md), R15, step 3).
 
 Model one only when none fits. A skin's hair is a `Head__Hair` piece built with `kit.Hair` ([skin_kit.py](../../scripts/skin_kit.py)). A style the reference draws as one smooth volume with a jagged hem, such as a bob, is built with `H.shell`, not locks, which come out as a comb of teeth around a dome: a darker shell whose `H.points` and `H.teeth` make the fringe and hem, and a lighter one over it (`off=.035`), shorter, for two tones. `H.bob` keeps it against the cheeks, or the face sits in a dark hood. Read from 48 anime hair meshes on the classic head (in studs for a head 1.2 tall):

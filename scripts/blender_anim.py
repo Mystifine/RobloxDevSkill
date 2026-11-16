@@ -8,12 +8,14 @@
                                          'location': [x, y, z], 'rotation_degrees': [x, y, z] (in the bone's own order) or
                                          'rotation_quaternion': [w, x, y, z], 'scale': [x, y, z] } }; a quaternion is kept on the
                                          side of the bone's previous key (no long way round between keys)
-    ba.review(arm, folder, label, frame=None, front=None)   front and side PNGs of one pose (Workbench, orthographic)
+    ba.review(arm, folder, label, frame=None, front=None, code=False)   front and side PNGs of one pose (Workbench, orthographic);
+                                         code=True colour-codes the body for the shot (CODE_HUES) and puts its colours back
     ba.polish(arm, action=None, sharp=(), loop=None)        every key Bezier: auto-clamped handles, VECTOR at the `sharp`
                                          frames (a release, an impact), quaternions on one side, a loop's ends matched and cycled
     ba.audit(arm, action=None, stage='FINAL', loop=..., contacts=..., ...)   the checks below; FINAL needs `loop` and `contacts`
                                          stated (False or a value), so a check is never skipped by leaving it out
-    ba.preview(arm, folder, prefix, start, end, step=2)    PNG frames for gif_preview.py (three-quarter front, fixed framing)
+    ba.preview(arm, folder, prefix, start, end, step=2, code=False)    PNG frames for gif_preview.py (three-quarter front,
+                                         fixed framing); code as for review
     ba.deltas(arm, path, action=None, ...)   a bone rig's clip as world deltas a sample (JSON), for ClipImport.deltas in Studio
     ba.export_fbx(arm, path, action=None)    one action, deform bones only, Roblox's FBX settings (for Studio's own importer)
 
@@ -35,6 +37,7 @@ audit() checks, each an error unless noted:
               legs sink in a crouch; the R15 carry-over plants them, an R6 game needs r6_rig.ground)
 
 Adapted from animate-roblox-characters' animation_tools.py (MIT; THIRD_PARTY_NOTICES.md)."""
+import colorsys
 import json
 import math
 from pathlib import Path
@@ -51,6 +54,15 @@ TRANSFORMS = {'location', 'rotation_degrees', 'rotation_quaternion', 'scale'}
 EULER = {'XYZ', 'XZY', 'YXZ', 'YZX', 'ZXY', 'ZYX'}
 DENSE = 3  # frames: Linear keys this close read as an R6 animator's pose string, not mechanical motion
 R6_RIG = ('__PrimaryArmature', 'InternalArmature')  # Aeresei's R6 IK + FK rig (r6_rig.py): faces +Y
+# Review colours (code=True; SKILL.md, Make images readable): the character's right warm (arm red, leg yellow), its left cool
+# (leg cyan, arm blue), the torso green, the head magenta, 60 degrees apart; a limb's segments step down its hue (upper full,
+# lower dark, hand or foot pale); other meshes light grey. ColourCode.luau holds the same table for Studio.
+CODE_HUES = {'RightArm': 0.0, 'RightLeg': 1 / 6, 'Torso': 2 / 6, 'LeftLeg': 3 / 6, 'LeftArm': 4 / 6, 'Head': 5 / 6}
+CODE_SEGMENTS = {'UpperArm': ('Arm', 1), 'LowerArm': ('Arm', 2), 'UpperLeg': ('Leg', 1), 'LowerLeg': ('Leg', 2),
+                 'UpperTorso': ('Torso', 1), 'LowerTorso': ('Torso', 2), 'Torso': ('Torso', 1), 'Head': ('Head', 1),
+                 'Hand': ('Arm', 3), 'Foot': ('Leg', 3), 'Arm': ('Arm', 1), 'Leg': ('Leg', 1)}
+CODE_PART = re.compile(r'(Left|Right)? ?(' + '|'.join(CODE_SEGMENTS) + r')(?![a-z])')
+CODE_GREY = (0.84, 0.84, 0.86, 1.0)
 
 
 def _result(ok=None, errors=None, warnings=None, **fields):
@@ -331,19 +343,39 @@ def _camera(name, at, target, scale):
     return cam
 
 
-def _render(paths_and_cameras, size):
-    """Renders each (path, camera) with Workbench: studio light, textures, outlines. Restores the scene's settings."""
+def code_colour(name):
+    """A body part's review colour (RGBA) from a name holding its Roblox part name: R6 'Left Arm', R15 'LeftUpperArm', with
+    any prefix or suffix ('Left Arm_MBlocky', 'RIG_LeftHand'); None for anything else ('Handle', 'LeftHandle')."""
+    m = CODE_PART.search(name)
+    if not m:
+        return None
+    limb, step = CODE_SEGMENTS[m.group(2)]
+    hue = CODE_HUES.get((m.group(1) or '') + limb)
+    if hue is None:
+        return None
+    return (*colorsys.hsv_to_rgb(hue, 0.5 if step == 3 else 0.85, 0.6 if step == 2 else 0.92), 1.0)
+
+
+def _render(paths_and_cameras, size, code=False):
+    """Renders each (path, camera) with Workbench: studio light, textures, outlines; `code` colours each mesh by
+    code_colour for the shots. Restores the scene's settings and the meshes' colours."""
     sc = bpy.context.scene
     keep = (sc.camera, sc.render.filepath, sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage,
             sc.render.engine, sc.render.image_settings.file_format, sc.render.image_settings.color_mode, sc.render.film_transparent)
     shading = sc.display.shading
     keep_shading = (shading.light, shading.color_type, shading.show_object_outline)
-    errors = []
+    errors, coded = [], {}
     try:
         sc.render.engine = 'BLENDER_WORKBENCH'
         shading.light = 'STUDIO'
         shading.color_type = 'TEXTURE' if any(i.source == 'FILE' for i in bpy.data.images) else 'MATERIAL'
         shading.show_object_outline = True
+        if code:
+            shading.color_type = 'OBJECT'
+            for ob in bpy.data.objects:
+                if ob.type == 'MESH':
+                    coded[ob] = tuple(ob.color)
+                    ob.color = code_colour(ob.name) or CODE_GREY
         sc.render.resolution_x = sc.render.resolution_y = size
         sc.render.resolution_percentage = 100
         sc.render.image_settings.file_format = 'PNG'
@@ -363,11 +395,14 @@ def _render(paths_and_cameras, size):
         (sc.camera, sc.render.filepath, sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage,
          sc.render.engine, sc.render.image_settings.file_format, sc.render.image_settings.color_mode, sc.render.film_transparent) = keep
         shading.light, shading.color_type, shading.show_object_outline = keep_shading
+        for ob, colour in coded.items():
+            ob.color = colour
     return errors
 
 
-def review(arm, folder, label, frame=None, front=None, size=512):
-    """Front and side views of one pose, framed on the body: judge them, not the numbers (blender.md, Review)."""
+def review(arm, folder, label, frame=None, front=None, size=512, code=False):
+    """Front and side views of one pose, framed on the body: judge them, not the numbers (blender.md, Review). `code`
+    colour-codes the body for the shots."""
     arm = _armature(arm)
     try:
         forward = _front(arm, front)
@@ -386,7 +421,7 @@ def review(arm, folder, label, frame=None, front=None, size=512):
     f = bpy.context.scene.frame_current
     shots = {v: folder / f'{safe}-f{f:04d}-{v}.png' for v in ('front', 'side')}
     errors = _render([(shots['front'], _camera('Review_Front', centre + forward * far, centre, scale), None),
-                      (shots['side'], _camera('Review_Side', centre + side * far, centre, scale), None)], size)
+                      (shots['side'], _camera('Review_Side', centre + side * far, centre, scale), None)], size, code)
     return _result(errors=errors, images={k: str(v) for k, v in shots.items()}, frame=f)
 
 
@@ -676,7 +711,8 @@ def audit(arm, action=None, stage='FINAL', loop=None, contacts=None, studs=1.0, 
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
-def preview(arm, folder, prefix, start, end, step=2, size=512, front=None, camera=None, target=None, scale=None, exclude_last=False):
+def preview(arm, folder, prefix, start, end, step=2, size=512, front=None, camera=None, target=None, scale=None, exclude_last=False,
+            code=False):
     """PNG frames for gif_preview.py, after export: one fixed three-quarter-front view framing the whole clip. `step` 2 shows a
     60 fps clip at 30 (pass --fps 30 to the GIF). `exclude_last` leaves out a loop's closing frame (it repeats the first).
     The R6 rig's view is the proven one: camera (6.8, 8.8, 4.8), target (0, 0, 2.55), scale 6.4."""
@@ -702,7 +738,7 @@ def preview(arm, folder, prefix, start, end, step=2, size=512, front=None, camer
     safe = re.sub(r'[^A-Za-z0-9_-]+', '-', prefix).strip('-') or 'clip'
     shots = [(folder / f'{safe}_{f:04d}.png', cam, f) for f in frames]
     keep = bpy.context.scene.frame_current
-    errors = _render(shots, size)
+    errors = _render(shots, size, code)
     bpy.context.scene.frame_set(keep)
     fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base / max(1, int(step))
     return _result(errors=errors, frames=len(shots), folder=str(folder), glob=f'{safe}_*.png', gif_fps=fps)

@@ -4,8 +4,10 @@
                          [--description TEXT] [--env-file .env] [--key-var ROBLOX_CLOUD_API_KEY] [--timeout 300] [--dry-run]
 
 Prints one JSON line a file: assetId, assetType, displayName, moderation (Approved, Rejected, ...) and the operation id.
-Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending after --timeout.
-A refused request (HTTP 403) is retried once a minute later before it fails the batch.
+Exit codes: 0 approved, 1 a failed request, 2 not approved, 3 still pending after --timeout, 4 the key's account is moderated.
+A refused request (HTTP 403) is retried once a minute later before it fails the batch, except "User is moderated": a hold on
+the account behind the key, which fails every call with it, reads included, until the owner resolves it. That stops the batch
+at once, with no retry: stop all uploads, tell the user, and never switch key or account.
 
 - An asset whose operation finishes as Reviewing is polled (GET assets/v1/assets/{id}, every 20 s) until it settles or --timeout runs out; it
   took about two minutes for one audio file. Still under review, it goes in the manifest as that, and a rerun asks again instead of resending.
@@ -35,6 +37,7 @@ API = 'https://apis.roblox.com/assets/v1'
 REVIEWING = ('Reviewing', 'MODERATION_STATE_REVIEWING')
 SETTLE_POLL = 20  # seconds between reads of an asset still under review
 FORBIDDEN_WAIT = 60  # seconds before the one retry of a refused (403) request
+MODERATED = 4  # exit code for "User is moderated": the account is on hold, so nothing is retried
 TYPES = {'.png': ('Decal', 'image/png'), '.jpg': ('Decal', 'image/jpeg'), '.jpeg': ('Decal', 'image/jpeg'),
          '.bmp': ('Decal', 'image/bmp'), '.tga': ('Decal', 'image/tga'), '.fbx': ('Model', 'model/fbx'),
          '.obj': ('Model', 'model/obj'), '.gltf': ('Model', 'model/gltf+json'), '.glb': ('Model', 'model/gltf-binary'),
@@ -57,7 +60,9 @@ def call(key, method, url, body=None, headers=None, forbidden_wait=None):
     # Polling is safe to repeat, so a dropped connection is retried there: one reset ended a long batch. A POST
     # is not, since it may have gone through: it fails, and a rerun of the batch decides. A 403 is a refusal, so
     # nothing went through: it is retried once after FORBIDDEN_WAIT (a group's uploads were refused mid-batch and
-    # the same key took them a minute later); a second 403 fails.
+    # the same key took them a minute later); a second 403 fails. "User is moderated" is never retried: every call with
+    # the key failed with it, reads included (once minutes after an image was rejected), and a retry is one more refused
+    # request against an account on hold.
     tries, attempt, refused = (5 if method == 'GET' else 1), 0, False
     while attempt < tries:
         req = urllib.request.Request(url, data=body, method=method, headers={'x-api-key': key, **(headers or {})})
@@ -66,6 +71,11 @@ def call(key, method, url, body=None, headers=None, forbidden_wait=None):
                 return json.loads(r.read() or b'{}')
         except urllib.error.HTTPError as e:
             text = e.read().decode(errors="replace")[:800]
+            if e.code == 403 and 'user is moderated' in text.lower():
+                print(f'HTTP 403 {method} {url}: User is moderated. The API key\'s account has a moderation action, and '
+                      'every call with this key fails, reads included, until its owner resolves it. Stop all uploads and '
+                      'tell the user; do not retry, resend, or switch key or account.', file=sys.stderr)
+                sys.exit(MODERATED)
             if e.code == 403 and not refused:
                 refused = True
                 wait = FORBIDDEN_WAIT if forbidden_wait is None else forbidden_wait
@@ -92,12 +102,15 @@ def approved(state):
 
 
 def settle(key, asset_id, state, end):
-    """The asset's moderation state once it leaves review, or the last one read when `end` comes first. A failed read is not a verdict."""
+    """The asset's moderation state once it leaves review, or the last one read when `end` comes first. A failed read is not a
+    verdict, but a moderated account stops everything."""
     while state in REVIEWING and asset_id and time.time() < end:
         time.sleep(SETTLE_POLL)
         try:
             state = call(key, 'GET', f'{API}/assets/{asset_id}').get('moderationResult', {}).get('moderationState', state)
-        except SystemExit:
+        except SystemExit as e:
+            if e.code == MODERATED:
+                raise
             return state
     return state
 

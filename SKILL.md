@@ -16,6 +16,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 - **Run helpers, don't read them:** read a script only to diagnose or change it. Group repeated findings by rule or component, and after a fix repeat the affected checks, not discovery. Required safety and visual checks still apply.
 - **One agent, step by step** *(default)*: parallel agents each re-read the context and queue on one Studio, whose calls run one at a time. Split work only when the user asks, keep Studio work with one agent, and batch Studio checks into one background run that prints only problems.
 - **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables.
+- **Make images readable:** parts hard to tell apart in a capture or render get colour-coded for the shot, then restored: right warm, left cool, hues 60 degrees apart ([ColourCode](scripts/ColourCode.luau), Blender `code=True`). Blind, left and right went from 5 to 12 of 12; colour shows no depth, so check a limb aimed at the camera from a second view.
 
 ## Always
 
@@ -31,17 +32,18 @@ Read these rules, then load **only** what the route names, each file once, when 
 10. **Codex only when it pays** *(default; Claude only, when the Codex CLI is set up)*. Once per session, run `bash ~/.claude/skills/roblox-dev/scripts/codex/handoff.sh --list` (from Git Bash on Windows: PowerShell's `bash` is WSL's) and ask the user about any open handoff. At each sizable task, run `handoff --usage`, decide, and say so in one line. Read [handoff.md](references/codex/handoff.md) before the first handoff. Codex never hands off.
 11. **Learn** *(default)*. When the user corrects you or states a preference, or the skill falls short, run `python scripts/learn.py check` at the end and do what it prints.
 
-**Visual work:** load [visual-style.md](references/art/visual-style.md) first; explicit instructions and references lead; there is no house style. **Gameplay actors** (characters, creatures, mobs, bosses) include a working rig by default ([rigs.md](references/rigs/rigs.md)).
+**Visual work:** load [visual-style.md](references/art/visual-style.md) first; explicit instructions and references lead; there is no house style. **Gameplay actors** (characters, creatures, mobs, bosses) include a working rig by default ([rigs.md](references/rigs/rigs.md)); an R6/R15 character that keeps its Humanoid is dressed from catalog items, and one without is modeled.
 
 ## Route
 
 | Task | Load, under `references/` |
 |---|---|
 | Luau, modules, services, networking, security, data, optimization, tests | `code/coding.md` |
+| Play tests and specs in Studio, Studio MCP calls | `code/studio-testing.md` |
 | Lag, low frame rate, hitches, profiling, script time, memory | `code/coding.md`, `code/performance.md` |
 | Physics, constraints, network ownership, NPC movement and pathfinding, bot opponents, playing animations in game | `code/gameplay.md` |
 | New Rojo / VS Code project, or converting a Studio game into one | `code/rojo-project.md` |
-| GUI, HUD, menus, UI tweens | `ui/ui.md`, which says when to add topbar, icons, surface or runtime |
+| GUI, HUD, menus, UI tweens | `ui/ui.md`, which says when to add topbar, icons, lists, surface or runtime |
 | Icons, image generation | `ui/icons.md` |
 | Particles, skill/ability/hit effects, lights, beams, trails | `art/vfx.md` |
 | Cutscenes, cinematic cameras, timelines | `art/cutscenes.md` |
@@ -50,8 +52,9 @@ Read these rules, then load **only** what the route names, each file once, when 
 | 3D models, meshes, textures, maps built with parts, map expansions, bases and plot structures, buildings, z-fighting, Blender asset creation | `art/modeling.md` |
 | Weapons (always about 18,000 triangles), shields, held or worn gear | `art/modeling.md`, `rigs/gear.md` |
 | Lighting, atmosphere, sky, post-processing, terrain, custom materials | `art/environment.md` |
-| R15/R6 rigs and character models, accessories, scaling, rigs without a Humanoid | `rigs/rigs.md` |
-| Skins, clothing | `rigs/skins.md`, plus `rigs/rigs.md` unless the rig is ready |
+| R15/R6 rigs and character models, with a Humanoid or without, accessories, scaling | `rigs/rigs.md`, which says which look to add: catalog or skins |
+| Catalog (Marketplace) characters: avatar items, outfits, bundles, classic and layered clothing | `rigs/catalog.md`, plus `rigs/rigs.md` unless the rig is ready |
+| Skins: clothing and armor modeled on a rig | `rigs/skins.md`, plus `rigs/rigs.md` unless the rig is ready |
 | Hair | `rigs/hair.md` |
 | Custom creatures, mobs, bosses, custom skeletons, articulated assets | `rigs/custom-creatures.md` |
 | Character art, 2D or 3D (all-ages rules, prompts, review) | `safety/characters.md` |

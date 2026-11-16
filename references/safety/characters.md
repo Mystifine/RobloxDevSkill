@@ -9,7 +9,7 @@ Applies to every character you generate, model, edit or upload that could read a
 
 **See-through bodies** (slime, ghost, glass, water) on a character that reads as female read as nudity to classifiers even when fully covered: an image tool blocked a covered slime-girl prompt as sexual. Give such a body an opaque core or a dense tint, or present the character as a creature or mascot, and never describe a see-through body together with a female figure in a prompt.
 
-**No blood, wounds or gore on any character you generate or upload** ([no-gore.md](no-gore.md)): hurt shows as dust, torn clothes, a clean bandage or swirl eyes.
+**No blood, wounds or gore on any character you generate or upload, and no smoking, drink or drug items even when its source carries one** ([no-gore.md](no-gore.md)): hurt shows as dust, torn clothes, a clean bandage or swirl eyes.
 
 ## Design the cover in character
 
@@ -60,7 +60,7 @@ View each image or render at full size and at 128 px. It fails if:
 - with the chest piece recolored to the skin tone, the figure would read as nude, or the chest is the figure's focal point (its size, highlights or shading);
 - the chest piece could pass for skin;
 - a cleavage line, a dip between two separately shaped cups, or a pinched waist (narrower than about 0.7 of the hips' cover; a slight hourglass passes) shows, or less than 70% of the torso is covered;
-- blood, a wound or gore shows ([no-gore.md](no-gore.md));
+- blood, a wound, gore, or a smoking, drink or drug item shows ([no-gore.md](no-gore.md));
 - the cover looks pasted on (a foreign color, a bulky shape), or the outline differs from the rest of the set.
 
 Fix the art first. Never upload to test moderation.

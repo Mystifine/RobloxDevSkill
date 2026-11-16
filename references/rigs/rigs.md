@@ -6,21 +6,22 @@ For NPCs, enemies, vendors, creatures, bosses and character templates; also reso
 
 - **Gameplay actors:** characters, creatures, mobs and bosses intended to act in gameplay include a functional, animation-ready rig by default. In a game-asset request, treat a creature or enemy as an actor unless the request establishes a statue, display model, static prop or modeling-only stage. State this assumption briefly and proceed.
 - **Static or whole-object motion:** scenery, statues, display collectibles, projectiles and props moving only as a whole need no skeletal rig. A hinged door or mechanical turret may need pivots/joints without a skinned skeleton. Choose from the actual motion requirements, not the noun or art style.
-- **Compatible Roblox characters:** use the standard R6/R15 skin workflow ([skins.md](skins.md)) when anatomy and animation compatibility fit. Preserve a suitable existing rig. Do not require a standard rig for extra limbs, unusual proportions or organic deformation that it cannot support.
+- **Compatible Roblox characters:** use a standard R6 or R15 rig, built one of the two ways below, when anatomy and animation compatibility fit. Preserve a suitable existing rig. Do not require a standard rig for extra limbs, unusual proportions or organic deformation that it cannot support.
 - **Custom anatomy:** follow [custom-creatures.md](custom-creatures.md), plus [modeling.md](../art/modeling.md). Plan skeleton, pivots, pose range, rigid pieces and deforming topology before final detailing and bakes.
 - **Scope:** a working rig does not imply a finished animation set, combat system, navigation or AI. For a modeling request, include only the diagnostic poses/motion needed to prove the rig; deliver production clips or gameplay integration when requested. An explicitly modeling-only stage can remain unrigged; report that stage accurately.
 
-## Standard R6/R15 characters
+## Standard R6/R15 characters: two builds
 
-The remaining sections describe standard rigs and skins, not arbitrary creature skeletons.
+The remaining sections describe standard rigs, not arbitrary creature skeletons ([custom-creatures.md](custom-creatures.md)). A standard character is built one of two ways, and its Humanoid decides which: settle that first, and say which build you took.
 
-- **Custom meshes from Blender** *(default for standard-rig characters)*: model a **skin** on the target R6 or R15 rig ([skins.md](skins.md)), even when catalog clothing comes close to the reference; so is its gear ([gear.md](gear.md)). Hair is the exception: found before it is modeled ([hair.md](hair.md)). Custom creatures follow [custom-creatures.md](custom-creatures.md).
-- **Blender unavailable** ([find_blender.py](../../scripts/find_blender.py) exits 1): build from audited Toolbox assets instead ([assets.md](../safety/assets.md), Safe intake): meshes dressed on as skin pieces (`RigSkin.apply`, `map` for their names), gear through `equip`. Say which parts came from the Toolbox.
-- **No Humanoid** *(default)*: every R6 and R15 build ends with its Humanoid swapped for an AnimationController, unless the request or project keeps it (Without a Humanoid, below).
+1. **Does it keep its Humanoid?** The request and the project answer first: their words, the project's existing characters and its docs. Otherwise a player's character and anything on the keep list ([Without a Humanoid](#without-a-humanoid)) keep it, and a rig that only animates does not *(default)*: a Humanoid is costly.
+2. **With a Humanoid, the look comes from the Marketplace catalog** *(default)*: body parts, classic Shirt and Pants, layered clothing, hair and accessories in a HumanoidDescription, plus a custom MeshPart only for a detail no item gives ([catalog.md](catalog.md)). Model the look instead, as in 3, only when the request, the project's requirements or the design's scope call for custom art.
+3. **Without a Humanoid, you model the look** *(default)*. Classic clothing's textures show only with a Humanoid, so making the character look right is yours: a **skin** on the target R6 or R15 rig ([skins.md](skins.md)), even when catalog clothing comes close to the reference, and its gear ([gear.md](gear.md)). Hair is the exception: found before it is modeled ([hair.md](hair.md)).
+   - **Blender unavailable** ([find_blender.py](../../scripts/find_blender.py) exits 1): build from audited Toolbox assets instead ([assets.md](../safety/assets.md), Safe intake): meshes dressed on as skin pieces (`RigSkin.apply`, `map` for their names), gear through `equip`. Say which parts came from the Toolbox.
 
 ## R15: generate it, never assemble it by hand
 
-Describe the base rig as a HumanoidDescription (hair, colors, scales; the skin is the look) and let Roblox build it (Edit mode or server):
+Describe the rig as a HumanoidDescription and let Roblox build it (Edit mode or server): the whole look on a catalog build ([catalog.md](catalog.md)), the base alone under a skin (hair, colors, scales; the skin is the look):
 
 ```lua
 local desc = Instance.new("HumanoidDescription")
@@ -33,10 +34,10 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 ```
 
 - **What a description can set:** body part ids (`Head`, `Torso`, ...), scales (`HeightScale`, `WidthScale`, `DepthScale`, `HeadScale`, `BodyTypeScale`, `ProportionScale`), classic `Shirt`/`Pants`, and per-accessory `Position`, `Rotation`, `Scale` and `Puffiness`.
-- **Catalog clothing only when the request asks for it:** layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps without a Humanoid; never classic 2D Shirt/Pants, which show only with one (except an R6 from catalog parts: [R6](#r6)).
+- **Clothing follows the build.** With a Humanoid: [catalog.md](catalog.md). Without one, catalog clothing only when the request asks for it, and layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps there; never classic 2D Shirt/Pants, which show only with a Humanoid.
 - **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place.
 - **Give each accessory its asset's own type.** The generator silently drops an entry whose `AccessoryType` differs from the asset's, with no error. Read the type first (`MarketplaceService:GetProductInfo(id).AssetTypeId`: 8 Hat, 41 Hair, 42 Face, 43 Neck, 44 Shoulder, 45 Front, 46 Back, 47 Waist), then count the Accessories on the built rig.
-  - Catalog hairs are often uploaded as face accessories. Four black messy hairs from the catalog's hair category were all type 42; declared as `Hair`, each left the rig bald.
+  - An item that looks like hair can be another type: four black messy hairs found by keyword among all accessories were all type 42 (Face); declared as `Hair`, each left the rig bald.
 
 **Then fix what the generator leaves** (`RigAudit.seat` and `RigAudit.clean` do 1-4):
 1. **Seat every accessory.** Set each Handle's CFrame to where its joint holds it. The generator leaves handles where the catalog asset sat (seen 13 to 2,800 studs away), and only physics pulls them in. Anchored models, viewports and previews then show floating hair and clothes.
@@ -44,7 +45,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 3. **Remove the default face under a face accessory:** the Head's Decal and the head MeshPart's TextureID (the default head texture is a face, which shows through as two dots). `clean` handles Face accessories; a hair or hat with a face built in needs the same by hand.
 4. **Remove the handles' TouchInterests** unless the game listens for Touched on accessories. Catalog accessories arrive with one saved in, and it stays until removed.
 5. **Finish the template:** name it, put metadata in attributes, keep the HumanoidRootPart as PrimaryPart, and store it in ReplicatedStorage only when clients show it (ServerStorage otherwise). A model with a PrimaryPart pivots by `PrimaryPart.PivotOffset`: setting `Model.WorldPivot` there was ignored (`GetPivot` unchanged; a monster stood facing backwards), and a template whose `WorldPivot` read back right cloned 180 degrees off.
-6. **Swap the Humanoid** *(default)*: `RigAudit.controller(model)`, last, once accessories (and a skin) are on (Without a Humanoid, below).
+6. **On a build without a Humanoid, swap it:** `RigAudit.controller(model)`, last, once accessories and the skin are on ([Without a Humanoid](#without-a-humanoid)). A catalog build keeps it.
 
 **What it is made of** (all of it stays):
 - **Root:** the HumanoidRootPart, 2×2×1, invisible: the PrimaryPart and pivot.
@@ -79,19 +80,17 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
   - Torso: Neck, BodyFront, BodyBack, collars, waist points;
   - arms: Shoulder and Grip; legs: Foot.
 - **A generated R6 makes the Head its PrimaryPart;** set it to the root (`clean`).
-- **A recognisable R6 from catalog parts,** the common format (studied on 98 built characters): `Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R6)` gives the plain rig (six Parts, a SpecialMesh head, BodyColors for the skin). The outfit is a classic Shirt and Pants (2D templates, 585 x 559, wrapped on the blocks), which show only with a Humanoid, so this build keeps it. Everything with volume is a rigid Accessory (a Part Handle with a SpecialMesh) on the points above: hair and hats (`HairAttachment`, `HatAttachment`), the face (`FaceFrontAttachment`, `FaceCenterAttachment`), back and waist items (weapons, capes, tails). Layered clothing does not apply to R6, so a coat or armour is drawn into the template or made an accessory. The face is usually an accessory too: a shell over the head carrying the drawn face, sometimes with 3D parts (a nose) in the same mesh.
-  - **Judge a template from a close capture of the torso front:** each torso face gets 128 x 128 pixels over 2 studs, so a template drawn small and scaled up shows blocks at gameplay zoom where a well-made one on the same rig reads clean. No rig or engine setting changes that, and a script cannot read another creator's template (`CreateEditableImageAsync` refuses without permission).
-  - **No drawn faces:** clear the face accessory's texture and color its handle with the head's BodyColors, keeping its mesh; removing the accessory would remove its 3D parts too. Real 3D face items (blindfolds, masks, moustaches), found by looking at all the heads on one grid, stay.
+- **A recognisable R6 that keeps its Humanoid** is built from catalog parts, a classic Shirt and Pants under rigid accessories: [catalog.md](catalog.md#r6-the-common-format).
 
-## Without a Humanoid (the default)
+## Without a Humanoid
 
-A Humanoid is costly; a rig that only animates plays the same clips through an AnimationController *(default)*. Build it with the Humanoid as above (the generator, `AddAccessory` and the scales need one), dress it, then in Studio `RigAudit.controller(model)` (`{ Anchored = false }` for a root held by movers) and audit (Check, below).
+A Humanoid is costly; a rig that only animates plays the same clips through an AnimationController *(default)*, and its look is modeled. Build it with the Humanoid as above (the generator, `AddAccessory` and the scales need one), dress it, then in Studio `RigAudit.controller(model)` (`{ Anchored = false }` for a root held by movers) and audit (Check, below).
 
 - **`controller`** moves the Animator to an AnimationController, anchors the root, removes the Animate and Health scripts, and records `RootHeight`: studs from the floor to the root's centre where the Humanoid stood it (3.19 on a blank generated R15, 3 on R6). It gives each textured body part an Overlay SurfaceAppearance: without a Humanoid a dynamic head showed its texture untinted, white whatever its Color. Game scripts cannot set that map, so convert in Studio.
 - **Unchanged** (generated R6 and R15 in Play): parts, joints, attachments, cages, accessories, layered clothing (bending with the limbs), skins, gear, and every R6 or R15 clip, replicated to clients, with AnimationInspector findings equal to the Humanoid rig's.
 - **Place the root at `RootHeight`:** unanchored and unheld it sank about 2 studs, legs through the floor (only the root, head and torso collide). Move an anchored root by CFrame, or hold an unanchored one with AlignPosition and AlignOrientation. Walking NPCs: [gameplay.md](../code/gameplay.md).
 - **BodyColors no longer recolors the parts:** set their colors (`RigSkin.color` sets both).
-- **Keep the Humanoid** (skip `controller`) only when the request or project asks for one, or for something that needs one: a player's character; `MoveTo`, walking physics, jumping, climbing, a Seat or a Tool (gear on a Motor6D works without); `Health`, `Died`, `BreakJointsOnDeath` or the name and health display; or `AddAccessory`, `ApplyDescription` or automatic scaling after the build. Classic Shirt and Pants are no reason: they stop showing, while layered clothing and skins still show, so dress the rig with a skin.
+- **Keep the Humanoid** (skip `controller`) only when the request or project asks for one or for a look built from catalog items, or for something that needs one: a player's character; `MoveTo`, walking physics, jumping, climbing, a Seat or a Tool (gear on a Motor6D works without); `Health`, `Died`, `BreakJointsOnDeath` or the name and health display; or `AddAccessory`, `ApplyDescription` or automatic scaling after the build. Its look then comes from the catalog ([catalog.md](catalog.md)). Without it classic Shirt and Pants stop showing, while layered clothing and skins still show: dress that rig with a skin.
 
 ## Check every standard R6/R15 model before use
 

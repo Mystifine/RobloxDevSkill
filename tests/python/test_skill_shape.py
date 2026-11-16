@@ -5,33 +5,35 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILL_MD = 2250  # the performance route row
+SKILL_MD = 2425  # a Studio testing route row: two notes' agents tested in Play without loading studio-testing.md
 DESCRIPTION = 450  # characters: read in every session, Roblox or not
 REFERENCE = 4500
 EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads it whole
               'references/ui/ui.md': 5300}  # the rules every screen needs, already split into topbar, icons, surface and runtime
 # What a typical task loads, SKILL.md included.
 ROUTES = {
-    'luau code': (['code/coding'], 5000),
-    'studio testing': (['code/coding', 'code/studio-testing'], 7800),
-    'performance': (['code/coding', 'code/performance'], 5800),  # measurement in its own file
-    'hud': (['art/visual-style', 'ui/ui'], 8600),
-    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 9600),  # upload sizing, portraits
-    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 10200),
-    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 10700),  # attacks in their own file
-    'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8200),
-    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 11200),  # the weapon's own joint
-    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 21000),
-    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 8700),
-    'r6-like weapon clip': (['animation/r6-on-r15', 'animation/animation', 'animation/r6-weapons'], 10000),  # weapon clips in their own file  # the weapon's own joint; R6 walks in their own file
-    'blender clip': (['animation/animation', 'animation/blender'], 8600),  # was 18,700 with animate-roblox-characters loaded
-    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 12300),
-    'default r6 clips': (['animation/r6-default-set'], 4000),
-    'funnels': (['design/analytics'], 6300),
-    'journeys': (['design/analytics', 'design/journeys'], 7500),
+    'luau code': (['code/coding'], 5350),
+    'studio testing': (['code/coding', 'code/studio-testing'], 8200),
+    'performance': (['code/coding', 'code/performance'], 6050),  # measurement in its own file
+    'hud': (['art/visual-style', 'ui/ui'], 8600),  # lists, grids and tabs moved to ui/lists
+    'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 9150),  # scrolling lists, grids, tab strips, drop-downs
+    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 10300),  # upload sizing, portraits
+    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 10800),
+    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 11600),  # attacks in their own file
+    'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8400),
+    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 11850),  # the weapon's own joint
+    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 21650),  # bare skin is the colored body, not a shell
+    'catalog character': (['rigs/rigs', 'rigs/catalog', 'rigs/hair'], 8850),  # a look from Marketplace items, with a Humanoid
+    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 9650),
+    'r6-like weapon clip': (['animation/r6-on-r15', 'animation/animation', 'animation/r6-weapons'], 10950),  # weapon clips in their own file  # the weapon's own joint; R6 walks in their own file
+    'blender clip': (['animation/animation', 'animation/blender'], 9150),  # was 18,700 with animate-roblox-characters loaded
+    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 12850),
+    'default r6 clips': (['animation/r6-default-set'], 4100),
+    'funnels': (['design/analytics'], 6450),
+    'journeys': (['design/analytics', 'design/journeys'], 7700),
     'audio': (['art/audio', 'safety/assets'], 6000),
     'video': (['art/video', 'art/visual-style'], 6000),
-    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 10300),
+    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 11250),
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
 

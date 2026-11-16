@@ -85,30 +85,60 @@ class Reviewing(unittest.TestCase):
         with mock.patch.object(ua, 'call', refused), mock.patch.object(ua.time, 'sleep'):
             self.assertEqual(ua.settle('key', '123', 'Reviewing', ua.time.time() + 60), 'Reviewing')
 
+    def test_a_moderated_account_during_review_stops_everything(self):
+        def moderated(*_):
+            raise SystemExit(ua.MODERATED)
 
-if __name__ == '__main__':
-    unittest.main()
+        with mock.patch.object(ua, 'call', moderated), mock.patch.object(ua.time, 'sleep'):
+            with self.assertRaises(SystemExit) as stop:
+                ua.settle('key', '123', 'Reviewing', ua.time.time() + 60)
+        self.assertEqual(stop.exception.code, ua.MODERATED)
+
+
+MODERATED_BODY = b'{"errors":[{"code":0,"message":"User is moderated"}]}'
 
 
 class Refused(unittest.TestCase):
-    """call(): a 403 is retried once after a pause (nothing went through); a second 403 fails."""
+    """call(): a 403 is retried once after a pause (nothing went through); a second 403 fails; "User is moderated" stops at once."""
 
-    def responses(self, codes):
+    def responses(self, codes, body=b'{"code":"PERMISSION_DENIED"}'):
         replies = list(codes)
 
         def opener(req, timeout=None):
             code = replies.pop(0)
             if code == 200:
                 return contextlib.nullcontext(io.BytesIO(b'{"ok": true}'))
-            raise ua.urllib.error.HTTPError(req.full_url, code, 'refused', {}, io.BytesIO(b'{"code":"PERMISSION_DENIED"}'))
+            raise ua.urllib.error.HTTPError(req.full_url, code, 'refused', {}, io.BytesIO(body))
         return opener
 
-    def call(self, codes):
+    def call(self, codes, body=b'{"code":"PERMISSION_DENIED"}', method='POST'):
         waits = []
-        with mock.patch.object(ua.urllib.request, 'urlopen', self.responses(codes)), \
+        with mock.patch.object(ua.urllib.request, 'urlopen', self.responses(codes, body)), \
                 mock.patch.object(ua.time, 'sleep', waits.append), contextlib.redirect_stderr(io.StringIO()):
-            result = ua.call('key', 'POST', 'https://example.invalid/assets', b'{}')
+            result = ua.call('key', method, 'https://example.invalid/assets', b'{}')
         return result, waits
+
+    def test_a_moderated_account_stops_at_once_with_no_retry(self):
+        sent = []
+        opener = self.responses([403, 200], MODERATED_BODY)
+
+        def counting(req, timeout=None):
+            sent.append(req.full_url)
+            return opener(req, timeout)
+
+        waits, printed = [], io.StringIO()
+        with mock.patch.object(ua.urllib.request, 'urlopen', counting), mock.patch.object(ua.time, 'sleep', waits.append), \
+                contextlib.redirect_stderr(printed), self.assertRaises(SystemExit) as stop:
+            ua.call('key', 'POST', 'https://example.invalid/assets', b'{}')
+        self.assertEqual(stop.exception.code, ua.MODERATED)
+        self.assertEqual((len(sent), waits), (1, []), 'one request, no wait, no retry')
+        self.assertIn('User is moderated', printed.getvalue())
+        self.assertIn('switch key or account', printed.getvalue())
+
+    def test_a_moderated_read_also_stops(self):
+        with self.assertRaises(SystemExit) as stop:
+            self.call([403, 200], MODERATED_BODY, method='GET')
+        self.assertEqual(stop.exception.code, ua.MODERATED)
 
     def test_a_refusal_is_retried_once_after_a_pause(self):
         result, waits = self.call([403, 200])
@@ -122,3 +152,7 @@ class Refused(unittest.TestCase):
     def test_other_errors_are_not_retried(self):
         with self.assertRaises(SystemExit):
             self.call([500, 200])
+
+
+if __name__ == '__main__':
+    unittest.main()

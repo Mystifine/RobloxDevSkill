@@ -42,6 +42,7 @@ export type SheetOptions = Options & {
 	Dark: boolean?, -- dark backdrop (default light, which makes the silhouette read)
 	Fov: number?, -- camera field of view (default 20: nearly flat, little perspective)
 	CaptureDelay: number?, -- editor redraw time before returning a sheet (default 0.75 s, bounded 0..5)
+	Recolour: ((Model) -> any)?, -- called with each posed copy before its trail dots: ColourCode.apply codes left, right and segments
 }
 export type Report = {
 	Findings: { Finding },
@@ -1262,12 +1263,18 @@ function Inspector.sheet(rig: Model, clip: any, options: SheetOptions?): { Legen
 			for column, chosen in picks do
 				local place = CFrame.new(origin.X + (column - 1) * spacing, floorY + lift, origin.Z) * facing
 				local copy = snapshot(subject, pose(opened, math.min(chosen.T, opened.Length - 1e-4)), place)
+				if settings.Recolour then
+					settings.Recolour(copy)
+				end
 				copy.Parent = sheet
 				task.wait()
 			end
 			if trails then
 				local place = CFrame.new(origin.X + #picks * spacing, floorY + lift, origin.Z) * facing
 				local copy = snapshot(subject, peakFrame, place)
+				if settings.Recolour then
+					settings.Recolour(copy)
+				end
 				local names = table.clone(extra.Trails)
 				if extra.Tip then
 					table.insert(names, extra.Tip)
