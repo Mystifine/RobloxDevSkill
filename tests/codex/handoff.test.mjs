@@ -207,6 +207,26 @@ test('installer merges safely, is idempotent, and preserves invalid settings', a
   assert.equal(spawnSync(process.execPath, [path.join(scripts, 'install.mjs')], { env: { ...f.env, CLAUDE_CONFIG_DIR: config } }).status, 1);
   assert.equal(fs.readFileSync(settings, 'utf8'), '{invalid');
 });
+test('installer --uninstall removes only its own rules, is idempotent, and preserves invalid or missing settings', (t) => {
+  const f = fixture(t), config = path.join(f.dir, 'claude'); fs.mkdirSync(config);
+  const settings = path.join(config, 'settings.json'), legacy = 'Bash(bash ~/.claude/skills/codex-handoff/scripts/handoff.sh *)';
+  const run = (...args) => spawnSync(process.execPath, [path.join(scripts, 'install.mjs'), ...args], { env: { ...f.env, CLAUDE_CONFIG_DIR: config }, encoding: 'utf8' });
+  assert.equal(run('--uninstall').status, 0, 'no settings file: nothing to do');
+  assert.equal(fs.existsSync(settings), false, 'and nothing is written');
+  fs.writeFileSync(settings, JSON.stringify({ theme: 'dark', permissions: { defaultMode: 'default', allow: ['Bash(git status)', legacy] }, autoMode: { allow: ['$defaults', 'My local build rule'] } }));
+  assert.equal(run().status, 0);
+  assert.equal(run('--uninstall').status, 0);
+  const parsed = JSON.parse(fs.readFileSync(settings, 'utf8'));
+  assert.equal(parsed.theme, 'dark'); assert.equal(parsed.permissions.defaultMode, 'default');
+  assert.deepEqual(parsed.permissions.allow, ['Bash(git status)', legacy]);
+  assert.deepEqual(parsed.autoMode.allow, ['$defaults', 'My local build rule']);
+  const after = fs.readFileSync(settings, 'utf8');
+  assert.match(run('--uninstall').stdout, /No Codex handoff permissions/);
+  assert.equal(fs.readFileSync(settings, 'utf8'), after, 'a second uninstall changes nothing');
+  fs.writeFileSync(settings, '{invalid');
+  assert.equal(run('--uninstall').status, 1);
+  assert.equal(fs.readFileSync(settings, 'utf8'), '{invalid');
+});
 test('snapshot includes pre-existing untracked content without changing the index', (t) => {
   const f = fixture(t); initRepo(f.cwd);
   fs.writeFileSync(path.join(f.cwd, 'tracked.txt'), 'user staged\n'); git(f.cwd, ['add', 'tracked.txt']);

@@ -26,25 +26,27 @@ docs/
   checks.md              the record of what was tested and found
   developing.md          how to change the skill without growing it: budgets, rules, measuring
 tests/                   Lune, Python, Node, Blender and Studio regressions (docs/checks.md has the commands)
-install/, INSTALL.md     placement rules, installers
+install/, INSTALL.md     install, update, status and removal: the installers, and steps an agent follows
 rokit.toml, selene.toml  pinned Lune and Selene, lint settings
 .github/workflows/       CI: the specs and Selene on every push and pull request
 .mcp.json                repository-only Studio and Blender MCP access (excluded by installers)
 ```
 
-## Install
+## Install, update or remove
 
-The skill installs to `~/.agents/skills/roblox-dev`. If `~/.claude` exists, Claude gets a link to that copy (never a second copy); if only `~/.claude` exists, it installs there. Add `-Local` / `--local` to install into the current project instead.
+Give your agent this repository's link and ask it to install, update or remove the skill: [INSTALL.md](INSTALL.md) has its steps. Or run the installer yourself:
 
 ```powershell
-irm https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.ps1 -OutFile install.ps1; ./install.ps1
+$i = Join-Path $env:TEMP 'roblox-dev-install.ps1'; irm https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.ps1 -OutFile $i
+powershell -NoProfile -ExecutionPolicy Bypass -File $i        # install or update; or add -Update, -Status or -Uninstall
 ```
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.sh && sh install.sh
+i="${TMPDIR:-/tmp}/roblox-dev-install.sh"; curl -fsSL https://raw.githubusercontent.com/Mystifine/RobloxDevSkill/main/install/install.sh -o "$i"
+sh "$i"                                                       # install or update; or add --update, --status or --uninstall
 ```
 
-Full rules, options and manual steps: [INSTALL.md](INSTALL.md).
+The skill installs to `~/.agents/skills/roblox-dev`, and Claude gets a link to that one copy; `-Local` / `--local` acts on the current project instead. Uninstalling removes only this skill (a link on its own, never the folder it points to) and keeps your learning notes unless asked to purge them.
 
 ## Codex handoff (Claude Code, optional)
 
