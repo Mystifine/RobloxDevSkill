@@ -115,6 +115,19 @@ return #buffer.tostring(game:GetService("SerializationService"):SerializeInstanc
     return failed
 
 
+def bodies_code() -> str:
+    """check_bodies.luau given each baked clip's own Audit.Locomotion, as import passes it: judged stationary, an in-place
+    gait's stance travel read as 2.2-2.5 studs of slide."""
+    flags = {}
+    for path in sorted((ANIMATION / "baked").glob("*.json")):
+        clip = json.loads(path.read_text(encoding="utf-8"))
+        value = (clip.get("Audit") or {}).get("Locomotion")
+        if isinstance(value, bool):
+            flags[clip["Name"]] = value
+    source = (TOOLS / "check_bodies.luau").read_text(encoding="utf-8")
+    return source.replace("__LOCOMOTION__", json.dumps(flags, separators=(",", ":")))
+
+
 def _read_piece(name: str, at: int) -> str:
     return f'''
 local item = game:GetService("ServerStorage").R15ClipImports["{name}"]
@@ -180,7 +193,7 @@ def main() -> int:
         creator = ["--group", args.group] if args.group else ["--user", args.user]
         return upload(args.names, creator, args.env_file or str(project / ".env"))
     elif args.mode == "bodies":
-        print(studio((TOOLS / "check_bodies.luau").read_text(encoding="utf-8"), 600))
+        print(studio(bodies_code(), 600))
     else:
         clean()
     return 0

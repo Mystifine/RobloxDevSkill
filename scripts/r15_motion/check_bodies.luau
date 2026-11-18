@@ -3,8 +3,14 @@
 -- The clips on other bodies (a pose must read on wide, tall and blocky ones): each clip already imported into
 -- ServerStorage.R15ClipImports (pipeline.py import), audited on an avatar of each shape. Edit mode. Prints how far planted feet sit from the
 -- floor and any finding. Run: python pipeline.py bodies
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
+
+-- Each clip's own Audit.Locomotion from its baked file, filled in by pipeline.py bodies as import passes it; a clip
+-- without one is judged a gait when it is named walk or run.
+local flags = [==[__LOCOMOTION__]==]
+local LOCOMOTION = if string.sub(flags, 1, 1) == "{" then HttpService:JSONDecode(flags) else {}
 
 local BODIES = {
 	{ Name = "Tall", HeightScale = 1.05, WidthScale = 0.75, DepthScale = 0.85, HeadScale = 0.95 },
@@ -43,7 +49,11 @@ for _, body in BODIES do
 	for _, sequence in folder:GetChildren() do
 		local name = sequence.Name
 		if sequence:IsA("KeyframeSequence") then
-			local report = AnimationInspector.audit(rig, sequence, { Fps = 60, Looped = sequence.Loop, Locomotion = if name == "walk" or name == "run" then true else nil, Ignore = { "slide", "stride", "end-offset" } })
+			local locomotion = LOCOMOTION[name]
+			if locomotion == nil and (string.lower(name) == "walk" or string.lower(name) == "run") then
+				locomotion = true
+			end
+			local report = AnimationInspector.audit(rig, sequence, { Fps = 60, Looped = sequence.Loop, Locomotion = locomotion, Ignore = { "slide", "stride", "end-offset" } })
 			local feet = string.match(report.Text, "planted [^\n]*") or "(no planted feet measured)"
 			local findings = {}
 			for _, finding in report.Findings do

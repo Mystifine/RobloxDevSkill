@@ -26,7 +26,7 @@ Settings, measured on a 47 s, 640x348, 30 fps anime clip with flashes, quick cut
   A still border dilutes the score: the clip padded to 45% of the frame (the 3D view's share of a recorded Studio
   window) gave 6 of its 29 shots, and cropped back all 29. So `record --crop` keeps only the 3D view.
 - Frames: one decode pass that keeps the frames asked for (1.1 s for 44 frames, against 4.9 s for 44 seeks) when the
-  span is 2 minutes or less; seeks beyond that. A pass picks at most 60 frames: ffmpeg's select expression parsed 100 and failed at 110,
+  span is 2 minutes or less; seeks beyond that. A pass picks at most 60 frames: ffmpeg's select expression (`select='eq(n,..)+...'`) parsed 100 and failed at 110 ("Error while parsing expression", "Cannot allocate memory"; before this cap, `--end 12` and `--start 12` windows got round it),
   so a 31 s clip of 46 shots could not be watched whole. Hardware decoding was slower on a short clip (start-up cost): not used.
 - Sheets: 1536 px wide at most, 4 columns (6 for portrait video and bursts), tiles never larger than the source, each
   frame fitted whole within its tile. An image costs about width x height / 750 tokens to view: a 24-frame sheet

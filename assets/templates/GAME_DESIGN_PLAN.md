@@ -175,13 +175,17 @@ income curve (PacingSim curve). -->
 
 ## 11. Monetization
 
-| Offer | Type | Price (R$) | Fantasy it amplifies | Free path | Fairness note |
-|---|---|---|---|---|---|
+| Offer | Type | Price (R$) | Fantasy it amplifies | Free path | Regional pricing | Fairness note |
+|---|---|---|---|---|---|---|
+
+### Must-haves
+
+<!-- Each must-have in references/design/monetization.md: how this game builds it, or why it is left out. -->
 
 ### When offers appear
 ### Compliance
 
-<!-- Every paid random item and where its odds are shown; the PolicyService treatment; trading rules; receipts. -->
+<!-- Every paid random item and where its odds are shown, lucky-purchase rolls included; the PolicyService treatment; trading and gift rules; receipts. -->
 
 ## 12. Social and multiplayer
 

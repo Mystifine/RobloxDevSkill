@@ -8,7 +8,7 @@
   python studio_mcp.py list                                  the server's tools and their input schemas
   python studio_mcp.py luau FILE [--datamodel Edit|Server|Client]
   python studio_mcp.py play FILE                             starts Play, runs FILE on the server, stops Play
-  python studio_mcp.py call TOOL ['{"json": "args"}' | @args.json] [--image out.png]
+  python studio_mcp.py call TOOL ['{"json": "args"}' | @args.json] [--image out.jpg]   (or --output out.jpg)
   python studio_mcp.py save INSTANCE OUT.rbxm                one instance (a dotted path from game, such as
                                                              ServerStorage.Clips.Walk) as an .rbxm file, ready to upload
   options: --studio NAME (a part of the place name, when several Studios are open; or STUDIO_ID), --timeout SECONDS
@@ -16,7 +16,8 @@
 
 The server: STUDIO_MCP (its command line), else %LOCALAPPDATA%\\Roblox\\mcp.bat on Windows. studio_id is filled in
 (the server finds Studio a second or two after it starts, so it is polled), datamodel_type defaults to Edit, images
-from screen_capture are written to --image. Each run starts its own server process (about 2 s).
+from screen_capture are written to --image, else to an --output naming an image file, else to capture.png in the
+working directory (each shot overwriting the last). Studio sends a capture as JPEG whatever the name: give it .jpg. Each run starts its own server process (about 2 s).
 
 Calls run in Studio one at a time and block it until they yield. A reply can be lost while the code still runs (seen
 "Target is not reachable" came back after a dressing script had run): read the state again before
@@ -95,6 +96,8 @@ class Server:
         else:
             sys.exit('no Roblox Studio found: is Studio open with its MCP server enabled?')
         # A Studio window can list with no name (null): match ids first, and prefer a named window when none is asked for.
+        # Read as a string, a null name raised AttributeError ('NoneType' object has no attribute 'lower') in studio() even when
+        # --studio named the exact id, and every call failed; `want.lower() in (s.get('name') or '').lower()` is null-safe.
         def name(s):
             return s.get('name') or ''
         if want:
@@ -146,7 +149,15 @@ def inline_uses(src, datamodel='Edit'):
     return '\n'.join(pre) + '\n' + src
 
 
+IMAGE_SUFFIXES = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
+
+
 def show(result, image, output=None):
+    # `call screen_capture --output shot.png` once wrote capture.png in the working directory instead: an --output that
+    # names an image file takes the image result when --image is not given, and the text is then only printed.
+    if output and not image and output.lower().endswith(IMAGE_SUFFIXES) and any(
+            c.get('type') == 'image' for c in result.get('content', [])):
+        image, output = output, None
     if output:
         # Keep the same text as stdout, without shell-dependent redirection encoding.
         with open(output, 'w', encoding='utf-8', newline='\n') as f:
@@ -156,9 +167,11 @@ def show(result, image, output=None):
             print(c['text'])
         elif c.get('type') == 'image':
             path = image or 'capture.png'
+            data = base64.b64decode(c['data'])
             with open(path, 'wb') as f:
-                f.write(base64.b64decode(c['data']))
-            print('image saved:', os.path.abspath(path))
+                f.write(data)
+            kind = 'JPEG' if data[:3] == b'\xff\xd8\xff' else 'PNG' if data[:4] == b'\x89PNG' else 'unknown format'
+            print(f'image saved ({kind}):', os.path.abspath(path))
         else:
             print(json.dumps(c)[:2000])
     return 1 if result.get('isError') else 0

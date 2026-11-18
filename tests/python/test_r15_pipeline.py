@@ -47,5 +47,23 @@ class Choosing(unittest.TestCase):
         self.assertEqual(stopped.exception.code, 2)
 
 
+class Bodies(unittest.TestCase):
+    def test_bodies_passes_each_clips_own_locomotion(self):
+        with tempfile.TemporaryDirectory() as folder:
+            baked = Path(folder) / 'baked'
+            baked.mkdir()
+            (baked / 'AnimeWalk.json').write_text('{"Name": "AnimeWalk", "Audit": {"Locomotion": true}}', encoding='utf-8')
+            (baked / 'Bow.json').write_text('{"Name": "Bow", "Audit": {"Locomotion": false}}', encoding='utf-8')
+            (baked / 'Idle.json').write_text('{"Name": "Idle"}', encoding='utf-8')
+            with mock.patch.object(pipeline, 'ANIMATION', Path(folder)):
+                code = pipeline.bodies_code()
+        self.assertIn('[==[{"AnimeWalk":true,"Bow":false}]==]', code)
+        self.assertNotIn('__LOCOMOTION__', code)
+
+    def test_bodies_without_baked_clips_passes_no_flags(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(pipeline, 'ANIMATION', Path(folder)):
+            self.assertIn('[==[{}]==]', pipeline.bodies_code())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -10,8 +10,10 @@
 --                  opens; between equals, the later one. Tied decals get distinct ZIndex. Repeats until nothing moves;
 --                  running it twice moves nothing.
 --
--- Analyses Parts (blocks, cylinder ends), WedgeParts and CornerWedgeParts. MeshParts, unions and terrain are not: audit
--- counts the MeshParts and unions it skipped, so its 0 is not read as covering them (references/art/modeling.md).
+-- Analyses Parts (blocks, cylinder ends), WedgeParts and CornerWedgeParts. MeshParts, unions, parts drawn by a mesh inside
+-- them (a SpecialMesh, BlockMesh or CylinderMesh: an accessory's Handle, an R6 head, whose box faces never draw) and
+-- terrain are not: audit counts those it skipped, so its 0 is not read as covering them (references/art/modeling.md).
+-- A hair Handle's box against the head and torso read as 1 to 9 false FLICKER pairs on every R6 fighter.
 -- Load: loadstring(game:GetService("HttpService"):GetAsync(url, true))(), or a temporary ModuleScript. Edit mode.
 
 local ZFight = {}
@@ -130,7 +132,7 @@ local function settlePass(root, touched, dry)
 	local recs = {}
 	local origin
 	for _, inst in root:GetDescendants() do
-		if inst:IsA("BasePart") and inst.Transparency < 1 then
+		if inst:IsA("BasePart") and inst.Transparency < 1 and not inst:FindFirstChildWhichIsA("DataModelMesh") then
 			local shape = if inst:IsA("WedgePart") then "Wedge"
 				elseif inst:IsA("CornerWedgePart") then "CornerWedge"
 				elseif inst:IsA("Part") then inst.Shape.Name
@@ -718,13 +720,13 @@ function ZFight.audit(root: Instance, limit: number?)
 	end
 	local unread = 0
 	for _, part in root:GetDescendants() do
-		if part:IsA("MeshPart") or part:IsA("UnionOperation") then
+		if part:IsA("MeshPart") or part:IsA("UnionOperation") or (part:IsA("BasePart") and part:FindFirstChildWhichIsA("DataModelMesh")) then
 			unread += 1
 		end
 	end
 	table.insert(lines, string.format("%d fighting face pairs (%d flicker, %d shimmer, %d hidden), %d decal ties%s%s", #fights, counts.flicker, counts.shimmer,
 		counts.hidden, #ties, if #fights + #ties > 0 then ": ZFight.settle(root), then audit again" else "",
-		if unread > 0 then string.format("; %d MeshParts and unions not read", unread) else ""))
+		if unread > 0 then string.format("; %d MeshParts, unions and mesh-drawn parts not read", unread) else ""))
 	return #fights + #ties, table.concat(lines, "\n"), pairs
 end
 

@@ -710,7 +710,7 @@ local function analyse(clip: Clip, settings: Options): (Report, Extra)
 	local planted: { [string]: { boolean } } = {}
 	local stanceSpeeds, drifts: { Drift }, levels: { Level }, rests = {}, {}, {}, {}
 	-- each foot's height in the rig's own rest stance: a rig standing a little off its floor floats the same in every clip,
-	-- whether a foot plants on frame 0 or mid-clip (an R15 carrying a fake-R6 clip stood 0.11-0.12 up), so it is judged alike
+	-- whether a foot plants on frame 0 or mid-clip (an R15 carrying a fake-R6 clip stood 0.11-0.12 up, once a warning when planted from frame 0 and an error on a lunge whose foot plants at 0.28 s), so it is judged alike
 	local restPose, restLevels = restFrame(rig), {} :: { [string]: number }
 	local lowest, lowestName, lowestTime, everPlanted, measured, mostStill = math.huge, "", 0, false, 0, 0
 	for _, name in feet do

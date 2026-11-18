@@ -5,8 +5,13 @@ For an attack's effects (auto attacks, weapon swings, abilities, specials), on t
 ## Weight
 
 - **Scale an impact to the attack's weight** *(default)*. A basic or auto attack is light and short: one glint or small hit flash, a cut aligned to the blade's travel, a few sparks thrown along it, gone in under 0.2 s; no dark core, shock ring, bloom, floor crack or finisher. The heavy layers (a big blast, a dark core, rings racing out, floor marks, a light, hit-stop, residue) belong to specials and ultimates. Basics that shared a special's layer stack (fire blasts, a dark core, a 1.7x finisher every third hit, floor cracks and rings lasting 0.4-1.2 s) read as too drastic and too long; a separate small hit for basics fixed it without touching the specials.
-- **A light hit is built from single small layers,** not a trimmed heavy template: a pack's hit templates were white in every layer, 6 to 30 studs across and living 1.5 to 4.4 s, so trimming layers past 0.6 s still left a big white particle lingering, reported three times. Before reusing a template at a smaller role, list each layer's lifetime (`Lifetime.Max / TimeScale`), largest `Size` and colour.
+- **A light hit is built from single small layers,** not a trimmed heavy template: a pack's hit templates were white in every layer, 6 to 30 studs across and living 1.5 to 4.4 s, so trimming layers past 0.6 s still left a big white particle lingering, reported three times. Before reusing a template at a smaller role, list each layer's lifetime (`Lifetime.Max / TimeScale`), largest `Size` and colour. Auto attacks drawn from single small layers (one mark, 0.14 s) and specials capped at 0.9 s removed it.
 - **An ability always plays its effects.** With nothing in reach it plays them at a point ahead (past the landing point for a dash), dropping only the impact and the camera jolt and keeping the movement: placed only at the hit point, a whiff drew nothing.
+
+## Match the hit shape
+
+- **Fit every layer to the server's hit shape,** never by eye: measure each template's visible radius with a recorder in the effect player (its emitter offset, plus its travel while `Transparency` stays under 0.75, plus half its size) and clamp each layer to the room left inside the shape: a cone's spread, a line's half-width plus a little slack, a point's circle, and small fixed tells at a ranged caster. Measured so, melee crescents filled 0.67 to 0.85 of their cones and line skills spilled up to 12 times their width; clamped, 60 of 60 skills fell within tolerance, and overlay captures agreed.
+- **Count reach only while particles are visible:** speed times lifetime made speed-line emitters that fade within a frame "reach" 100 to 215 studs. Cut the travel at the first `Transparency` keypoint past 0.75.
 
 ## Cuts and slashes
 

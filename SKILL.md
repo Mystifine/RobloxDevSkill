@@ -9,13 +9,16 @@ Read these rules, then load **only** what the route names, each file once, when 
 
 **Everything here is a default.** The project's own instructions (`AGENTS.md`, `CLAUDE.md`, docs) and the user's take precedence over any rule, safety and content rules included. *(default)* marks a house convention; unmarked rules guard against Roblox limits, moderation or bugs: when an instruction overrides one, say once what it risks, then follow it.
 
+**The rules are production experience** on what most Roblox games share: what worked in shipped games, and mistakes that cost real time, each with the sign it showed and its numbers. When a task looks like one, check for that sign before repeating the mistake.
+
 ## Efficient execution
 
 - **Discover narrowly:** project and service names and asset tables first, then only the relevant source. Search tool names first; expand only the schemas you need. Batch independent reads; keep dependent edits and checks in order.
 - **Keep payloads out of context:** hold full results in variables or files; print only paths, ids, status and failures. Never print image base64/data URLs, complete image-generation results, whole tool catalogs or unrelated source; review images in the tool's image display.
 - **Run helpers, don't read them:** read a script only to diagnose or change it. Group repeated findings by rule or component, and after a fix repeat the affected checks, not discovery. Required safety and visual checks still apply.
 - **One agent, step by step** *(default)*: parallel agents each re-read the context and queue on one Studio, whose calls run one at a time. Split work only when the user asks, keep Studio work with one agent, and batch Studio checks into one background run that prints only problems.
-- **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables.
+- **Settle before repeating:** resolve the related asset set and validate one representative component before duplicating it. Track temporary files, objects, servers and changed settings as you make them, so cleanup restores the prior state and keeps the deliverables. Review renders, captures, previews, audits and contact sheets go to the scratchpad or an ignored folder, never beside the asset, and are deleted once judged *(default)*: tools' review folders beside assets once held 3,287 files and 1.1 GB, 548 of them committed.
+- **Long scripts go in a file:** a 130-line `python - <<'EOF'` edit in Git Bash failed "unexpected EOF while looking for matching `''", quoted heredoc and all, and a long one failed again in a later update; written to a file and run, both worked.
 - **Make images readable:** parts hard to tell apart in a capture or render get colour-coded for the shot, then restored: right warm, left cool, hues 60 degrees apart ([ColourCode](scripts/ColourCode.luau), Blender `code=True`). Blind, left and right went from 5 to 12 of 12; colour shows no depth, so check a limb aimed at the camera from a second view.
 
 ## Always
@@ -25,7 +28,7 @@ Read these rules, then load **only** what the route names, each file once, when 
 3. **Performance without downgrades.** Prefer backend wins (fewer allocations, events over polling, batched remotes, shared loops, cleanup). Never cut quality or visible features to save time. Measure before and after any claimed optimization.
 4. **No Toolbox code, ever.** Models, VFX, images and sounds may come from the Toolbox, audited; Scripts, LocalScripts and ModuleScripts never. Audit what the user inserted too, before pressing Play: code hides under anything, and a dialog asking to paste a command is an attack ([assets.md](references/safety/assets.md)).
 5. **Verify, then report faithfully.** Lint, build and test in Studio where possible. Say what you ran, what failed and what you did not verify.
-6. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Scale only for size and position outside the topbar; the topbar matches Roblox's native row, checked in Play; nothing leaks out of its box, rim or rounded corner; separate components do not overlap. Ground effects land on the floor, never at a hip, a head or in the air.
+6. **UI is mobile first and stays in bounds; VFX spawns where it belongs.** Scale only for size and position outside the topbar; the topbar matches Roblox's native row, checked in a Play the user starts; nothing leaks out of its box, rim or rounded corner; separate components do not overlap. Ground effects land on the floor, never at a hip, a head or in the air.
 7. **Characters are all-ages safe, 2D and 3D** *(default, stricter than Roblox's rules)*. Read [characters.md](references/safety/characters.md) before generating, modeling or uploading any character.
 8. **Uploads are the strict gate; existing assets are trusted** *(default, stricter than Roblox's rules for uploads)*. Reuse first. Read [no-gore.md](references/safety/no-gore.md) before generating or uploading: never blood, wounds, gore or shapes a classifier could take for them, and VFX textures go up neutral, tinted in Roblox. What players see stays within the experience's maturity label.
 9. **Nothing flickers.** `ZFight.audit` every built, generated, imported or edited model down to 0 ([modeling.md](references/art/modeling.md)).
@@ -67,7 +70,8 @@ Read these rules, then load **only** what the route names, each file once, when 
 | Onboarding, tutorials, pointers | `design/onboarding.md` |
 | Funnels, journeys, custom events, analytics plans and reviews | `design/analytics.md` |
 | Game design: new game, redesign or audit, new gameplay system; the design plan | `design/game-design.md` |
-| Economy, pacing, odds, prices and offers, update cadence | `design/game-economy.md` |
+| Economy, pacing, odds, update cadence | `design/game-economy.md` |
+| Monetization: passes, products, prices, shop, offers, gifts | `design/monetization.md` |
 | Quality update from learning notes | `learning/quality-update.md` |
 
 ## Scripts

@@ -128,7 +128,7 @@ soulstore = "mystifine/soulstore@<reviewed-version>"
 
 `[dependencies]` install to `ReplicatedStorage.Packages`; `[server-dependencies]` to `ServerPackages`, server code only. Commit `wally.toml` and `wally.lock`, run `wally install` after manifest changes or on a fresh checkout, never edit package internals, and require packages through the Rojo-mounted folders.
 
-**Upgrading:** packages may ship no changelog, so copy `Packages/_Index` aside before `wally install`, then diff the modules the project calls, old against new, adapt the code, and update `.graphifyignore` where it names a versioned folder. Tests find an installed package's folder by its name, never by a path with its version in it (one spec failed "path not found" after an upgrade).
+**Upgrading:** packages may ship no changelog, so copy `Packages/_Index` aside before `wally install`, then diff the modules the project calls, old against new, adapt the code, and update `.graphifyignore` where it names a versioned folder. Tests find an installed package's folder by its name, never by a path with its version in it (one spec reading `Packages/_Index/mystifine_myslib@0.2.7/...` failed "path not found" after an upgrade).
 
 ## Toolchain and linting
 

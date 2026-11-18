@@ -1,12 +1,12 @@
 # Game design
 
-For designing a new game, redesigning or auditing one, or adding a system that changes how a game plays, progresses or earns. The output is a local plan, `docs/game-design.md` *(default)*, written from [assets/templates/GAME_DESIGN_PLAN.md](../../assets/templates/GAME_DESIGN_PLAN.md), never only a chat reply. Currencies, pacing, odds, prices, offers and update cadence are in [game-economy.md](game-economy.md); load it when the work touches them.
+For designing a new game, redesigning or auditing one, or adding a system that changes how a game plays, progresses or earns. The output is a local plan, `docs/game-design.md` *(default)*, written from [assets/templates/GAME_DESIGN_PLAN.md](../../assets/templates/GAME_DESIGN_PLAN.md), never only a chat reply. Currencies, pacing, odds and update cadence are in [game-economy.md](game-economy.md), products, prices and offers in [monetization.md](monetization.md); load each when the work touches it.
 
 ## Modes
 
 | Mode | Do |
 |---|---|
-| **New game** | The whole process below, [game-economy.md](game-economy.md) and the whole template. |
+| **New game** | The whole process below, [game-economy.md](game-economy.md), [monetization.md](monetization.md) and the whole template. |
 | **Redesign or audit** | First rebuild the game as it is from its code and data (configs, services, saves, existing design notes, analytics if shared): its real loops, its pacing from the numbers (not the pitch), what works (keep it), what is thin. Then run the process on the gaps. The plan adds Today, What changes and Existing players. |
 | **One system** | Read the plan (without one, the code's current loops). Name the pillar, loop and track the system serves and what it consumes and produces; a system that serves no pillar or feeds no loop is not built. Run the review rows it touches, then update the plan's sections and changelog. |
 
@@ -31,7 +31,7 @@ A design is ready when all six hold (the review at the end checks each):
 6. **Depth:** layers of decisions with the time each opens, the meaningful-choice test, skill and knowledge ceilings, how systems interact.
 7. **Engagement:** first-session beats, session, return and social hooks, the first eight weeks of live content.
 8. **Economy:** currencies, faucets and sinks, curves; simulate with [PacingSim](../../scripts/PacingSim.luau) and adjust until the pacing targets hold ([game-economy.md](game-economy.md)).
-9. **Monetization:** offers mapped to the fantasy, prices, when offers appear, compliance ([game-economy.md](game-economy.md)).
+9. **Monetization:** offers mapped to the fantasy, prices, when offers appear, compliance, every must-have built or reasoned out ([monetization.md](monetization.md)).
 10. **Production:** systems mapped to code, data and save fields; launch content counts; a vertical slice; a build order with a measurement per step; a roadmap along the direction.
 11. **Metrics:** KPIs with targets, funnels (all 10 slots, onboarding included, each post-tutorial funnel holding one feature: [analytics.md](analytics.md)), journeys where routes branch, custom and economy events, experiments, pivot criteria.
 12. **Review and write:** score the review table, fix every failing row or record why it stays, then write the plan and reply (Writing the plan, below).
@@ -174,7 +174,7 @@ Score each row 0-2 in the plan (0 missing, 1 present but generic, 2 concrete wit
 | Engagement | session, return and social hooks, each concrete |
 | Social | a reason to play with friends; visible status; a shared moment each session |
 | Economy | faucets and sinks listed; sinks scale; number range planned |
-| Monetization | amplifies the fantasy; free path finishes; paid random items compliant; no chore for sale |
+| Monetization | amplifies the fantasy; free path finishes; paid random items compliant; no chore for sale; every must-have built or reasoned out |
 | Platform | phone-first controls and HUD; low-end budget; little text; within its maturity label, stylized hits and defeats |
 | Live ops | content as data; 6-12 week roadmap; event framework |
 | Feasibility | small vertical slice; a measurement per build step; content counts fit the team |

@@ -40,7 +40,9 @@ Confirm the library's reuse terms for the intended use; installation alone does 
 
 If anything is ambiguous or looks malicious, discard the asset and say so.
 
-**Check that a place's assets load for its owner,** from the Play client: `ContentProvider:PreloadAsync({ tree }, callback)` on whole trees (ReplicatedStorage, Workspace) reports a status for every content id beneath, about 11,000 in under 15 s. Server-only content has to be cloned into ReplicatedStorage by the Play server first; ids named only in code, on temporary ImageLabels and Sounds. A pack's template made only of textures that fail ("Asset is not approved for the requester") draws nothing: leave it out of the game.
+**A sky or lighting preset from the Toolbox goes in as its image ids only:** a free skybox model, inserted sandboxed in Edit, carried a Script and ModuleScripts (one referencing MarketplaceService) inside a BloomEffect, which `AssetAudit` rejected. Keep the Sky's six face ids in the project's asset table, never its Lighting children.
+
+**Check that a place's assets load for its owner,** from the Play client: `ContentProvider:PreloadAsync({tree}, callback)` on whole trees (ReplicatedStorage, Workspace) reports a status for every content id beneath, about 11,000 in under 15 s. Server-only content has to be cloned into ReplicatedStorage by the Play server first; ids named only in code, on temporary ImageLabels and Sounds. A pack's template made only of textures that fail ("Asset is not approved for the requester") draws nothing: leave it out of the game.
 
 **Audit what the user inserted too,** before you use it, study it or press Play: a Script runs the moment a playtest starts, even in a mesh left in Workspace as an example.
 - **Code hides under anything.** A Toolbox "Escanor's Axe" MeshPart had 410 descendants under its SurfaceAppearance, with a Script, and a LocalScript five levels into input objects. A mesh should hold a SurfaceAppearance and little else, so count descendants.

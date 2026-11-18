@@ -1,6 +1,6 @@
 # RobloxDevSkill
 
-A token-efficient agent skill for Roblox game development (Claude Code, Codex and any agent that reads `SKILL.md` skills).
+A generic agent skill meant to become the ultimate Roblox dev skill (Claude Code, Codex and any agent that reads `SKILL.md` skills). It carries professional developers' experience of shipping Roblox games on the topics most games share, such as animation, UI, effects, data and economy: what works in production, and the mistakes that cost real time, each with the sign that shows it, what to do instead and the numbers behind it. It saves tokens by routing each task to what it needs, never by dropping detail.
 
 `SKILL.md` is a short dispatcher: eleven always-on rules, shared visual-style routing, asset-readiness decisions and a routing table. Agents load only the references for the task at hand, so a UI tweak never pays for the modeling guide. [docs/developing.md](docs/developing.md) holds the limits that keep it that way. Visual direction follows instructions/references, then comparable project assets, then a suitable inferred treatment; there is no fixed house style. Gameplay actors include a tested rig by default unless explicitly static or a modeling-only stage; rigging alone does not add a full animation set or AI. Materials, maps and resolution adapt to the intended result rather than requiring full PBR. Everything in it is a default: a project's own `AGENTS.md`, `CLAUDE.md` and docs, and the user's instructions, take precedence over every rule, the safety and content rules included. Rules marked *(default)* are house conventions; the unmarked ones guard against Roblox limits, moderation or bugs, so the agent names the risk once and then follows the instruction. The project blueprint (`assets/templates/PROJECT_STRUCTURE.md`: packages, Graphify) is the author's own setup.
 
@@ -8,13 +8,13 @@ A token-efficient agent skill for Roblox game development (Claude Code, Codex an
 SKILL.md                 dispatcher: always-on rules and the route table, read on every task
 references/              read only when the route names them; each file serves one kind of task
   code/                  coding, gameplay (physics, NPCs, playing animations), rojo-project
-  ui/                    ui (the workflow), topbar, icons, surface (fades and shine), runtime (state, world-space GUIs)
-  art/                   visual-style, modeling, environment, vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
+  ui/                    ui (the workflow), topbar, icons, lists, windows (modals and sheets), surface (fades and shine), runtime (state, world-space GUIs)
+  art/                   visual-style, modeling, maps (maps, bases and buildings), environment, vfx, vfx-packs (effects from a supplied pack), hit-vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
                          styles/ (stud, anime-ink, hand-painted, realistic, low-poly, simulator-cartoon)
   rigs/                  rigs (R15, R6, with a Humanoid or without, audits), catalog (a look from Marketplace items), skins (a modeled look), custom-creatures, hair, gear
   animation/             animation (clips, export, inspection), r6-on-r15, r6-ik, r6-default-set
   safety/                characters (all-ages), no-gore (uploads), stylized-violence (what players see), assets (Toolbox intake), uploading
-  design/                game-design, game-economy, onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys
+  design/                game-design, game-economy, monetization (products, shop, offers, gifts), onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys
   codex/                 handoff (Claude only)
   learning/              learning (notes kept on the maintainer's machine), quality-update (turning them into skill changes)
 scripts/                 run, not read: Studio audits and helpers, Blender kits, upload tools, the Codex wrapper, learning notes

@@ -16,7 +16,7 @@ One note at the end of a task, holding all its lessons, and only if a lesson is 
 | `platform-fact` | Testing showed how Roblox, Blender or a tool really behaves |
 | `technique` | An approach worked after the obvious one failed, and would work elsewhere |
 
-Write nothing for a routine success, a fact true of this project alone (it goes in the project's docs), or a guess. Word each lesson as the general rule for the class of thing (a held weapon, a spinning cut, a card grid), never for the project's named item; give the project's own values only as evidence. A Codex handoff run records nothing; the agent reviewing it does.
+Write nothing for a routine success, a fact true of this project alone (it goes in the project's docs), or a guess. Word each lesson as the general rule for the class of thing (a held weapon, a spinning cut, a card grid), on the common topic most games share (animation, UI, effects, data, economy), never for the project's named item; give the project's own values only as evidence. A mistake that cost time is the most useful lesson: record what was done, how it went wrong and the sign that showed it, so the next agent on a similar task recognises it. A Codex handoff run records nothing; the agent reviewing it does.
 
 ## The note
 
@@ -52,7 +52,7 @@ The user's reaction, verbatim where the wording matters, or None.
 ### The rule, as one imperative sentence
 - Kind: correction
 - Basis: stated
-- Evidence: What happened, in a sentence or two.
+- Evidence: What was done and how it went wrong or worked, the sign that showed it (an error message, a number, how it looked), and every number measured.
 - Change: references/ui/topbar.md: what to add or change, or none yet.
 ```
 

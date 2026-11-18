@@ -95,6 +95,26 @@ class OutputTests(unittest.TestCase):
             self.assertEqual(json.loads(raw.decode('utf-8')), json.loads(payload))
             self.assertEqual(image.read_bytes(), b'image bytes')
 
+    def test_an_image_output_takes_the_capture_when_no_image_path_is_given(self):
+        result = {'content': [{'type': 'text', 'text': 'captured'},
+                              {'type': 'image', 'data': base64.b64encode(b'shot').decode()}]}
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()) as out:
+            shot = Path(tmp) / 'shot.PNG'
+            with contextlib.chdir(tmp):
+                self.assertEqual(studio_mcp.show(result, None, str(shot)), 0)
+            self.assertEqual(shot.read_bytes(), b'shot')
+            self.assertFalse((Path(tmp) / 'capture.png').exists())
+            self.assertIn('captured', out.getvalue())
+
+    def test_a_text_output_still_leaves_the_image_to_its_own_path(self):
+        result = {'content': [{'type': 'text', 'text': 'captured'},
+                              {'type': 'image', 'data': base64.b64encode(b'shot').decode()}]}
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+            text, image = Path(tmp) / 'reply.txt', Path(tmp) / 'view.png'
+            self.assertEqual(studio_mcp.show(result, str(image), str(text)), 0)
+            self.assertEqual(text.read_text(encoding='utf-8'), 'captured')
+            self.assertEqual(image.read_bytes(), b'shot')
+
     def test_error_text_is_saved_and_failure_status_is_preserved(self):
         result = {'isError': True, 'content': [{'type': 'text', 'text': '失敗'},
                                               {'type': 'text', 'text': 'second line'}]}

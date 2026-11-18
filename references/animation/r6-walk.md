@@ -13,17 +13,17 @@ The body moves, not only the limbs. Roblox's own R6 walk moves only its limbs: a
 | Arms | 18 to 53 degrees each way against the legs (0.75 to 1.2 of their swing), held 4 to 10 out from the body |
 | Torso | leaning 3 to 8 degrees from the root (the waist locked); twisting 2.5 to 5.5 each way once a stride, the forward arm's shoulder leading, peaking just after each foot lands; rolling 2 or less |
 | Bob | 0.085 to 0.13 studs at twice the stride alone, lowest as each front foot lands, highest passing |
-| Head | turned against the torso so the gaze holds level and ahead: the best two take 70 to 97 percent of the twist and most of the lean off it. Take it all by default *(default)* |
+| Head | turned against the torso so the gaze holds level and ahead: the best two take 70 to 97 percent of the twist and most of the lean off it. Take it all by default *(default)*: Head = torso^-1 x a level look (a small yaw, 1 degree up) held it within 1 degree of level in Blender and 1.4 degrees in Play, where an old walk leaned the torso 12 degrees and nodded the head 4 more |
 | Halves | mirrored |
 | Keys | Linear and dense (30 to 65 a second), or about 10 a second for a snappy, toy-like walk |
 
 ## Tempo and feet
 
 - **Rigid R6 legs skate.** The planted feet travel back 4 to 10 studs a second at 1x (Roblox's 13.3), 30 to 70 percent of the ground at WalkSpeed 16. Widening or quickening the swing to lock them is the stiff default's look.
-- **Judge the tempo at the game's playback rate.** Animate plays an R6 walk at WalkSpeed / 14.5 (2.2x at 32). Pick the cycle for that cadence and say the skate it leaves.
-- **Smooth a grounded rigid-leg body height** to harmonics 0 and 2 of the loop, not each frame's ground pass, which corners at every footfall.
+- **Judge the tempo at the game's playback rate.** Animate plays an R6 walk at WalkSpeed / 14.5 (2.2x at 32). Pick the cycle for that cadence and say the skate it leaves: a 0.53 s cycle ran at 0.24 s, its arms flapping four times a second, which the owner called not smooth, and at any calm cadence a 32 studs/s character's planted feet must skate (matching would take about 11 steps a second).
+- **Smooth a grounded rigid-leg body height** to harmonics 0 and 2 of the loop, not each frame's ground pass, which corners at every footfall (the lower of two legs) and wobbles with the tilted block's corner: harmonics 0 and 2 missed the ground pass by at most 0.048 studs, and `plantFeet` absorbed it on R15 (0.000 studs short of its targets).
 - **Ground the body on the leg blocks' lowest corners,** not the foot points: a tilted 1-stud-deep block reaches 0.5 sin(angle) lower (heel at landing, toe at push-off). Smoothed as above, the body dipped 0.084 studs at each landing, inside good walks' 0.085 to 0.13 at contact; on the ankle targets it bobbed 0.27, lowest mid-step.
-- **Plant each foot at the ground's speed** (run-cycle key poses, the feet's targets exported for `plantFeet`) only when the user asks for real steps on a fast run over R15 legs.
+- **Plant each foot at the ground's speed** (run-cycle key poses, the feet's targets exported for `plantFeet`) only when the user asks for real steps on a fast run over R15 legs. Legs replayed as pure hip angles, even from a good measured R6 sprint, skated and read as swinging arms and legs around; foot paths on the key poses (contact, down, push-off, flight), the planted foot carried back at WalkSpeed / the playback rate in clip time (14.5 studs a second there, scaled by 14.5 / 13.7 so the import's audit read 14.4) with the targets exported, read as real steps in a Play recording. Check the reach offline first: R6 hip to foot under 2.0 studs.
 
 ## A reference to match
 
