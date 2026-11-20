@@ -20,7 +20,10 @@
 -- on that element, and the design reason goes in a comment. Scrolling content is skipped: it is meant to leave its frame.
 -- Content a ClipsDescendants parent cuts off still counts (it is lost from view); decoration meant to be cut (a sunburst
 -- bigger than its card) is marked `AllowBleed`.
--- Not judged: rotated elements, and taste. Compare screenshots against the design as well.
+-- Not judged: rotated elements, round shapes, and taste. A round button (a UICorner radius of half its size) is measured
+-- as its box, so two round buttons on a diagonal read as touching: centres 122 units apart with radii 60 and 40 (22
+-- units clear) were reported. Check round buttons by circle gaps (centre distance minus both radii) in a spec.
+-- Compare screenshots against the design as well.
 
 local UIBounds = {}
 

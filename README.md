@@ -7,14 +7,14 @@ A generic agent skill meant to become the ultimate Roblox dev skill (Claude Code
 ```
 SKILL.md                 dispatcher: always-on rules and the route table, read on every task
 references/              read only when the route names them; each file serves one kind of task
-  code/                  coding, gameplay (physics, NPCs, playing animations), rojo-project
-  ui/                    ui (the workflow), topbar, icons, lists, windows (modals and sheets), surface (fades and shine), runtime (state, world-space GUIs)
-  art/                   visual-style, modeling, maps (maps, bases and buildings), environment, vfx, vfx-packs (effects from a supplied pack), hit-vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
+  code/                  coding, gameplay (physics, NPCs, playing animations), rojo-project, cleanup (retired systems, old-save code, status docs), studio-testing, play-input (clicks, prompts, camera, touch in Play), captures (what Studio captures show and miss), performance
+  ui/                    ui (the workflow), topbar, icons, lists, windows (modals and sheets), surface (fades and shine), runtime (state, world-space GUIs), hud (gains, stats, notifications), controls (fight controls per device)
+  art/                   visual-style, modeling, editable-mesh (meshes built and published in Studio), maps (maps, bases and buildings), environment, vfx, character-fx (auras, transformations, camera kicks), vfx-packs (effects from a supplied pack), hit-vfx, cutscenes (cinematic cameras, timelines), audio (sound, music, mixing), video (watching references and recordings),
                          styles/ (stud, anime-ink, hand-painted, realistic, low-poly, simulator-cartoon)
   rigs/                  rigs (R15, R6, with a Humanoid or without, audits), catalog (a look from Marketplace items), skins (a modeled look), custom-creatures, hair, gear
   animation/             animation (clips, export, inspection), r6-on-r15, r6-ik, r6-default-set
   safety/                characters (all-ages), no-gore (uploads), stylized-violence (what players see), assets (Toolbox intake), uploading
-  design/                game-design, game-economy, monetization (products, shop, offers, gifts), onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys
+  design/                game-design, game-economy, monetization (products, shop, offers, gifts), product-setup (passes and products created through Open Cloud), onboarding (tutorials), analytics (funnels, custom events, the 10 funnel slots, releases and reviews), journeys
   codex/                 handoff (Claude only)
   learning/              learning (notes kept on the maintainer's machine), quality-update (turning them into skill changes)
 scripts/                 run, not read: Studio audits and helpers, Blender kits, upload tools, the Codex wrapper, learning notes

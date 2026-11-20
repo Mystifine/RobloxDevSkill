@@ -7,7 +7,8 @@
 --   spot.Focus(Guide.screenRect(chest))          -- a 3D Model/BasePart: the focus box is its projected bounds
 --   spot.Clear()                                 -- lights the screen again; spot.Destroy() removes it
 --   local stopArrow = Guide.arrow(chest)         -- bobbing arrow floating above a 3D target
---   local stopBeam = Guide.beam(gatePosition, nil, nil, { gateModel })  -- beam from the character, raised off the floor
+--   local stopBeam = Guide.beam(gatePosition, nil, nil, { gateModel })  -- beam from the character, raised off the floor;
+--                                                -- call again after a respawn
 --   local unlock = Guide.lock({ shopGui, offersGui }, { Enum.KeyCode.G })  -- hide the HUD the lesson does not use and
 --                                                -- sink the keys it forbids; call unlock() on finish, skip and leave
 --   local release = Guide.lookAt(chest.Position, 1.5)  -- camera assist for a key reveal; returns the camera early
@@ -160,7 +161,8 @@ end
 -- ends. Pass a chevron `texture` to animate flow, its arrows drawn pointing down the image: a beam runs the image's height
 -- from Attachment0 (the character) to Attachment1 (the goal), and a positive TextureSpeed flows the same way; arrows drawn
 -- along the image's width lie across the beam. `ignore` lists what the floor ray must skip besides the character (the
--- target model). Returns the stop function.
+-- target model). The beam is parented to the character's root (its near end): one parented at an off-screen far end
+-- draws nothing. It dies with the character, so call beam again after a respawn. Returns the stop function.
 function Guide.beam(goal: Vector3, color: Color3?, texture: string?, ignore: { Instance }?): () -> ()
 	local player = Players.LocalPlayer
 	local character = player.Character
@@ -197,8 +199,9 @@ function Guide.beam(goal: Vector3, color: Color3?, texture: string?, ignore: { I
 	if texture then
 		beam.Texture, beam.TextureMode, beam.TextureLength, beam.TextureSpeed = texture, Enum.TextureMode.Static, 3, 1.5
 	end
-	beam.Parent = anchor
+	beam.Parent = root
 	return function()
+		beam:Destroy()
 		near:Destroy()
 		anchor:Destroy()
 	end

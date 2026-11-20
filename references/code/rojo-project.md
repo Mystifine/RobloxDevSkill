@@ -11,7 +11,7 @@ Find where the user keeps projects: the folder holding the most Rojo projects (`
 1. **Create the files.** Copy the blueprint to `docs/project-structure.md` and create everything it lists:
    - `default.project.json`, `rokit.toml`, `wally.toml` (all four packages at their latest reviewed versions, never a sibling project's pin: the blueprint's Wally section), `selene.toml`;
    - `.gitignore`, `.graphifyignore` (MysLib kept in), `.mcp.json`;
-   - `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `README.md`;
+   - `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `README.md`; status docs (test results, known issues, assumptions) hold the current state, replaced rather than appended ([cleanup.md](cleanup.md#the-projects-docs));
    - the `src/` skeleton, with `Server.server.luau` and `Client.client.luau` bootstrapping in an explicit order through MysLib's `Bootstrapper`.
 2. **Run the toolchain.** `git init`, then the blueprint's commands (`rokit install`, `wally install`, `selene`, `rojo build`), and build the Graphify graph.
 3. **Missing pieces never stop the work.** Install a missing tool when you can. Otherwise use a fallback, and record it in `docs/setup.md` with the step that would fix it:
@@ -61,7 +61,7 @@ This is a rewrite into systems, not a copy of the scripts:
 
 ## 5. Map ownership and switch over
 
-- **Map code only.** `default.project.json` maps the blueprint's code folders, the entry scripts and the packages. Declare each service with `$className` and child entries, never map a whole service with `$path`, so Rojo cannot delete its Studio content. A Studio-owned folder inside a mapped tree gets `$ignoreUnknownInstances: true`. Scripts, LocalScripts and ModuleScripts move to Rojo; every other instance stays in Studio, except GUIs rebuilt as components.
+- **Map code only.** `default.project.json` maps the blueprint's code folders, the entry scripts and the packages. Declare each service with `$className` and child entries, never map a whole service with `$path`, so Rojo cannot delete its Studio content. A Studio-owned folder inside a mapped tree gets `$ignoreUnknownInstances: true`. Scripts, LocalScripts and ModuleScripts move to Rojo; every other instance stays in Studio, except GUIs rebuilt as components. A MeshPart model above all: live sync cannot set `MeshId`, and a binary save holds the mesh only in `MeshContent`, so Rojo's copy draws as boxes ([editable-mesh.md](../art/editable-mesh.md#under-rojo)).
 - **Switch over in the working copy.** Delete the legacy scripts, `rojo serve`, connect the plugin (or write the `rojo build` output into the copy with Lune's `@lune/roblox`). Then confirm that `Inventory.leftovers({ <every Rojo-managed instance> })` is empty and the content counts still match section 3, apart from the GUIs rebuilt as components.
 
 ## 6. Test the migration
@@ -70,7 +70,7 @@ This is a rewrite into systems, not a copy of the scripts:
 2. **Inventory:** every `docs/migration.md` row is verified, there are no leftovers, and the content counts match the backup (apart from rebuilt GUIs).
 3. **Play** the working copy beside the reference copy, server and client, with a clean console:
    - **UI parity**, the same fresh player in both, at the same viewport: phone landscape (844x390) first, then portrait (390x844) if the game allows it, tablet (1024x768) and desktop (1280x720). Set it with Studio's device emulator or by resizing the Studio window (a screen too short for a size: use one of the same aspect ratio). [scripts/UIParity.luau](../../scripts/UIParity.luau): `fingerprint()` gives one line per window (count and hash of its texts and images with their pixel rectangles); open each window the same way in both, `sweep(frame)` each scrolling page, and read `Detail` only where a line differs. Pass `Ignore` for decorations placed at random and `Moving` for animated ones. Then UIBounds ([ui.md](../ui/ui.md)): the same findings as the original, or fewer.
-   - **Every feature with real input** (clicks, keys, walking: [studio-testing.md](studio-testing.md#play-tests-with-real-input)): each inventory row, UI flows, purchases with test products, teleports, tags, cutscenes and their skip; then two players, a respawn and a rejoin.
+   - **Every feature with real input** (clicks, keys, walking: [play-input.md](play-input.md)): each inventory row, UI flows, purchases with test products, teleports, tags, cutscenes and their skip; then two players, a respawn and a rejoin.
    - **Client cost** beside the original on the same screen: Lua allocation and heap ([coding.md](coding.md) Performance). The port costs no more without a reason.
 4. **Data:** a legacy-format save loads with the same values: offline through the real save library over a fake DataStoreService (Lune), or in a private published test place on scratch stores. Never production stores or the owner's saves.
 5. **Record** the results in `docs/migration.md` and `artifacts/verification/`, and report what you could not verify.

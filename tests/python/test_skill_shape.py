@@ -5,41 +5,49 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILL_MD = 2650  # the monetization row, review output kept out of the project with its evidence, the top bar checked in a user's Play, the rules read as production experience, long scripts kept in files
+SKILL_MD = 2950  # Blender-only background agents beside Studio work, a cleanup route row, backslashes kept out of inline scripts with their signs, pipeline intermediates, the monetization row, review output kept out of the project with its evidence, the top bar checked in a user's Play, the rules read as production experience, long scripts kept in files
 DESCRIPTION = 450  # characters: read in every session, Roblox or not
 REFERENCE = 4500
 EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads it whole
-              'references/ui/ui.md': 5600,  # the rules every screen needs, already split into topbar, icons, lists, windows, surface and runtime
-              'references/art/modeling.md': 4550,  # every modeled asset's rules with their evidence restored; maps split out
+              'references/ui/ui.md': 5600,  # the rules every screen needs, already split into topbar, icons, lists, windows, surface, runtime, hud and controls
+              'references/art/modeling.md': 4900,  # every modeled asset's rules with their evidence restored; maps and EditableMesh builds split out, bmesh over MCP and hole closing kept for every Blender build
               'references/art/vfx.md': 4550}  # every effect's rules with their evidence restored; packs and attacks split out
 # What a typical task loads, SKILL.md included.
 ROUTES = {
-    'luau code': (['code/coding'], 6000),
-    'studio testing': (['code/coding', 'code/studio-testing'], 9300),
-    'performance': (['code/coding', 'code/performance'], 6700),  # measurement in its own file
-    'hud': (['art/visual-style', 'ui/ui'], 9350),  # lists, grids and tabs moved to ui/lists
-    'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 9950),  # scrolling lists, grids, tab strips, drop-downs
-    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 11000),  # upload sizing, portraits
-    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 11400),
-    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 12450),  # attacks in their own file
-    'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 8850),
-    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 12600),  # the weapon's own joint
-    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 22400),  # bare skin is the colored body, not a shell
-    'catalog character': (['rigs/rigs', 'rigs/catalog', 'rigs/hair'], 9500),  # a look from Marketplace items, with a Humanoid
-    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 10150),
-    'r6-like weapon clip': (['animation/r6-on-r15', 'animation/animation', 'animation/r6-weapons'], 11700),  # weapon clips in their own file  # the weapon's own joint; R6 walks in their own file
-    'blender clip': (['animation/animation', 'animation/blender'], 9450),  # was 18,700 with animate-roblox-characters loaded
-    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 13350),
-    'default r6 clips': (['animation/r6-default-set'], 4350),
-    'funnels': (['design/analytics'], 6650),
-    'journeys': (['design/analytics', 'design/journeys'], 7950),
-    'monetization': (['design/monetization'], 5850),  # products, shop, offers, gifts; split from game-economy
-    'maps': (['art/visual-style', 'art/modeling', 'art/maps'], 9050),  # maps, bases and buildings: their own file beside modeling
-    'ui windows': (['art/visual-style', 'ui/ui', 'ui/windows'], 9750),  # windows, modals and sheets
-    'vfx pack': (['art/visual-style', 'art/vfx', 'art/vfx-packs', 'safety/no-gore', 'safety/uploading'], 11850),  # effects from a supplied pack
-    'audio': (['art/audio', 'safety/assets'], 6000),
+    'luau code': (['code/coding'], 6900),
+    'studio testing': (['code/coding', 'code/studio-testing'], 9800),
+    'performance': (['code/coding', 'code/performance'], 7650),  # measurement in its own file
+    'hud': (['art/visual-style', 'ui/ui'], 9650),  # lists, grids and tabs moved to ui/lists
+    'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 10700),  # scrolling lists, grids, tab strips, drop-downs
+    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 12150),  # upload sizing, portraits
+    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 12250),
+    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 13300),  # attacks in their own file
+    'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 9450),
+    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 13800),  # the weapon's own joint
+    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 23800),  # bare skin is the colored body, not a shell
+    'catalog character': (['rigs/rigs', 'rigs/catalog', 'rigs/hair'], 10250),  # a look from Marketplace items, with a Humanoid
+    'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 11050),
+    'r6-like weapon clip': (['animation/r6-on-r15', 'animation/animation', 'animation/r6-weapons'], 12600),  # weapon clips in their own file  # the weapon's own joint; R6 walks in their own file
+    'blender clip': (['animation/animation', 'animation/blender'], 9850),  # was 18,700 with animate-roblox-characters loaded
+    'r6-like clip in blender': (['animation/r6-on-r15', 'animation/animation', 'animation/blender'], 14250),
+    'default r6 clips': (['animation/r6-default-set'], 4650),
+    'funnels': (['design/analytics'], 6950),
+    'journeys': (['design/analytics', 'design/journeys'], 8200),
+    'monetization': (['design/monetization'], 7400),  # products, shop, offers, gifts; split from game-economy
+    'maps': (['art/visual-style', 'art/modeling', 'art/maps'], 9750),  # maps, bases and buildings: their own file beside modeling
+    'ui windows': (['art/visual-style', 'ui/ui', 'ui/windows'], 10350),  # windows, modals and sheets
+    'vfx pack': (['art/visual-style', 'art/vfx', 'art/vfx-packs', 'safety/no-gore', 'safety/uploading'], 12750),  # effects from a supplied pack
+    'audio': (['art/audio', 'safety/assets'], 6500),
     'video': (['art/video', 'art/visual-style'], 6000),
-    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 11600),
+    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 12400),
+    'studio captures': (['code/coding', 'code/studio-testing', 'code/captures'], 10650),  # what captures show and miss, catching short moments
+    'project cleanup': (['code/coding', 'code/cleanup'], 7650),  # retired systems, old-save code, status docs
+    'hud feedback': (['art/visual-style', 'ui/ui', 'ui/hud'], 10450),  # gains, stat readouts, notifications
+    'fight controls': (['art/visual-style', 'ui/ui', 'ui/controls'], 10550),  # touch ring, PC tiles, gamepad
+    'character vfx': (['art/visual-style', 'art/vfx', 'art/character-fx', 'safety/no-gore', 'safety/uploading'], 13800),  # auras, transformations, payoffs, camera kicks
+    'editable mesh': (['art/visual-style', 'art/modeling', 'art/editable-mesh', 'safety/uploading'], 12150),  # meshes built and published in Studio
+    'play input': (['code/coding', 'code/studio-testing', 'code/play-input'], 11950),  # clicks, prompts, camera, touch: split from studio testing
+    'product setup': (['design/monetization', 'design/product-setup'], 8100),  # Open Cloud creates, updates and retries
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
 

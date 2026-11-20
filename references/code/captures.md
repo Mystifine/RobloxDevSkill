@@ -1,0 +1,17 @@
+# Captures in Studio
+
+What a Studio MCP `screen_capture` shows, what it misses, and how to catch a moment shorter than a tool call. Read from [studio-testing.md](studio-testing.md) before judging UI, an effect or a world sign by a capture. A capture leaves out CoreGui (prompts, chat, `AvatarEditorService` dialogs) and every `AlwaysOnTop` BillboardGui: [play-input.md](play-input.md), Prompts.
+
+## The tool
+- **Send captures one at a time:** ten `screen_capture` calls sent in parallel returned "Request timeout" for eight; the same captures sent one after another all returned images.
+- **With a camera position** it timed out every other call in Edit, and the next capture returned the previous request's view: capture again with the same camera.
+- **With Studio minimized** it returns a dark viewport or times out: show the window without focus (Windows: `ShowWindow` 4, `SetWindowPos` `HWND_BOTTOM`) and put its saved placement back after.
+- **The first capture after a Lighting change or a new SurfaceGui can come back blank:** wait a few seconds and capture again. World signs early in a Play can be wrong too: 16 s into a fresh Play, painted pad numbers (SurfaceGuis on `Top` faces) were missing on three pads and sideways on one, which suggested a wrong rotation in a just-rebuilt base; the built markers' CFrames matched the orientation verified a session earlier, and a capture a minute later showed every sign right. Recapture, and read the CFrames, before fixing a sign a capture shows wrong in a Play's first seconds.
+- **Measure UI from the client, never from the image:** Studio's 1920 x 1080 viewport comes back as 1296 x 729 captures, and the GUI sits under a 58 px top inset. Reading a button's place off a capture put it about 45 px from where the client's `AbsolutePosition` had it, and suggested a geometry bug that was not there. Read `AbsolutePosition` and `AbsoluteSize` in a Client call; clicks are placed the same way ([play-input.md](play-input.md), Clicks).
+
+## Catching a short moment
+A capture lands about 0.1 s after the previous call returns when the two are sent together, but sent as the agent's next tool call it arrives a second or two after the call that triggered the moment. Short-lived UI can miss every capture: a short toast never appeared in one, and reading the toast list's texts from the client found it. What worked:
+- **Wait inside the call that triggers it,** sampling what you need to check in that call.
+- **Re-trigger the moment until a capture lands:** three captures of a 1.5 s HUD pop-up missed it, though a sample inside the triggering call showed it visible at the right place for 1.2 s. Re-triggering the cue every 0.5 s from a spawned client thread (stopped after) caught it on the first capture.
+- **Trigger and capture in one shell command,** for a moment under about 2 s: captures issued as separate tool calls after a probe landed seconds late and twice missed a 1.6 s effect. Running the trigger and `studio_mcp.py call screen_capture --image shot.jpg` in the same shell command caught both an effect's build-up (0.3-0.6 s) and its burst (about 1 s).
+- **Slow the effect:** for effects that honour a slow-motion attribute, slowing every clock works as well ([vfx.md](../art/vfx.md), an effect the game itself plays): an orb's rise and flight were caught mid-air at 0.1 speed.
