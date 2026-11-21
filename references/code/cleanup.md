@@ -8,6 +8,7 @@ Removing what the shipped game no longer uses: retired systems, a template's lef
 - **Signs that find them:** a flag that is off everywhere, specs that skip, config entries hidden by a flag, comments like "kept for saves" or "template", and per-key reader counts (`grep -c "Config.Key"` across the source: 0 means dead).
 - **Order:** the composition root's list; then every reference, by grep; then lint, whose unused-variable warnings caught four leftovers; then the specs. Unit specs went from 86 to 73, all passing; integration from 28 passed and 7 skipped to 26 passed and 0 skipped.
 - **Save code goes too before launch:** an unreleased game keeps no migration or reconciliation for old states, and what stays is validation ([coding.md](coding.md#data)); one `grant` per product ([monetization.md](../design/monetization.md#purchases)).
+- **A pre-launch clean slate is one store version, not code:** asked to start every save over before launch, a load path already validation-only, apart from an unread schema version, two dead template fields and a rebuild of an overhead tag for an older build, needed no new code. One version suffix on every store name (profiles, ordered boards, the gift inbox, stock counts), the testers' QA switches left alone, emptied everything without touching the old stores.
 
 ## The project's docs
 
