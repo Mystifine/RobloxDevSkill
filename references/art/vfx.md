@@ -14,7 +14,7 @@ Attacks (auto attacks, weapon swings, abilities and specials): also [hit-vfx.md]
 
 ## 2. Tune the properties, do not accept defaults
 
-For every emitter set deliberately: `Texture`, `Color` (ColorSequence), `Transparency`/`Size` (NumberSequences), `Rate` or burst count, `Lifetime`, `Speed`, `SpreadAngle`, `Acceleration`, `Drag`, `Rotation`/`RotSpeed`, `Squash`, `LightEmission`, `LightInfluence`, `Orientation`, `EmissionDirection`, `ZOffset`, `LockedToPart`, `TimeScale`, `FlipbookLayout`/`FlipbookMode`/`FlipbookFramerate`, `Shape*`. Contrast layers in size, speed and lifetime (fast thin sparks over slow soft body).
+For every emitter set deliberately: `Texture`, `Color` (ColorSequence), `Transparency`/`Size` (NumberSequences), `Rate` or burst count, `Lifetime`, `Speed`, `SpreadAngle`, `Acceleration`, `Drag`, `Rotation`/`RotSpeed`, `Squash`, `LightEmission`, `LightInfluence`, `Orientation`, `EmissionDirection`, `ZOffset`, `LockedToPart`, `TimeScale`, `FlipbookLayout`/`FlipbookMode`/`FlipbookFramerate`, `Shape*`. Contrast layers in size, speed and lifetime (fast thin sparks over slow soft body). A particle's `Color` runs over its life: an aurora ribbon emitter with a green-teal-violet `ColorSequence` showed only green and teal, the violet arriving as it faded; two emitters, one green and one violet, showed both side by side. Show several colours at once with one emitter per colour.
 
 **Break every ZOffset tie on a host:** emitters with one parent at the same `ZOffset` swap draw order as the camera moves, unless all of them are additive (`LightEmission` 1); 592 of 887 multi-emitter hosts in one game had such a tie. Order them back to front: smoke and dust, glow and fire, cores and flashes, rings and slashes, sparks and debris, alpha before additive. `Inspector.lint` reports `zoffset-tie` and `Inspector.layer(root)` fixes it (section 8).
 
@@ -58,6 +58,8 @@ An effect that appears in the air, on a head or inside a body is a placement bug
 
 Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones) or as a flipbook carrier. Take one from the project's packs or installed plugins' libraries before modeling one: VFX plugins sometimes ship these meshes ([assets.md, Plugin asset libraries](../safety/assets.md#plugin-asset-libraries)). Keep it low-poly, one material, `CanCollide/CanTouch/CanQuery = false`, `Massless`, and fade it like any other layer. Neon and bright Metal take deep, saturated colours under the game's bloom: light warm tones turn yellow and pale Neon loses its outline ([environment.md](environment.md), Lighting).
 
+- **A stretched sphere is a Block with a `SpecialMesh` of `MeshType` `Sphere`:** a Ball part stays round, so tail and serpent segments sized as long Ball parts rendered as strings of round beads; a Block part with a sphere SpecialMesh scaled to the size gave true ellipsoids, and the tails read as continuous.
+
 ## 7. Budget and gotchas
 
 - Set and respect a budget per cast (particles, parts, beams, lights) and per-viewer limits (distance cull, concurrent effects). Preload textures. Avoid big stacked transparent quads (overdraw). Never create instances per frame.
@@ -69,6 +71,7 @@ Secondary. Add a mesh only when it fits well (slash arcs, shockwave rings, cones
 - **Beams:** the width runs along the attachments' Y axis (with Y toward the camera the band lies edge-on) and the curve along their X: the control points are `Attachment0` plus its X times `CurveSize0` and `Attachment1` minus its X times `CurveSize1`. With X along the chord the curve does nothing: point an end's X away from the chord for the ribbon to bend. Ribbons laid side by side show gaps, so cloth (a cape) reads better as a few broad overlapping beams. A texture's height runs along the beam, its top toward `Attachment0`, and a positive `TextureSpeed` moves it toward `Attachment1`: draw an arrow pointing down its image, since one pointing along the image's width rendered as a zigzag across the beam.
 - **Scaling an effect prop:** `Model:ScaleTo(n)` scales part sizes, attachment offsets, emitters' `Size`, `Speed` and `Acceleration` and beam widths, but not `PointLight.Range`; `ScaleTo(1)` restores them all. Put a lone part in a Model first, and scale lights yourself.
 - Only the local client draws its own predicted effects; do not also replay them for that player.
+- **A burst ring expands as thin segments, never as a filled disc** *(default)*: shockwaves built from a neon ring helper with a filled inner disc, a `ForceField` cylinder shock, and pack templates with large flat `VelocityPerpendicular` emitters (63-64 studs) all drew as solid coloured or white floods over the floor: every cast's frames showed a pale disc covering the caster. Neon also pushes pale palette colours to white, and strong PointLights washed the floor the same way. A ring of 24 thin rod segments that grows and fades, slam templates at half scale, and lights dimmed to a range of about 4x the radius at brightness 3 removed the floods in all 30 captures.
 
 ## 8. Inspect (an effect is not done until it passes)
 

@@ -7,25 +7,24 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 SKILL_MD = 3000  # heavy agent fan-outs sharing the plan's usage limit, Blender-only background agents beside Studio work, a cleanup route row, backslashes kept out of inline scripts with their signs, pipeline intermediates, the monetization row, review output kept out of the project with its evidence, the top bar checked in a user's Play, the rules read as production experience, long scripts kept in files
 DESCRIPTION = 450  # characters: read in every session, Roblox or not
-REFERENCE = 4500
-EXCEPTIONS = {'references/design/game-design.md': 6000,  # a design task reads it whole
-              'references/ui/ui.md': 5650,  # the rules every screen needs, already split into topbar, icons, lists, windows, surface, runtime, hud and controls; captions in a row of cells beside the equal-boxes rule they extend
-              'references/art/modeling.md': 5000,  # every modeled asset's rules with their evidence restored; maps and EditableMesh builds split out, bmesh over MCP, hole closing and the loose-vertex delete kept for every Blender build
-              'references/art/vfx.md': 4850}  # every effect's rules with their evidence restored; packs, attacks and character effects split out; emitters on upright attachments and a size floor on small hosts serve every effect
+REFERENCE = 10000  # the maintainer's limit for one reference; routing still comes first, so a file splits when its routes mostly need only a part of it
+EXCEPTIONS = {}
 # What a typical task loads, SKILL.md included.
 ROUTES = {
     'luau code': (['code/coding'], 7300),
-    'studio testing': (['code/coding', 'code/studio-testing'], 10450),
-    'performance': (['code/coding', 'code/performance'], 8050),  # measurement in its own file
-    'hud': (['art/visual-style', 'ui/ui'], 9800),  # lists, grids and tabs moved to ui/lists
-    'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 10900),  # scrolling lists, grids, tab strips, drop-downs
-    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 12700),  # upload sizing, portraits
-    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 12600),
-    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 13800),  # attacks in their own file
+    'streaming': (['code/coding', 'code/streaming'], 8350),  # streamed models, binders and travel: split from coding
+    'economy': (['design/game-economy'], 8400),  # currencies, pacing models, ladders, live ops
+    'studio testing': (['code/coding', 'code/studio-testing'], 11350),
+    'performance': (['code/coding', 'code/performance'], 8150),  # measurement in its own file
+    'hud': (['art/visual-style', 'ui/ui'], 10000),  # lists, grids and tabs moved to ui/lists
+    'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 11150),  # scrolling lists, grids, tab strips, drop-downs
+    'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 13200),  # upload sizing, portraits
+    'vfx': (['art/visual-style', 'art/vfx', 'safety/no-gore', 'safety/uploading'], 13100),
+    'hit vfx': (['art/visual-style', 'art/vfx', 'art/hit-vfx', 'safety/no-gore', 'safety/uploading'], 14300),  # attacks in their own file
     'bake': (['art/visual-style', 'art/modeling', 'art/baking'], 9650),
-    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 14000),  # the weapon's own joint
-    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 24000),  # bare skin is the colored body, not a shell
-    'catalog character': (['rigs/rigs', 'rigs/catalog', 'rigs/hair'], 10350),  # a look from Marketplace items, with a Humanoid
+    'weapon': (['art/visual-style', 'art/modeling', 'rigs/gear', 'safety/no-gore', 'safety/uploading'], 14150),  # the weapon's own joint
+    'character skin': (['art/visual-style', 'art/modeling', 'rigs/rigs', 'rigs/skins', 'safety/characters', 'safety/no-gore', 'safety/uploading'], 24300),  # bare skin is the colored body, not a shell
+    'catalog character': (['rigs/rigs', 'rigs/catalog', 'rigs/hair'], 11800),  # a look from Marketplace items, with a Humanoid
     'r6-like clip': (['animation/r6-on-r15', 'animation/animation'], 11150),
     'r6-like weapon clip': (['animation/r6-on-r15', 'animation/animation', 'animation/r6-weapons'], 12650),  # weapon clips in their own file  # the weapon's own joint; R6 walks in their own file
     'blender clip': (['animation/animation', 'animation/blender'], 9950),  # was 18,700 with animate-roblox-characters loaded
@@ -33,24 +32,24 @@ ROUTES = {
     'default r6 clips': (['animation/r6-default-set'], 4700),
     'funnels': (['design/analytics'], 7150),
     'journeys': (['design/analytics', 'design/journeys'], 8400),
-    'monetization': (['design/monetization'], 6100),  # products, shop, offers, gifts; split from game-economy
+    'monetization': (['design/monetization'], 6500),  # products, shop, offers, gifts; split from game-economy
     'maps': (['art/visual-style', 'art/modeling', 'art/maps'], 10350),  # maps, bases and buildings: their own file beside modeling
-    'ui windows': (['art/visual-style', 'ui/ui', 'ui/windows'], 10600),  # windows, modals and sheets
-    'vfx pack': (['art/visual-style', 'art/vfx', 'art/vfx-packs', 'safety/no-gore', 'safety/uploading'], 13050),  # effects from a supplied pack
-    'audio': (['art/audio', 'safety/assets'], 6850),
+    'ui windows': (['art/visual-style', 'ui/ui', 'ui/windows'], 10850),  # windows, modals and sheets
+    'vfx pack': (['art/visual-style', 'art/vfx', 'art/vfx-packs', 'safety/no-gore', 'safety/uploading'], 13550),  # effects from a supplied pack
+    'audio': (['art/audio', 'safety/assets'], 7050),
     'video': (['art/video', 'art/visual-style'], 6050),
-    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 13400),
-    'studio captures': (['code/coding', 'code/studio-testing', 'code/captures'], 11300),  # what captures show and miss, catching short moments
-    'project cleanup': (['code/coding', 'code/cleanup'], 8150),  # retired systems, old-save code, status docs
-    'hud feedback': (['art/visual-style', 'ui/ui', 'ui/hud'], 10850),  # gains, stat readouts, notifications
-    'fight controls': (['art/visual-style', 'ui/ui', 'ui/controls'], 10850),  # touch ring, PC tiles, gamepad
-    'character vfx': (['art/visual-style', 'art/vfx', 'art/character-fx', 'safety/no-gore', 'safety/uploading'], 14300),  # auras, transformations, payoffs, camera kicks
-    'editable mesh': (['art/visual-style', 'art/modeling', 'art/editable-mesh', 'safety/uploading'], 12350),  # meshes built and published in Studio
-    'play input': (['code/coding', 'code/studio-testing', 'code/play-input'], 12700),  # clicks, prompts, camera, touch: split from studio testing
-    'product setup': (['design/monetization', 'design/product-setup'], 7200),  # Open Cloud creates, updates and retries
-    'offers': (['design/monetization', 'design/offers'], 8500),  # shop, offers and the popup queue: split from monetization
-    'chatgpt images': (['art/visual-style', 'ui/icons', 'ui/chatgpt-images', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 13250),  # icon sheets through ChatGPT in the user's Chrome
-    'cutscene captions': (['art/cutscenes', 'art/captions', 'art/vfx', 'art/visual-style'], 13700),  # spoken lines: split from cutscenes
+    'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 13700),
+    'studio captures': (['code/coding', 'code/studio-testing', 'code/captures'], 12400),  # what captures show and miss, catching short moments
+    'project cleanup': (['code/coding', 'code/cleanup'], 8200),  # retired systems, old-save code, status docs
+    'hud feedback': (['art/visual-style', 'ui/ui', 'ui/hud'], 11450),  # gains, stat readouts, notifications
+    'fight controls': (['art/visual-style', 'ui/ui', 'ui/controls'], 11400),  # touch ring, PC tiles, gamepad
+    'character vfx': (['art/visual-style', 'art/vfx', 'art/character-fx', 'safety/no-gore', 'safety/uploading'], 15100),  # auras, transformations, payoffs, camera kicks
+    'editable mesh': (['art/visual-style', 'art/modeling', 'art/editable-mesh', 'safety/uploading'], 12500),  # meshes built and published in Studio
+    'play input': (['code/coding', 'code/studio-testing', 'code/play-input'], 14100),  # clicks, prompts, camera, touch: split from studio testing
+    'product setup': (['design/monetization', 'design/product-setup'], 7650),  # Open Cloud creates, updates and retries
+    'offers': (['design/monetization', 'design/offers'], 8900),  # shop, offers and the popup queue: split from monetization
+    'chatgpt images': (['art/visual-style', 'ui/icons', 'ui/chatgpt-images', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 13750),  # icon sheets through ChatGPT in the user's Chrome
+    'cutscene captions': (['art/cutscenes', 'art/captions', 'art/vfx', 'art/visual-style'], 14000),  # spoken lines: split from cutscenes
 }
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
 

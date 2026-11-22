@@ -11,6 +11,8 @@ Applies to every character you generate, model, edit or upload that could read a
 
 **No blood, wounds or gore on any character you generate or upload, and no smoking, drink or drug items even when its source carries one** ([no-gore.md](no-gore.md)): hurt shows as dust, torn clothes, a clean bandage or swirl eyes.
 
+**A named character that will not be built is said at once:** a feature asked for two named characters from an anime; original bosses were built and delivered without the substitution being put to the user, and the next message asked why. In the first update, say that the named character will not be copied, and ask for the user's own design or a go-ahead for an original. Matching one from catalog items is the user's call: [catalog.md](../rigs/catalog.md).
+
 ## Design the cover in character
 
 **Change as little as the rules need**, so the character stays itself:

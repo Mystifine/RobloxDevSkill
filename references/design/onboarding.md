@@ -29,6 +29,8 @@
 
 **A guide beam is parented at its near end,** the character's `HumanoidRootPart`, never at the target: parented to an invisible anchor part at a pad 190 studs away, a beam with both attachments set drew nothing, from behind the player or from above, while one to a gate in view drew. Parented to the root it drew the whole way. It then dies with the character, so rebuild it with each new root.
 
+**A tip points at a window's Close only for the window its own flow left open:** a contextual tip sent its arrow and focus to "the open window's Close" whenever any window other than its own covered the HUD (meant for the egg window left open after a hatch). In Play the daily-reward window popped up and the tip framed its Close, steering a player to dismiss an unclaimed reward. Naming the one window per tip (`closes = "Egg"`) fixed it: the egg window got the arrow, the Shop and the daily window nothing. Rewards and offers are left alone.
+
 A hand or arrow image points the way its texture draws it, not the way its name says: one placed left of its button pointed away from it, which only a zoomed capture showed. Check the direction in a capture and mirror it to the side with room ([icons.md](../ui/icons.md)).
 
 Templates: [scripts/TutorialGuide.luau](../../scripts/TutorialGuide.luau): `spotlight` (dark hole plus input sinks), `screenRect`, `arrow`, `beam`, `lookAt`, `lock` (hide HUD, sink keys, restore). Checked in Studio. Use the project's own pointer or beam first if it has one, and match its style.

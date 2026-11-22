@@ -12,7 +12,7 @@ Removing what the shipped game no longer uses: retired systems, a template's lef
 
 ## The project's docs
 
-**Status docs hold the current state: replace, never append** *(default)*. Round-by-round entries had grown a test-results log to 127 KB, assumptions to 61 KB, tooling notes to 50 KB and known issues to 43 KB, beside a separate implementation-status log; superseded entries sat next to current ones, resolved issues stayed listed, and the owner found them piling up. Rewritten as current state, 376 KB became 86 KB:
+**Status docs hold the current state: replace, never append** *(default)*. Round-by-round entries had grown a test-results log to 127 KB, assumptions to 61 KB, tooling notes to 50 KB and known issues to 43 KB, beside a separate implementation-status log; superseded entries sat next to current ones, resolved issues stayed listed, and the owner found them piling up. Rewritten as current state, 376 KB became 86 KB: Another owner asked for the same clean slate outright: no dated data or references in any Markdown, only facts about what the game is now, and no working from historical material.
 - **Test results:** a short baseline table, what the specs cover and what was not covered, replaced on each run.
 - **Known issues:** open ones only, grouped by owner actions, balance, technical limits and unverified; an issue goes once it is fixed.
 - **Assumptions:** the decisions in force, grouped by system; a decision goes once it is superseded.

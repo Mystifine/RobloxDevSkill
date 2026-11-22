@@ -35,7 +35,7 @@ local model = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigT
 
 - **What a description can set:** body part ids (`Head`, `Torso`, ...), scales (`HeightScale`, `WidthScale`, `DepthScale`, `HeadScale`, `BodyTypeScale`, `ProportionScale`), classic `Shirt`/`Pants`, and per-accessory `Position`, `Rotation`, `Scale` and `Puffiness`.
 - **Clothing follows the build.** With a Humanoid: [catalog.md](catalog.md). Without one, catalog clothing only when the request asks for it, and layered (jacket, shirt, pants, with `IsLayered` and an `Order`, higher worn outside), which reads better on 3D bodies and still wraps there; never classic 2D Shirt/Pants, which show only with a Humanoid.
-- **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place.
+- **Keep each look as data** (ids, colors, scales, adjustments), so the whole cast can be rebuilt in another place. A whole cast of catalog looks, with its build, adjust and capture loop: [catalog.md](catalog.md#a-cast-as-data).
 - **Give each accessory its asset's own type.** The generator silently drops an entry whose `AccessoryType` differs from the asset's, with no error. Read the type first (`MarketplaceService:GetProductInfo(id).AssetTypeId`: 8 Hat, 41 Hair, 42 Face, 43 Neck, 44 Shoulder, 45 Front, 46 Back, 47 Waist), then count the Accessories on the built rig.
   - An item that looks like hair can be another type: four black messy hairs found by keyword among all accessories were all type 42 (Face); declared as `Hair`, each left the rig bald.
 

@@ -11,22 +11,39 @@ import { when } from './usage.mjs';
 const fail = (message, exitCode) => { const error = new Error(message); error.exitCode = exitCode; throw error; };
 const jsonlFiles = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true, recursive: true })
   .filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl')).map((entry) => path.join(entry.parentPath || entry.path, entry.name)) : [];
+// Calls fn on each line of a file, read in 1 MB chunks: a director's transcript can pass the 0x1fffffe8-character
+// string limit (one was 586 MB), where readFileSync(...).split threw "Cannot create a string longer than" and `handoff.sh --clean THREAD` removed nothing.
+export function forEachLine(file, fn) {
+  const fd = fs.openSync(file, 'r'), chunk = Buffer.alloc(1 << 20), decoder = new TextDecoder('utf-8');
+  let rest = '', read;
+  try {
+    while ((read = fs.readSync(fd, chunk, 0, chunk.length, null)) > 0) {
+      const lines = (rest + decoder.decode(chunk.subarray(0, read), { stream: true })).split('\n');
+      rest = lines.pop();
+      for (const line of lines) fn(line);
+    }
+    rest += decoder.decode();
+    if (rest) fn(rest);
+  } finally { fs.closeSync(fd); }
+}
 // Claude usage from the director sessions' transcripts (and their subagents) since the task's first run.
-// Everything those sessions did in the window counts, including unrelated work.
+// Everything those sessions did in the window counts, including unrelated work. Accounting never blocks cleanup:
+// a transcript that cannot be read goes uncounted.
 export function claudeUsage(sessions, since) {
   const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
   const totals = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, messages: 0 }, seen = new Set();
+  const count = (line) => {
+    if (!line.includes('"usage"')) return;
+    let entry; try { entry = JSON.parse(line); } catch { return; }
+    const usage = entry.message?.usage, key = entry.message?.id || entry.requestId;
+    if (entry.type !== 'assistant' || !usage || !key || seen.has(key) || Date.parse(entry.timestamp) < since) return;
+    seen.add(key); totals.messages++;
+    totals.input += usage.input_tokens || 0; totals.cacheWrite += usage.cache_creation_input_tokens || 0;
+    totals.cacheRead += usage.cache_read_input_tokens || 0; totals.output += usage.output_tokens || 0;
+  };
   for (const project of subdirs(projects)) for (const id of sessions) {
     for (const file of [path.join(project, `${id}.jsonl`), ...jsonlFiles(path.join(project, id))].filter((f) => fs.existsSync(f))) {
-      for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-        if (!line.includes('"usage"')) continue;
-        let entry; try { entry = JSON.parse(line); } catch { continue; }
-        const usage = entry.message?.usage, key = entry.message?.id || entry.requestId;
-        if (entry.type !== 'assistant' || !usage || !key || seen.has(key) || Date.parse(entry.timestamp) < since) continue;
-        seen.add(key); totals.messages++;
-        totals.input += usage.input_tokens || 0; totals.cacheWrite += usage.cache_creation_input_tokens || 0;
-        totals.cacheRead += usage.cache_read_input_tokens || 0; totals.output += usage.output_tokens || 0;
-      }
+      try { forEachLine(file, count); } catch { /* unreadable transcript */ }
     }
   }
   return totals;
