@@ -11,11 +11,11 @@ REFERENCE = 10000  # the maintainer's limit for one reference; routing still com
 EXCEPTIONS = {}
 # What a typical task loads, SKILL.md included.
 ROUTES = {
-    'luau code': (['code/coding'], 7300),
-    'streaming': (['code/coding', 'code/streaming'], 8350),  # streamed models, binders and travel: split from coding
-    'economy': (['design/game-economy'], 8400),  # currencies, pacing models, ladders, live ops
-    'studio testing': (['code/coding', 'code/studio-testing'], 11350),
-    'performance': (['code/coding', 'code/performance'], 8150),  # measurement in its own file
+    'luau code': (['code/coding'], 7400),
+    'streaming': (['code/coding', 'code/streaming'], 8450),  # streamed models, binders and travel: split from coding
+    'economy': (['design/game-economy'], 8850),  # currencies, pacing models, ladders, live ops
+    'studio testing': (['code/coding', 'code/studio-testing'], 12000),
+    'performance': (['code/coding', 'code/performance'], 8500),  # measurement in its own file
     'hud': (['art/visual-style', 'ui/ui'], 10000),  # lists, grids and tabs moved to ui/lists
     'ui lists': (['art/visual-style', 'ui/ui', 'ui/lists'], 11150),  # scrolling lists, grids, tab strips, drop-downs
     'icons': (['art/visual-style', 'ui/icons', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 13200),  # upload sizing, portraits
@@ -39,13 +39,13 @@ ROUTES = {
     'audio': (['art/audio', 'safety/assets'], 7050),
     'video': (['art/video', 'art/visual-style'], 6050),
     'cutscene': (['art/cutscenes', 'art/vfx', 'art/visual-style'], 13700),
-    'studio captures': (['code/coding', 'code/studio-testing', 'code/captures'], 12400),  # what captures show and miss, catching short moments
-    'project cleanup': (['code/coding', 'code/cleanup'], 8200),  # retired systems, old-save code, status docs
+    'studio captures': (['code/coding', 'code/studio-testing', 'code/captures'], 13050),  # what captures show and miss, catching short moments
+    'project cleanup': (['code/coding', 'code/cleanup'], 8350),  # retired systems, old-save code, status docs
     'hud feedback': (['art/visual-style', 'ui/ui', 'ui/hud'], 11450),  # gains, stat readouts, notifications
     'fight controls': (['art/visual-style', 'ui/ui', 'ui/controls'], 11400),  # touch ring, PC tiles, gamepad
     'character vfx': (['art/visual-style', 'art/vfx', 'art/character-fx', 'safety/no-gore', 'safety/uploading'], 15100),  # auras, transformations, payoffs, camera kicks
     'editable mesh': (['art/visual-style', 'art/modeling', 'art/editable-mesh', 'safety/uploading'], 12500),  # meshes built and published in Studio
-    'play input': (['code/coding', 'code/studio-testing', 'code/play-input'], 14100),  # clicks, prompts, camera, touch: split from studio testing
+    'play input': (['code/coding', 'code/studio-testing', 'code/play-input'], 14850),  # clicks, prompts, camera, touch: split from studio testing
     'product setup': (['design/monetization', 'design/product-setup'], 7650),  # Open Cloud creates, updates and retries
     'offers': (['design/monetization', 'design/offers'], 8900),  # shop, offers and the popup queue: split from monetization
     'chatgpt images': (['art/visual-style', 'ui/icons', 'ui/chatgpt-images', 'safety/assets', 'safety/no-gore', 'safety/uploading'], 13750),  # icon sheets through ChatGPT in the user's Chrome
